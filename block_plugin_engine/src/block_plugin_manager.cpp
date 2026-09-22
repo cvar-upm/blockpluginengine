@@ -1,4 +1,5 @@
 #include "block_plugin_engine/block_plugin_manager.hpp"
+#include "block_plugin_engine/block_scheduler.hpp"
 
 namespace bpe {
 
@@ -35,7 +36,7 @@ bool BlockPluginManager::cleanup() {
   //   propagate BlockPlugin::cleanup()
   //   destroy plugin instances
 
-  scheduler_.clear();
+  scheduler_->clear();
 
   return true;
 }
