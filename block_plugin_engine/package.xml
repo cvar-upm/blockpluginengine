@@ -13,6 +13,7 @@
 
   <depend>rclcpp</depend>
   <depend>rclcpp_lifecycle</depend>
+  <depend>yaml-cpp</depend>
 
   <export>
     <build_type>ament_cmake</build_type>

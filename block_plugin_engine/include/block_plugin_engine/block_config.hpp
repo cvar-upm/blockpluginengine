@@ -1,13 +1,13 @@
 #pragma once
 
+#include <yaml-cpp/yaml.h>
+
 namespace bpe
 {
 
-struct BlockConfig
-{
-    // Intentionally empty for now.
-    // The representation of per-block functional configuration
-    // will be defined together with BlockPluginManager.
-};
+// Semantic name used by the BlockPluginEngine API.
+// The current implementation uses YAML::Node, but Blocks depend on
+// BlockConfig rather than on that implementation detail in their signatures.
+using BlockConfig = YAML::Node;
 
 }  // namespace bpe

@@ -8,6 +8,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 #
 # Default scheduler
@@ -44,7 +45,8 @@ ament_target_dependencies(bpe_core
 )
 
 target_link_libraries(bpe_core
-  bpe_simple_scheduler
+    bpe_simple_scheduler
+    yaml-cpp
 )
 
 #
@@ -84,10 +86,12 @@ install(
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
+ament_export_targets(export_block_plugin_engine HAS_LIBRARY_TARGET)
 ament_export_include_directories(include)
 ament_export_dependencies(
   rclcpp
   rclcpp_lifecycle
+  yaml-cpp
 )
 
 ament_package()
