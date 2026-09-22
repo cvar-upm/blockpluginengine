@@ -7,9 +7,9 @@ namespace bpe {
 class ITimerBlock;
 struct ExecutionConfig;
 
-class IIBlockScheduler {
+class IBlockScheduler {
 public:
-  virtual ~IIBlockScheduler() = default;
+  virtual ~IBlockScheduler() = default;
 
   virtual void
   add(const std::string& instance_name, ITimerBlock& block, const ExecutionConfig& config) = 0;
