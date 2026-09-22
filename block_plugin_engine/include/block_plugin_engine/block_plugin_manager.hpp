@@ -4,11 +4,11 @@
 
 namespace bpe {
 
-class BlockScheduler;
+class IBlockScheduler;
 
 class BlockPluginManager {
 public:
-  explicit BlockPluginManager(std::shared_ptr<BlockScheduler>);
+  explicit BlockPluginManager(std::shared_ptr<IBlockScheduler>);
 
   bool configure();
   bool start();
@@ -16,7 +16,7 @@ public:
   bool cleanup();
 
 private:
-  std::shared_ptr<BlockScheduler> scheduler_;
+  std::shared_ptr<IBlockScheduler> scheduler_;
 };
 
 } // namespace bpe

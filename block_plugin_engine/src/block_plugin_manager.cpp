@@ -1,9 +1,9 @@
 #include "block_plugin_engine/block_plugin_manager.hpp"
-#include "block_plugin_engine/block_scheduler.hpp"
+#include "block_plugin_engine/iblock_scheduler.hpp"
 
 namespace bpe {
 
-BlockPluginManager::BlockPluginManager(std::shared_ptr<BlockScheduler> scheduler)
+BlockPluginManager::BlockPluginManager(std::shared_ptr<IBlockScheduler> scheduler)
   : scheduler_(scheduler) {}
 
 bool BlockPluginManager::configure() {

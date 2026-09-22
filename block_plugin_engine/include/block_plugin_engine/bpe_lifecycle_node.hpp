@@ -6,7 +6,7 @@
 
 namespace bpe {
 
-class BlockScheduler;
+class IBlockScheduler;
 class BlockPluginManager;
 
 class BPE_LifecycleNode : public rclcpp_lifecycle::LifecycleNode {
@@ -25,7 +25,7 @@ protected:
   CallbackReturn on_shutdown(const rclcpp_lifecycle::State&) override;
 
 private:
-  std::shared_ptr<BlockScheduler> scheduler_;
+  std::shared_ptr<IBlockScheduler> scheduler_;
   std::shared_ptr<BlockPluginManager> plugin_manager_;
 };
 

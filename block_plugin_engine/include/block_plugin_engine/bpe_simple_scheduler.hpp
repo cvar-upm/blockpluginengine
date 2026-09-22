@@ -1,20 +1,29 @@
 #pragma once
 
-#include "block_plugin_engine/block_scheduler.hpp"
+#include "block_plugin_engine/iblock_scheduler.hpp"
 
-namespace bpe {
+namespace bpe
+{
 
-class BPE_SimpleScheduler final : public BlockScheduler {
+class BPE_SimpleScheduler final : public IBlockScheduler
+{
 public:
-  BPE_SimpleScheduler() = default;
-  ~BPE_SimpleScheduler() override = default;
+    BPE_SimpleScheduler() = default;
+    ~BPE_SimpleScheduler() override = default;
 
-  void start() override;
-  void stop() override;
-  void clear() override;
+    void add(
+        const std::string& instance_name,
+        ITimerBlock& block,
+        const ExecutionConfig& config) override;
+
+    void remove(const std::string& instance_name) override;
+
+    void start() override;
+    void stop() override;
+    void clear() override;
 
 private:
-  bool running_{false};
+    bool running_{false};
 };
 
-} // namespace bpe
+}  // namespace bpe
