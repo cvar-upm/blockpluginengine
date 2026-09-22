@@ -1,4 +1,4 @@
-#include "block_plugin_engine/bpe_simple_scheduler.hpp"
+#include "detail/bpe_simple_scheduler.hpp"
 
 #include "block_plugin_engine/execution_config.hpp"
 #include "block_plugin_engine/itimer_block.hpp"

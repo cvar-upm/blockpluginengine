@@ -1,4 +1,4 @@
-#include "block_plugin_engine/block_plugin_manager.hpp"
+#include "detail/block_plugin_manager.hpp"
 #include "block_plugin_engine/iblock_scheduler.hpp"
 
 namespace bpe {

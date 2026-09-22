@@ -11,7 +11,11 @@ find_package(rclcpp_lifecycle REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
 #
-# Default scheduler
+# Default scheduler implementation
+#
+# IBlockScheduler is public API, but BPE_SimpleScheduler is an internal
+# implementation.  It is built as a shared library so the scheduler can
+# remain physically separated from the engine executable.
 #
 
 add_library(bpe_simple_scheduler SHARED
@@ -19,42 +23,30 @@ add_library(bpe_simple_scheduler SHARED
 )
 
 target_include_directories(bpe_simple_scheduler
+  PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
 
 #
-# BlockPluginEngine core
+# BlockPluginEngine executable
 #
-
-add_library(bpe_core SHARED
-  src/block_plugin_manager.cpp
-  src/bpe_lifecycle_node.cpp
-)
-
-target_include_directories(bpe_core
-  PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
-)
-
-ament_target_dependencies(bpe_core
-  rclcpp
-  rclcpp_lifecycle
-)
-
-target_link_libraries(bpe_core
-    bpe_simple_scheduler
-    yaml-cpp
-)
-
-#
-# Executable
+# BPE_LifecycleNode and BlockPluginManager are internal implementation
+# details and are compiled directly into the executable.
 #
 
 add_executable(block_plugin_engine_node
   src/main.cpp
+  src/bpe_lifecycle_node.cpp
+  src/block_plugin_manager.cpp
+)
+
+target_include_directories(block_plugin_engine_node
+  PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 ament_target_dependencies(block_plugin_engine_node
@@ -63,11 +55,11 @@ ament_target_dependencies(block_plugin_engine_node
 )
 
 target_link_libraries(block_plugin_engine_node
-  bpe_core
+  bpe_simple_scheduler
 )
 
 #
-# Install
+# Install only the public API headers.
 #
 
 install(
@@ -78,16 +70,21 @@ install(
 install(
   TARGETS
     bpe_simple_scheduler
-    bpe_core
     block_plugin_engine_node
-  EXPORT export_block_plugin_engine
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
-ament_export_targets(export_block_plugin_engine HAS_LIBRARY_TARGET)
+#
+# Public dependencies for packages implementing Blocks.
+#
+# yaml-cpp is exported because BlockConfig is part of the public API and is
+# currently implemented as an alias of YAML::Node.
+#
+
 ament_export_include_directories(include)
+
 ament_export_dependencies(
   rclcpp
   rclcpp_lifecycle

@@ -2,17 +2,16 @@
 
 #include <rclcpp/rclcpp.hpp>
 
-#include "block_plugin_engine/bpe_lifecycle_node.hpp"
+#include "detail/bpe_lifecycle_node.hpp"
 
-int main(int argc, char* argv[])
-{
-    rclcpp::init(argc, argv);
+int main(int argc, char* argv[]) {
+  rclcpp::init(argc, argv);
 
-    auto node = std::make_shared<bpe::BPE_LifecycleNode>();
+  auto node = std::make_shared<bpe::BPE_LifecycleNode>();
 
-    rclcpp::spin(node->get_node_base_interface());
+  rclcpp::spin(node->get_node_base_interface());
 
-    rclcpp::shutdown();
+  rclcpp::shutdown();
 
-    return 0;
+  return 0;
 }

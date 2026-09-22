@@ -1,7 +1,7 @@
-#include "block_plugin_engine/bpe_lifecycle_node.hpp"
+#include "detail/bpe_lifecycle_node.hpp"
 
-#include "block_plugin_engine/block_plugin_manager.hpp"
-#include "block_plugin_engine/bpe_simple_scheduler.hpp"
+#include "detail/block_plugin_manager.hpp"
+#include "detail/bpe_simple_scheduler.hpp"
 
 namespace bpe {
 
