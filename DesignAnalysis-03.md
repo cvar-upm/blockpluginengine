@@ -20,8 +20,9 @@ La terminología adoptada es:
 * **Block**: unidad funcional conceptual.
 * **BlockPlugin**: interfaz C++ mediante la cual se implementa un Block como plugin dinámico.
 * **BlockPluginManager**: responsable de carga, instanciación, configuración y lifecycle de los BlockPlugins.
-* **BlockScheduler**: responsable de la planificación y ejecución temporal de los Blocks.
-* **BlockLifecycleNode**: único `LifecycleNode` ROS 2 del sistema.
+* **BlockScheduler**: responsable de la planificación y ejecución temporal de los Blocks. Será un interfaz (para permitir alternativas a futuro).
+* **BPE_SimpleScheduler**: Una implementación sencilla del BlockScheduler. Estará metido en una librería dinámica (o incluso un plugin) dentro del propio paquete y se cargará en el ejecutable. Es el BlockScheduler por defecto.
+* **BPE_LifecycleNode**: único `LifecycleNode` ROS 2 del sistema.
 * **Blackboard**: infraestructura compartida para intercambio de datos entre Blocks.
 * **RosBoundaryBlock**: Block situado en la frontera ROS 2 del sistema y que necesita acceso a determinadas interfaces del nodo ROS 2.
 
@@ -38,7 +39,7 @@ Una misma clase de plugin puede generar varias instancias con nombres y configur
 
 ---
 
-# 1. BlockLifecycleNode
+# 1. BPE_LifecycleNode
 
 Será el único nodo ROS 2 del proceso y actuará además como **composition root**.
 
@@ -329,7 +330,7 @@ No se decidirán inicialmente detalles como:
 * CPU affinity
 * overrun handling
 
-La arquitectura debe permitir añadirlos posteriormente sin modificar los Blocks funcionales.
+La arquitectura debe permitir añadirlos posteriormente sin modificar los Blocks funcionales. Esto significa que alternativas de BlockScheduler vendrán dadas como librería dinámicas (o quizás plugins).
 
 ---
 
@@ -433,7 +434,7 @@ public:
 };
 ```
 
-La firma concreta todavía está por decidir.
+La firma concreta todavía está por decidir, pero esta es una buena candidata.
 
 ---
 
@@ -879,7 +880,7 @@ La arquitectura debe preservar las siguientes reglas:
 
 ```text
                     ┌────────────────────────┐
-                    │  BlockLifecycleNode    │
+                    │  BPE_LifecycleNode     │
                     │                        │
                     │ ROS lifecycle          │
                     │ composition root       │
