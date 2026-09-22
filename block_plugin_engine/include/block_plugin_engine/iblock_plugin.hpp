@@ -1,25 +1,19 @@
 #pragma once
 
-namespace bpe
-{
+namespace bpe {
 
 struct BlockConfig;
 
-enum class BlockResult
-{
-    SUCCESS,
-    FAILURE
-};
+enum class BlockResult { SUCCESS, FAILURE };
 
-class IBlockPlugin
-{
+class IBlockPlugin {
 public:
-    virtual ~IBlockPlugin() = default;
+  virtual ~IBlockPlugin() = default;
 
-    virtual BlockResult configure(const BlockConfig& config) = 0;
-    virtual BlockResult start() = 0;
-    virtual BlockResult stop() = 0;
-    virtual BlockResult cleanup() = 0;
+  virtual BlockResult configure(const BlockConfig& config) = 0;
+  virtual BlockResult start() = 0;
+  virtual BlockResult stop() = 0;
+  virtual BlockResult cleanup() = 0;
 };
 
-}  // namespace bpe
+} // namespace bpe

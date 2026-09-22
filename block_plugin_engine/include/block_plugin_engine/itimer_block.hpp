@@ -1,20 +1,14 @@
 #pragma once
 
-namespace bpe
-{
+namespace bpe {
 
-enum class ExecutionResult
-{
-    SUCCESS,
-    FAILURE
-};
+enum class ExecutionResult { SUCCESS, FAILURE };
 
-class ITimerBlock
-{
+class ITimerBlock {
 public:
-    virtual ~ITimerBlock() = default;
+  virtual ~ITimerBlock() = default;
 
-    virtual ExecutionResult execute() = 0;
+  virtual ExecutionResult execute() = 0;
 };
 
-}  // namespace bpe
+} // namespace bpe
