@@ -53,3 +53,24 @@ blocks:
     config:
       wheel_base: 0.62
 ```
+
+## Simple Scheduler
+
+La especificación de este SimpleScheduler es:
+
+```text
+un único worker thread;
+SCHED_FIFO opcional;
+prioridad configurable;
+CLOCK_MONOTONIC;
+clock_nanosleep(..., TIMER_ABSTIME, ...);
+despertar anticipado configurable;
+busy-wait hasta el deadline;
+next_execution += period para conservar fase;
+un Block se ejecuta como máximo una vez por pasada;
+estructura inmutable mientras está arrancado;
+add/remove/clear prohibidos en ejecución;
+sin logging en el worker;
+sin reservas dinámicas en el loop;
+stop() idempotente.
+```
