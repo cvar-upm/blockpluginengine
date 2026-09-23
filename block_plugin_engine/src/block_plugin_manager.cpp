@@ -93,14 +93,14 @@ BlockPluginManager::BlockPluginManager(
     logger_(std::move(logger)),
     loader_("block_plugin_engine", "bpe::IBlockPlugin", "plugin", plugin_xml_paths) {}
 
-bool BlockPluginManager::configure(const std::string& config_file) {
+bool BlockPluginManager::configure(const YAML::Node& blocks_config) {
   if (!blocks_.empty()) {
     RCLCPP_ERROR(logger_, "BlockPluginManager is already configured");
     return false;
   }
 
   std::vector<BlockInstanceConfig> configs;
-  if (!load_configuration(config_file, configs)) {
+  if (!load_configuration(blocks_config, configs)) {
     return false;
   }
 
@@ -162,12 +162,9 @@ bool BlockPluginManager::cleanup() {
   return success;
 }
 
-bool BlockPluginManager::load_configuration(const std::string& config_file,
+bool BlockPluginManager::load_configuration(const YAML::Node& blocks,
                                             std::vector<BlockInstanceConfig>& configs) const {
   try {
-    const auto root = YAML::LoadFile(config_file);
-    const auto blocks = root["blocks"];
-
     if (!blocks || !blocks.IsSequence()) {
       RCLCPP_ERROR(logger_, "Configuration must contain a 'blocks' sequence");
       return false;

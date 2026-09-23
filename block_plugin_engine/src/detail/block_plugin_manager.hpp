@@ -7,6 +7,7 @@
 #include <pluginlib/class_loader.hpp>
 #include <rclcpp/logger.hpp>
 #include <rclcpp/node_interfaces/node_topics_interface.hpp>
+#include <yaml-cpp/yaml.h>
 
 #include "block_plugin_engine/iblock_plugin.hpp"
 #include "detail/block_instance_config.hpp"
@@ -22,7 +23,7 @@ public:
                      rclcpp::Logger,
                      const std::vector<std::string>& plugin_xml_paths = {});
 
-  bool configure(const std::string& config_file);
+  bool configure(const YAML::Node&);
   bool start();
   bool stop();
   bool cleanup();
@@ -33,16 +34,13 @@ private:
     std::shared_ptr<IBlockPlugin> plugin;
   };
 
-  bool load_configuration(const std::string& config_file,
-                          std::vector<BlockInstanceConfig>& configs) const;
-  bool configure_instance(const BlockInstanceConfig& config);
+  bool load_configuration(const YAML::Node&, std::vector<BlockInstanceConfig>&) const;
+  bool configure_instance(const BlockInstanceConfig&);
   void rollback_configuration();
 
   std::shared_ptr<IBlockScheduler> scheduler_;
   rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr ros_topics_;
   rclcpp::Logger logger_;
-
-  // Must outlive all plugin instances. Members are destroyed in reverse declaration order.
   pluginlib::ClassLoader<IBlockPlugin> loader_;
   std::vector<BlockInstance> blocks_;
 };

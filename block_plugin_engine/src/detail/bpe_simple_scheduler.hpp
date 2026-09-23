@@ -21,8 +21,10 @@ struct SimpleSchedulerConfig {
 
 class BPE_SimpleScheduler final : public IBlockScheduler {
 public:
-  explicit BPE_SimpleScheduler(SimpleSchedulerConfig config = {});
+  BPE_SimpleScheduler() = default;
   ~BPE_SimpleScheduler() override;
+
+  SchedulerResult configure(const SchedulerConfig& config) override;
 
   SchedulerResult add(const std::string& instance_name,
                       ITimerBlock& block,
@@ -45,6 +47,7 @@ private:
   static bool time_reached(const timespec& now, const timespec& deadline);
   static timespec subtract_ns(const timespec& time, std::int64_t nanoseconds);
   static void add_ns(timespec& time, std::int64_t nanoseconds);
+  static bool parse_duration(const YAML::Node& node, std::chrono::nanoseconds& value);
 
   SchedulerResult validate_start_configuration() const;
   bool configure_realtime_thread();

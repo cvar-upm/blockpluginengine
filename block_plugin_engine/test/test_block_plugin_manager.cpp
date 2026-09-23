@@ -24,6 +24,10 @@ public:
     ExecutionConfig config;
   };
 
+  SchedulerResult configure(const SchedulerConfig&) override {
+    return SchedulerResult::SUCCESS;
+  }
+
   SchedulerResult add(const std::string& instance_name,
                       ITimerBlock& block,
                       const ExecutionConfig& config) override {
@@ -76,10 +80,6 @@ private:
   bool running_{false};
 };
 
-std::string config_path(const std::string& filename) {
-  return std::string{BPE_TEST_CONFIG_DIR} + "/" + filename;
-}
-
 class BlockPluginManagerTest : public ::testing::Test {
 protected:
   void SetUp() override {
@@ -99,8 +99,13 @@ protected:
   std::unique_ptr<BlockPluginManager> manager_;
 };
 
+YAML::Node load_blocks_config(const std::string& filename) {
+  const YAML::Node root = YAML::LoadFile(std::string{BPE_TEST_CONFIG_DIR} + "/" + filename);
+  return root["blocks"];
+}
+
 TEST_F(BlockPluginManagerTest, LoadsAndRunsValidConfiguration) {
-  ASSERT_TRUE(manager_->configure(config_path("valid.yaml")));
+  ASSERT_TRUE(manager_->configure(load_blocks_config("valid.yaml")));
 
   ASSERT_EQ(scheduler_->entries().size(), 1U);
   EXPECT_EQ(scheduler_->entries()[0].name, "timer");
@@ -145,12 +150,12 @@ TEST_F(BlockPluginManagerTest, LoadsAndRunsValidConfiguration) {
 }
 
 TEST_F(BlockPluginManagerTest, RejectsDuplicateNamesBeforeLoadingPlugins) {
-  EXPECT_FALSE(manager_->configure(config_path("duplicate_name.yaml")));
+  EXPECT_FALSE(manager_->configure(load_blocks_config("duplicate_name.yaml")));
   EXPECT_TRUE(events().empty());
 }
 
 TEST_F(BlockPluginManagerTest, RejectsExecutionForNonTimerBlock) {
-  EXPECT_FALSE(manager_->configure(config_path("invalid_execution.yaml")));
+  EXPECT_FALSE(manager_->configure(load_blocks_config("invalid_execution.yaml")));
 
   EXPECT_EQ(events(),
             (std::vector<std::string>{
@@ -162,7 +167,7 @@ TEST_F(BlockPluginManagerTest, RejectsExecutionForNonTimerBlock) {
 }
 
 TEST_F(BlockPluginManagerTest, RollsBackPreviousBlocksOnConfigureFailure) {
-  EXPECT_FALSE(manager_->configure(config_path("configure_failure.yaml")));
+  EXPECT_FALSE(manager_->configure(load_blocks_config("configure_failure.yaml")));
 
   EXPECT_EQ(events(),
             (std::vector<std::string>{
@@ -173,7 +178,7 @@ TEST_F(BlockPluginManagerTest, RollsBackPreviousBlocksOnConfigureFailure) {
 }
 
 TEST_F(BlockPluginManagerTest, StopsPreviouslyStartedBlocksOnStartFailure) {
-  ASSERT_TRUE(manager_->configure(config_path("start_failure.yaml")));
+  ASSERT_TRUE(manager_->configure(load_blocks_config("start_failure.yaml")));
 
   clear_events();
 

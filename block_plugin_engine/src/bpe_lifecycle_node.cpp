@@ -25,8 +25,25 @@ BPE_LifecycleNode::CallbackReturn BPE_LifecycleNode::on_configure(const rclcpp_l
     return CallbackReturn::FAILURE;
   }
 
-  if (!plugin_manager_->configure(config_file)) {
-    RCLCPP_ERROR(get_logger(), "BlockPluginManager configuration failed");
+  YAML::Node config;
+
+  try {
+    config = YAML::LoadFile(config_file);
+  } catch (const YAML::Exception& error) {
+    RCLCPP_ERROR(get_logger(),
+                 "Could not load configuration file '%s': %s",
+                 config_file.c_str(),
+                 error.what());
+    return CallbackReturn::FAILURE;
+  }
+
+  if (scheduler_->configure(config["scheduler"]) != SchedulerResult::SUCCESS) {
+    RCLCPP_ERROR(get_logger(), "Could not configure BlockScheduler");
+    return CallbackReturn::FAILURE;
+  }
+
+  if (!plugin_manager_->configure(config["blocks"])) {
+    RCLCPP_ERROR(get_logger(), "Could not configure BlockPlugins");
     return CallbackReturn::FAILURE;
   }
 

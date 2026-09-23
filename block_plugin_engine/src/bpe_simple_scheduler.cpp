@@ -2,10 +2,13 @@
 
 #include <algorithm>
 #include <cerrno>
+#include <charconv>
 #include <chrono>
 #include <cstdint>
 #include <pthread.h>
 #include <sched.h>
+#include <string>
+#include <string_view>
 #include <time.h>
 
 #include "block_plugin_engine/itimer_block.hpp"
@@ -19,12 +22,74 @@ std::int64_t to_nanoseconds(const std::chrono::nanoseconds& value) {
   return value.count();
 }
 
-} // namespace
+bool ends_with(std::string_view value, std::string_view suffix) {
+  return value.size() >= suffix.size() && value.substr(value.size() - suffix.size()) == suffix;
+}
 
-BPE_SimpleScheduler::BPE_SimpleScheduler(SimpleSchedulerConfig config) : config_(config) {}
+} // namespace
 
 BPE_SimpleScheduler::~BPE_SimpleScheduler() {
   stop();
+}
+
+SchedulerResult BPE_SimpleScheduler::configure(const SchedulerConfig& config) {
+  SchedulerResult result = SchedulerResult::SUCCESS;
+
+  if (running_.load(std::memory_order_acquire)) {
+    result = SchedulerResult::INVALID_STATE;
+  } else {
+    SimpleSchedulerConfig parsed{};
+
+    try {
+      if (config && !config.IsMap()) {
+        result = SchedulerResult::INVALID_CONFIG;
+      }
+
+      if (result == SchedulerResult::SUCCESS && config["realtime"]) {
+        const YAML::Node realtime = config["realtime"];
+
+        if (!realtime.IsMap()) {
+          result = SchedulerResult::INVALID_CONFIG;
+        } else {
+          if (realtime["enabled"]) {
+            parsed.realtime_enabled = realtime["enabled"].as<bool>();
+          }
+
+          if (realtime["required"]) {
+            parsed.realtime_required = realtime["required"].as<bool>();
+          }
+
+          if (realtime["priority"]) {
+            parsed.realtime_priority = realtime["priority"].as<int>();
+          }
+        }
+      }
+
+      if (result == SchedulerResult::SUCCESS && config["timing"]) {
+        const YAML::Node timing = config["timing"];
+
+        if (!timing.IsMap()) {
+          result = SchedulerResult::INVALID_CONFIG;
+        } else if (timing["spin_before_deadline"]) {
+          std::chrono::nanoseconds spin_time{};
+
+          if (!parse_duration(timing["spin_before_deadline"], spin_time)) {
+            result = SchedulerResult::INVALID_CONFIG;
+          } else {
+            parsed.spin_before_deadline = spin_time;
+          }
+        }
+      }
+    } catch (const YAML::Exception&) {
+      result = SchedulerResult::INVALID_CONFIG;
+    }
+
+    if (result == SchedulerResult::SUCCESS) {
+      config_ = parsed;
+    }
+  }
+
+  return result;
 }
 
 SchedulerResult BPE_SimpleScheduler::add(const std::string& instance_name,
@@ -173,6 +238,47 @@ void BPE_SimpleScheduler::add_ns(timespec& time, std::int64_t nanoseconds) {
     ++time.tv_sec;
     time.tv_nsec -= NANOSECONDS_PER_SECOND;
   }
+}
+
+bool BPE_SimpleScheduler::parse_duration(const YAML::Node& node, std::chrono::nanoseconds& value) {
+  bool success = false;
+
+  if (node.IsScalar()) {
+    const std::string text = node.as<std::string>();
+    std::string_view view{text};
+
+    std::int64_t multiplier = 0;
+    std::size_t suffix_length = 0;
+
+    if (ends_with(view, "ns")) {
+      multiplier = 1;
+      suffix_length = 2;
+    } else if (ends_with(view, "us")) {
+      multiplier = 1'000;
+      suffix_length = 2;
+    } else if (ends_with(view, "ms")) {
+      multiplier = 1'000'000;
+      suffix_length = 2;
+    } else if (ends_with(view, "s")) {
+      multiplier = NANOSECONDS_PER_SECOND;
+      suffix_length = 1;
+    }
+
+    if (suffix_length > 0) {
+      view.remove_suffix(suffix_length);
+
+      std::int64_t amount = 0;
+      const auto conversion = std::from_chars(view.data(), view.data() + view.size(), amount);
+
+      if (conversion.ec == std::errc{} && conversion.ptr == view.data() + view.size() &&
+          amount >= 0) {
+        value = std::chrono::nanoseconds{amount * multiplier};
+        success = true;
+      }
+    }
+  }
+
+  return success;
 }
 
 SchedulerResult BPE_SimpleScheduler::validate_start_configuration() const {

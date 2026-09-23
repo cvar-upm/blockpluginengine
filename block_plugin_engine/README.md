@@ -74,3 +74,18 @@ sin logging en el worker;
 sin reservas dinámicas en el loop;
 stop() idempotente.
 ```
+
+La configuración es:
+
+```yaml
+scheduler:
+  realtime:
+    enabled: true
+    required: false
+    priority: 50
+
+  timing:
+    spin_before_deadline: 100us
+```
+
+Defaults are applied when fields are omitted.
