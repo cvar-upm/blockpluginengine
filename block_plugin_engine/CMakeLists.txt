@@ -8,6 +8,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
+find_package(pluginlib REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
 #
@@ -37,25 +38,27 @@ target_include_directories(bpe_simple_scheduler
 # details and are compiled directly into the executable.
 #
 
-add_executable(block_plugin_engine_node
+add_executable(block_plugin_engine
   src/main.cpp
   src/bpe_lifecycle_node.cpp
   src/block_plugin_manager.cpp
 )
 
-target_include_directories(block_plugin_engine_node
+target_include_directories(block_plugin_engine
   PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-ament_target_dependencies(block_plugin_engine_node
+ament_target_dependencies(block_plugin_engine
   rclcpp
   rclcpp_lifecycle
+  pluginlib
 )
 
-target_link_libraries(block_plugin_engine_node
+target_link_libraries(block_plugin_engine
   bpe_simple_scheduler
+  yaml-cpp
 )
 
 #
@@ -70,7 +73,7 @@ install(
 install(
   TARGETS
     bpe_simple_scheduler
-    block_plugin_engine_node
+    block_plugin_engine
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION lib/${PROJECT_NAME}

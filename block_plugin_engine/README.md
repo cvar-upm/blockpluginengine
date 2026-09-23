@@ -32,3 +32,24 @@ Internal implementation:
 
 `BPE_LifecycleNode` and `BlockPluginManager` are compiled directly into the
 engine executable. `BPE_SimpleScheduler` remains a separate shared library.
+
+## BlockPluginManager configuration
+
+The engine node declares a `config_file` ROS parameter. During `on_configure()`, the
+`BlockPluginManager` loads that YAML file, validates the engine-level structure, loads each
+`IBlockPlugin` through `pluginlib`, injects supported boundary capabilities, passes only the
+`config` subtree to `IBlockPlugin::configure()`, and registers configured execution capabilities
+with the scheduler.
+
+Example structure:
+
+```yaml
+blocks:
+  - name: localization
+    type: my_package/LocalizationBlock
+    execution:
+      policy: timer
+      period: 20ms
+    config:
+      wheel_base: 0.62
+```

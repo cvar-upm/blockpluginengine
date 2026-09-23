@@ -1,8 +1,8 @@
 #pragma once
 
-namespace bpe {
+#include "block_plugin_engine/block_config.hpp"
 
-struct BlockConfig;
+namespace bpe {
 
 enum class BlockResult { SUCCESS, FAILURE };
 
