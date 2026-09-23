@@ -1,0 +1,34 @@
+scheduler:
+  realtime:
+    enabled: false
+
+  timing:
+    spin_before_deadline: 500us
+
+blocks:
+  - name: ros_twist_input
+    type: bpe_system_test/RosTwistInputBlock
+    config:
+      topic: /bpe_test/cmd_vel_in
+      blackboard_output: raw_twist
+
+  - name: twist_transform
+    type: bpe_system_test/TwistTransformBlock
+    execution:
+      policy: timer
+      period: 10ms
+    config:
+      blackboard_input: raw_twist
+      blackboard_output: processed_twist
+      linear_x_scale: 2.0
+      linear_y_scale: -1.0
+      angular_z_offset: 0.25
+
+  - name: ros_twist_output
+    type: bpe_system_test/RosTwistOutputBlock
+    execution:
+      policy: timer
+      period: 10ms
+    config:
+      topic: /bpe_test/cmd_vel_out
+      blackboard_input: processed_twist

@@ -1,0 +1,53 @@
+cmake_minimum_required(VERSION 3.11)
+project(block_plugin_engine_system_test)
+
+find_package(ament_cmake REQUIRED)
+find_package(block_plugin_engine REQUIRED)
+find_package(lfbb_blackboard REQUIRED)
+find_package(pluginlib REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(geometry_msgs REQUIRED)
+
+add_library(block_plugin_engine_system_test_plugins SHARED
+  src/ros_twist_input_block.cpp
+  src/twist_transform_block.cpp
+  src/ros_twist_output_block.cpp
+)
+
+target_compile_features(
+  block_plugin_engine_system_test_plugins
+  PUBLIC
+    cxx_std_20
+)
+
+ament_target_dependencies(
+  block_plugin_engine_system_test_plugins
+  block_plugin_engine
+  pluginlib
+  rclcpp
+  geometry_msgs
+)
+
+target_link_libraries(
+  block_plugin_engine_system_test_plugins
+  lfbb_blackboard::lfbb_blackboard
+)
+
+pluginlib_export_plugin_description_file(
+  block_plugin_engine
+  plugins.xml
+)
+
+install(
+  TARGETS block_plugin_engine_system_test_plugins
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
+
+install(
+  DIRECTORY config
+  DESTINATION share/${PROJECT_NAME}
+)
+
+ament_package()

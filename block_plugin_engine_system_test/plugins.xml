@@ -1,0 +1,28 @@
+<library path="block_plugin_engine_system_test_plugins">
+  <class
+    name="bpe_system_test/RosTwistInputBlock"
+    type="bpe_system_test::RosTwistInputBlock"
+    base_class_type="bpe::IBlockPlugin">
+    <description>
+      ROS TwistStamped input boundary block.
+    </description>
+  </class>
+
+  <class
+    name="bpe_system_test/TwistTransformBlock"
+    type="bpe_system_test::TwistTransformBlock"
+    base_class_type="bpe::IBlockPlugin">
+    <description>
+      Internal TwistStamped transformation block.
+    </description>
+  </class>
+
+  <class
+    name="bpe_system_test/RosTwistOutputBlock"
+    type="bpe_system_test::RosTwistOutputBlock"
+    base_class_type="bpe::IBlockPlugin">
+    <description>
+      ROS TwistStamped output boundary block.
+    </description>
+  </class>
+</library>
