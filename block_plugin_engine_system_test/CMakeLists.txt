@@ -16,8 +16,13 @@ add_library(block_plugin_engine_system_test_plugins SHARED
 
 target_compile_features(
   block_plugin_engine_system_test_plugins
-  PUBLIC
-    cxx_std_20
+  PUBLIC cxx_std_20
+)
+
+target_include_directories(
+  block_plugin_engine_system_test_plugins
+  PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 ament_target_dependencies(
