@@ -70,3 +70,18 @@ install(
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
 )
+
+ament_add_gtest(test_bpe_simple_scheduler
+  test_bpe_simple_scheduler.cpp
+)
+
+target_include_directories(test_bpe_simple_scheduler
+  PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
+)
+
+target_link_libraries(test_bpe_simple_scheduler
+  bpe_simple_scheduler
+  yaml-cpp
+)
