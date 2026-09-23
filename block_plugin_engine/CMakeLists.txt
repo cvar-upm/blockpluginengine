@@ -10,6 +10,7 @@ find_package(rclcpp REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(yaml-cpp REQUIRED)
+find_package(Threads REQUIRED)
 
 #
 # Default scheduler implementation
@@ -29,6 +30,10 @@ target_include_directories(bpe_simple_scheduler
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
+)
+
+target_link_libraries(bpe_simple_scheduler
+  Threads::Threads
 )
 
 #

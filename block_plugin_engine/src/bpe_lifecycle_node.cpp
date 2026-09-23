@@ -41,7 +41,12 @@ BPE_LifecycleNode::CallbackReturn BPE_LifecycleNode::on_activate(const rclcpp_li
     return CallbackReturn::FAILURE;
   }
 
-  scheduler_->start();
+  if (scheduler_->start() != SchedulerResult::SUCCESS) {
+    plugin_manager_->stop();
+    RCLCPP_ERROR(get_logger(), "Could not start BlockScheduler");
+    return CallbackReturn::FAILURE;
+  }
+
   return CallbackReturn::SUCCESS;
 }
 

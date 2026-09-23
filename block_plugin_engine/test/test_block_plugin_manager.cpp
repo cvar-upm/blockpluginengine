@@ -24,31 +24,37 @@ public:
     ExecutionConfig config;
   };
 
-  void add(const std::string& instance_name,
-           ITimerBlock& block,
-           const ExecutionConfig& config) override {
+  SchedulerResult add(const std::string& instance_name,
+                      ITimerBlock& block,
+                      const ExecutionConfig& config) override {
     entries_.push_back({instance_name, &block, config});
+    return SchedulerResult::SUCCESS;
   }
 
-  void remove(const std::string& instance_name) override {
+  SchedulerResult remove(const std::string& instance_name) override {
     entries_.erase(std::remove_if(entries_.begin(),
                                   entries_.end(),
                                   [&instance_name](const Entry& entry) {
                                     return entry.name == instance_name;
                                   }),
                    entries_.end());
+
+    return SchedulerResult::SUCCESS;
   }
 
-  void start() override {
+  SchedulerResult start() override {
     running_ = true;
+    return SchedulerResult::SUCCESS;
   }
 
-  void stop() override {
+  SchedulerResult stop() override {
     running_ = false;
+    return SchedulerResult::SUCCESS;
   }
 
-  void clear() override {
+  SchedulerResult clear() override {
     entries_.clear();
+    return SchedulerResult::SUCCESS;
   }
 
   const std::vector<Entry>& entries() const {

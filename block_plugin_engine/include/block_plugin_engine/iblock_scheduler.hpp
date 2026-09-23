@@ -2,23 +2,25 @@
 
 #include <string>
 
+#include "block_plugin_engine/execution_config.hpp"
+
 namespace bpe {
 
 class ITimerBlock;
-struct ExecutionConfig;
+
+enum class SchedulerResult { SUCCESS, INVALID_STATE, INVALID_CONFIG, NOT_FOUND, SYSTEM_ERROR };
 
 class IBlockScheduler {
 public:
   virtual ~IBlockScheduler() = default;
 
-  virtual void
+  virtual SchedulerResult
   add(const std::string& instance_name, ITimerBlock& block, const ExecutionConfig& config) = 0;
 
-  virtual void remove(const std::string& instance_name) = 0;
-
-  virtual void start() = 0;
-  virtual void stop() = 0;
-  virtual void clear() = 0;
+  virtual SchedulerResult remove(const std::string& instance_name) = 0;
+  virtual SchedulerResult start() = 0;
+  virtual SchedulerResult stop() = 0;
+  virtual SchedulerResult clear() = 0;
 };
 
 } // namespace bpe

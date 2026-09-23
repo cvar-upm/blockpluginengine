@@ -244,7 +244,13 @@ bool BlockPluginManager::configure_instance(const BlockInstanceConfig& config) {
       return false;
     }
 
-    scheduler_->add(config.name, *timer, *config.execution);
+    const SchedulerResult scheduler_result =
+        scheduler_->add(config.name, *timer, *config.execution);
+
+    if (scheduler_result != SchedulerResult::SUCCESS) {
+      RCLCPP_ERROR(logger_, "Could not register Block '%s' in the scheduler", config.name.c_str());
+      return false;
+    }
   }
 
   return true;
