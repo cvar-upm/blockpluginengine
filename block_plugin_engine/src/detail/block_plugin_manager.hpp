@@ -19,7 +19,8 @@ class BlockPluginManager {
 public:
   BlockPluginManager(const std::shared_ptr<IBlockScheduler>&,
                      const rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr&,
-                     rclcpp::Logger);
+                     rclcpp::Logger,
+                     const std::vector<std::string>& plugin_xml_paths = {});
 
   bool configure(const std::string& config_file);
   bool start();

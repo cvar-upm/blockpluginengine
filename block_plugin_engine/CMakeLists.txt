@@ -94,4 +94,9 @@ ament_export_dependencies(
   yaml-cpp
 )
 
+if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+  add_subdirectory(test)
+endif()
+
 ament_package()

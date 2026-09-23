@@ -86,11 +86,12 @@ ExecutionConfig parse_execution_config(const YAML::Node& node) {
 BlockPluginManager::BlockPluginManager(
     const std::shared_ptr<IBlockScheduler>& scheduler,
     const rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr& ros_topics,
-    rclcpp::Logger logger)
+    rclcpp::Logger logger,
+    const std::vector<std::string>& plugin_xml_paths)
   : scheduler_(scheduler),
     ros_topics_(ros_topics),
     logger_(std::move(logger)),
-    loader_("block_plugin_engine", "bpe::IBlockPlugin") {}
+    loader_("block_plugin_engine", "bpe::IBlockPlugin", "plugin", plugin_xml_paths) {}
 
 bool BlockPluginManager::configure(const std::string& config_file) {
   if (!blocks_.empty()) {
