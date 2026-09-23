@@ -24,6 +24,8 @@ add_library(bpe_simple_scheduler SHARED
   src/bpe_simple_scheduler.cpp
 )
 
+target_compile_features(bpe_simple_scheduler PUBLIC cxx_std_20)
+
 target_include_directories(bpe_simple_scheduler
   PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -48,6 +50,8 @@ add_executable(block_plugin_engine
   src/bpe_lifecycle_node.cpp
   src/block_plugin_manager.cpp
 )
+
+target_compile_features(block_plugin_engine PUBLIC cxx_std_20)
 
 target_include_directories(block_plugin_engine
   PRIVATE
