@@ -85,3 +85,27 @@ target_link_libraries(test_bpe_simple_scheduler
   bpe_simple_scheduler
   yaml-cpp
 )
+
+# This is a program to execute a performance test.
+# It measures several stadistics about scheduler timings.
+
+add_executable(scheduler_timing
+  scheduler_timing.cpp
+)
+
+target_include_directories(scheduler_timing
+  PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+target_link_libraries(scheduler_timing
+  bpe_simple_scheduler
+  yaml-cpp
+)
+
+install(
+  TARGETS scheduler_timing
+  DESTINATION lib/${PROJECT_NAME}
+)
