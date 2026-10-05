@@ -1,8 +1,8 @@
-# BPE Lock-Free Blackboard
+# BPE Blackboard
 
 ## 1. Purpose
 
-This package provides the lock-free blackboard infrastructure used by the Block Plugin Engine (BPE).
+This package provides the concurrent blackboard infrastructure used by the Block Plugin Engine (BPE).
 
 It is implemented as a **ROS 2 package containing only a header-only C++ library**.
 
@@ -226,7 +226,7 @@ ConcurrentSlot<ProtectedData>
 └── ProtectedData
 ```
 
-The lock-free algorithm must not inspect or depend on the internals of `ProtectedData`.
+The concurrency algorithm must not inspect or depend on the internals of `ProtectedData`.
 
 The first implementation should reproduce the concurrency behaviour of the previous blackboard before introducing BPE-specific storage.
 
@@ -919,11 +919,11 @@ They should not be introduced merely to formalize trivial implementation details
 
 ---
 
-## 25. Lock-free semantics
+## 25. Wait-free semantics
 
-The intended concurrency model remains lock-free rather than wait-free.
+The intended concurrency model is **wait-free**, preserving the progress guarantees of the original blackboard.
 
-Operations may retry while another thread temporarily owns or modifies the relevant state.
+For this implementation iteration, that progress property is considered an established design requirement of the reference algorithm. Its detailed justification can be documented independently without changing the implementation work described here.
 
 The design must preserve the important property of the original blackboard:
 
@@ -959,6 +959,7 @@ The following invariants define the architecture and should be preserved through
 16. The final blackboard is built by composition rather than by a deep inheritance hierarchy.
 17. The package is C++20 and header-only.
 18. The ROS 2 package contains no nodes or executables.
+19. The concurrency model preserves the wait-free progress semantics of the reference blackboard.
 
 ---
 
@@ -966,8 +967,22 @@ The following invariants define the architecture and should be preserved through
 
 The architectural direction and initial nomenclature are considered decided.
 
-The next development step is:
+The ROS 2 package and the exported header-only library are both named:
 
-> Implement `bpe::lfbb::details::ConcurrentSlot<ProtectedData>` using the previous blackboard slot as the behavioural model, while preserving its concurrency algorithm and separating the protected data type from the protection mechanism.
+```text
+bpe_blackboard
+```
+
+Phase 1 is implemented with:
+
+```text
+bpe::lfbb::details::ConcurrentSlot<ProtectedData>
+```
+
+The implementation preserves the slot reservation algorithm of the frozen `lfbb_blackboard` reference while separating concurrency protection from the protected data representation. The phase includes direct tests for writer exclusivity, concurrent readers, writer/reader contention, protected-data access, sequence metadata and timestamp metadata.
+
+The next development step is Phase 2:
+
+> Implement `bpe::lfbb::details::ConcurrentRing<ProtectedData>` on top of `ConcurrentSlot`, reconstructing capacity, slot selection, commit publication and latest-committed-slot behaviour from the frozen reference implementation and tests.
 
 No changes to the existing `lfbb_blackboard` repository are required.
