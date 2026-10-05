@@ -979,7 +979,9 @@ The ROS 2 package and the exported header-only library are both named:
 bpe_blackboard
 ```
 
-Phases 1 and 2 are implemented with:
+Phases 1 through 5 are implemented.
+
+The low-level concurrency layer is:
 
 ```text
 bpe::lfbb::details::ConcurrentSlot<ProtectedData>
@@ -999,10 +1001,34 @@ bpe::lfbb::details::ConcurrentRing<ProtectedData>
 - timestamp assignment at commit;
 - release/acquire publication of the latest committed slot.
 
-Sequence and timestamp mutation is now owned by `ConcurrentRing`; the corresponding setters on `ConcurrentSlot` are private implementation operations.
+Sequence and timestamp mutation is owned by `ConcurrentRing`; the corresponding setters on `ConcurrentSlot` are private implementation operations.
 
-The next development step is Phase 3:
+The public access layer is now:
 
-> Implement producer and consumer grants as pure RAII reservation objects over `ConcurrentRing`, preserving reservation lifetime and exposing mutable or const access without interpreting `ProtectedData`.
+```text
+ProducerGrant<ProtectedData>
+ConsumerGrant<ProtectedData>
+ProducerGrantFactory<ProtectedData>
+ConsumerGrantFactory<ProtectedData>
+Blackboard<ProtectedData>
+```
+
+The grants are pure RAII reservation objects:
+
+- a producer grant owns one writer reservation and commits it on destruction;
+- a consumer grant owns one reader reservation and releases it on destruction;
+- producer access is mutable;
+- consumer access is const;
+- grants do not interpret `ProtectedData`.
+
+Factories represent logical endpoints. They prevent overlapping grants from the same endpoint. Consumer factories retain the last observed sequence so that `ReadStatus` and missed-sample accounting remain local to each consumer.
+
+Factories are non-copyable. They are move-constructible only when no grant is active, so moving a factory transfers the logical endpoint instead of duplicating it. Move assignment is deliberately disabled because replacing an already registered endpoint would break the one-registration/one-endpoint relationship used by ring sizing.
+
+`Blackboard<ProtectedData>` is currently the generic composition root. It owns one `ConcurrentRing<ProtectedData>` per label, enforces a single producer per label, registers consumers with the corresponding ring, and creates the public factories. It does not yet interpret the logical message type stored inside `ProtectedData`.
+
+The next development step is Phase 6:
+
+> Introduce the BPE protected-data representation containing coherent native and serialized storage, without modifying the concurrency algorithms.
 
 No changes to the existing `lfbb_blackboard` repository are required.
