@@ -933,7 +933,13 @@ The design must preserve the important property of the original blackboard:
 - consumers read the latest committed sample;
 - the ring capacity prevents the writer from exhausting all usable slots while readers hold reservations.
 
-The exact sizing rule will be reconstructed from the proven implementation and tests rather than redesigned speculatively.
+The preserved sizing rule is:
+
+```text
+next_power_of_two(max(4, consumer_count + 2))
+```
+
+This rule is treated as part of the proven reference behaviour rather than redesigned speculatively.
 
 ---
 
@@ -973,16 +979,30 @@ The ROS 2 package and the exported header-only library are both named:
 bpe_blackboard
 ```
 
-Phase 1 is implemented with:
+Phases 1 and 2 are implemented with:
 
 ```text
 bpe::lfbb::details::ConcurrentSlot<ProtectedData>
+bpe::lfbb::details::ConcurrentRing<ProtectedData>
 ```
 
-The implementation preserves the slot reservation algorithm of the frozen `lfbb_blackboard` reference while separating concurrency protection from the protected data representation. The phase includes direct tests for writer exclusivity, concurrent readers, writer/reader contention, protected-data access, sequence metadata and timestamp metadata.
+`ConcurrentSlot` preserves the slot reservation algorithm of the frozen `lfbb_blackboard` reference while separating concurrency protection from the protected data representation.
 
-The next development step is Phase 2:
+`ConcurrentRing` reconstructs the proven shared-ring behaviour on top of those slots:
 
-> Implement `bpe::lfbb::details::ConcurrentRing<ProtectedData>` on top of `ConcurrentSlot`, reconstructing capacity, slot selection, commit publication and latest-committed-slot behaviour from the frozen reference implementation and tests.
+- initial capacity of four slots;
+- configuration-time growth based on registered consumers;
+- capacity `next_power_of_two(max(4, consumer_count + 2))`;
+- power-of-two index masking;
+- writable-slot selection with occupied-slot skipping;
+- monotonically increasing commit sequence;
+- timestamp assignment at commit;
+- release/acquire publication of the latest committed slot.
+
+Sequence and timestamp mutation is now owned by `ConcurrentRing`; the corresponding setters on `ConcurrentSlot` are private implementation operations.
+
+The next development step is Phase 3:
+
+> Implement producer and consumer grants as pure RAII reservation objects over `ConcurrentRing`, preserving reservation lifetime and exposing mutable or const access without interpreting `ProtectedData`.
 
 No changes to the existing `lfbb_blackboard` repository are required.

@@ -8,6 +8,8 @@
 
 namespace bpe::lfbb::details {
 
+template <typename ProtectedData> class ConcurrentRing;
+
 template <typename ProtectedData> class ConcurrentSlot {
 public:
   ConcurrentSlot() = default;
@@ -31,10 +33,10 @@ public:
   std::uint64_t sequence() const noexcept;
   std::uint64_t timestamp_ns() const noexcept;
 
+private:
   void set_sequence(std::uint64_t sequence) noexcept;
   void set_timestamp_ns(std::uint64_t timestamp_ns) noexcept;
 
-private:
   static constexpr std::size_t WRITE_LOCKED = std::numeric_limits<std::size_t>::max();
   static constexpr std::size_t FREE = 0u;
 
@@ -42,6 +44,8 @@ private:
   std::uint64_t sequence_{0};
   std::uint64_t timestamp_ns_{0};
   ProtectedData data_{};
+
+  friend class ConcurrentRing<ProtectedData>;
 };
 
 } // namespace bpe::lfbb::details

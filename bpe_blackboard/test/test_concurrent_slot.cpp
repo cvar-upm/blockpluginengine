@@ -90,22 +90,6 @@ TEST(ConcurrentSlotTests, WriterCanModifyProtectedData) {
   slot.release_reader();
 }
 
-TEST(ConcurrentSlotTests, MetadataIsStoredAlongsideProtectedData) {
-  TestSlot slot;
-
-  ASSERT_TRUE(slot.try_acquire_writer());
-  slot.data().value = 10;
-  slot.set_sequence(81u);
-  slot.set_timestamp_ns(123456789u);
-  slot.release_writer();
-
-  ASSERT_TRUE(slot.try_acquire_reader());
-  EXPECT_EQ(slot.sequence(), 81u);
-  EXPECT_EQ(slot.timestamp_ns(), 123456789u);
-  EXPECT_EQ(slot.data().value, 10);
-  slot.release_reader();
-}
-
 TEST(ConcurrentSlotTests, ConcurrentReadersCanAcquireTheSameSlot) {
   constexpr std::size_t reader_count = 8u;
 

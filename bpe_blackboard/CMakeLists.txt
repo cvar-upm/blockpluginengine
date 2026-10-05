@@ -35,14 +35,7 @@ ament_export_targets(export_${PROJECT_NAME})
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
   find_package(Threads REQUIRED)
-
-  ament_add_gtest(test_concurrent_slot
-    test/test_concurrent_slot.cpp
-  )
-  target_link_libraries(test_concurrent_slot
-    ${PROJECT_NAME}
-    Threads::Threads
-  )
+  add_subdirectory(test)
 endif()
 
 ament_package()
