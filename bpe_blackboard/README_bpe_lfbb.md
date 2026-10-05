@@ -1023,7 +1023,7 @@ The grants are pure RAII reservation objects:
 
 Factories represent logical endpoints. They prevent overlapping grants from the same endpoint. Consumer factories retain the last observed sequence so that `ReadStatus` and missed-sample accounting remain local to each consumer.
 
-Factories are non-copyable. They are move-constructible only when no grant is active, so moving a factory transfers the logical endpoint instead of duplicating it. Move assignment is deliberately disabled because replacing an already registered endpoint would break the one-registration/one-endpoint relationship used by ring sizing.
+Factories are neither copyable nor movable. Each factory represents one stable endpoint created during initialization and retained by its owner for the lifetime of that endpoint. Copying would duplicate an endpoint without a corresponding registration, while moving would introduce endpoint relocation that is not part of the intended execution model. After initialization, the blackboard topology and its factories are expected to remain fixed; only grants are created and destroyed during execution.
 
 `Blackboard<ProtectedData>` is currently the generic composition root. It owns one `ConcurrentRing<ProtectedData>` per label, enforces a single producer per label, registers consumers with the corresponding ring, and creates the public factories. It does not yet interpret the logical message type stored inside `ProtectedData`.
 

@@ -18,7 +18,7 @@ public:
 
   ConsumerGrantFactory(const ConsumerGrantFactory&) = delete;
   ConsumerGrantFactory& operator=(const ConsumerGrantFactory&) = delete;
-  ConsumerGrantFactory(ConsumerGrantFactory&& other);
+  ConsumerGrantFactory(ConsumerGrantFactory&&) = delete;
   ConsumerGrantFactory& operator=(ConsumerGrantFactory&&) = delete;
 
   ConsumerGrant<ProtectedData> read_access();

@@ -31,11 +31,11 @@ static_assert(!std::is_move_assignable_v<TestConsumerGrant>);
 
 static_assert(!std::is_copy_constructible_v<TestProducerFactory>);
 static_assert(!std::is_copy_assignable_v<TestProducerFactory>);
-static_assert(std::is_move_constructible_v<TestProducerFactory>);
+static_assert(!std::is_move_constructible_v<TestProducerFactory>);
 static_assert(!std::is_move_assignable_v<TestProducerFactory>);
 static_assert(!std::is_copy_constructible_v<TestConsumerFactory>);
 static_assert(!std::is_copy_assignable_v<TestConsumerFactory>);
-static_assert(std::is_move_constructible_v<TestConsumerFactory>);
+static_assert(!std::is_move_constructible_v<TestConsumerFactory>);
 static_assert(!std::is_move_assignable_v<TestConsumerFactory>);
 
 static_assert(std::is_same_v<decltype(std::declval<TestProducerGrant&>().data()),
@@ -161,55 +161,6 @@ TEST(GrantTests, FactoryRejectsOverlappingGrantFromSameEndpoint) {
     auto reader = consumer.read_access();
     EXPECT_EQ(reader.data().value, 10);
   });
-}
-
-TEST(GrantTests, FactoryMoveTransfersEndpointState) {
-  TestBlackboard blackboard;
-  auto producer_source = blackboard.register_producer("sample");
-  auto consumer_source = blackboard.register_consumer("sample");
-
-  TestProducerFactory producer(std::move(producer_source));
-  EXPECT_THROW(producer_source.write_access(), std::runtime_error);
-
-  {
-    auto writer = producer.write_access();
-    writer.data().value = 1;
-  }
-
-  {
-    auto reader = consumer_source.read_access();
-    ASSERT_EQ(reader.status(), ReadStatus::ok);
-    ASSERT_EQ(reader.sequence(), 1u);
-  }
-
-  TestConsumerFactory consumer(std::move(consumer_source));
-  EXPECT_THROW(consumer_source.read_access(), std::runtime_error);
-
-  {
-    auto writer = producer.write_access();
-    writer.data().value = 2;
-  }
-
-  auto reader = consumer.read_access();
-  EXPECT_EQ(reader.status(), ReadStatus::ok);
-  EXPECT_EQ(reader.sequence(), 2u);
-  EXPECT_EQ(reader.data().value, 2);
-}
-
-TEST(GrantTests, FactoryCannotBeMovedWhileGrantIsActive) {
-  TestBlackboard blackboard;
-  auto producer = blackboard.register_producer("sample");
-  auto consumer = blackboard.register_consumer("sample");
-
-  {
-    auto writer = producer.write_access();
-    EXPECT_THROW(TestProducerFactory(std::move(producer)), std::runtime_error);
-  }
-
-  {
-    auto reader = consumer.read_access();
-    EXPECT_THROW(TestConsumerFactory(std::move(consumer)), std::runtime_error);
-  }
 }
 
 } // namespace

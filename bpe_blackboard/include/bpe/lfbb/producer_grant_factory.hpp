@@ -16,7 +16,7 @@ public:
 
   ProducerGrantFactory(const ProducerGrantFactory&) = delete;
   ProducerGrantFactory& operator=(const ProducerGrantFactory&) = delete;
-  ProducerGrantFactory(ProducerGrantFactory&& other);
+  ProducerGrantFactory(ProducerGrantFactory&&) = delete;
   ProducerGrantFactory& operator=(ProducerGrantFactory&&) = delete;
 
   ProducerGrant<ProtectedData> write_access();
