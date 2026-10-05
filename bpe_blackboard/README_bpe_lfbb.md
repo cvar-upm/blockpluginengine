@@ -936,7 +936,7 @@ The design must preserve the important property of the original blackboard:
 The preserved sizing rule is:
 
 ```text
-next_power_of_two(max(4, consumer_count + 2))
+next_power_of_two(max(4, consumer_count + 3))
 ```
 
 This rule is treated as part of the proven reference behaviour rather than redesigned speculatively.
@@ -992,7 +992,7 @@ bpe::lfbb::details::ConcurrentRing<ProtectedData>
 
 - initial capacity of four slots;
 - configuration-time growth based on registered consumers;
-- capacity `next_power_of_two(max(4, consumer_count + 2))`;
+- capacity `next_power_of_two(max(4, consumer_count + 3))`;
 - power-of-two index masking;
 - writable-slot selection with occupied-slot skipping;
 - monotonically increasing commit sequence;

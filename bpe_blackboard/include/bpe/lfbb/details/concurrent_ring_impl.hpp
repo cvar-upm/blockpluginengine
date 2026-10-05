@@ -88,7 +88,7 @@ std::size_t ConcurrentRing<ProtectedData>::next_power_of_two(std::size_t value) 
 
 template <typename ProtectedData>
 std::size_t ConcurrentRing<ProtectedData>::compute_capacity(std::size_t consumer_count) noexcept {
-  const std::size_t minimum_required = std::max<std::size_t>(4u, consumer_count + 2u);
+  const std::size_t minimum_required = std::max<std::size_t>(4u, consumer_count + 3u);
   return next_power_of_two(minimum_required);
 }
 

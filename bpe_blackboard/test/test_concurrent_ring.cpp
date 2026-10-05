@@ -44,9 +44,6 @@ TEST(ConcurrentRingTests, CapacityTracksRegisteredConsumersUsingPowerOfTwoSizing
   EXPECT_EQ(ring.capacity(), 4u);
 
   ring.register_consumer();
-  EXPECT_EQ(ring.capacity(), 4u);
-
-  ring.register_consumer();
   EXPECT_EQ(ring.capacity(), 8u);
 
   ring.register_consumer();
