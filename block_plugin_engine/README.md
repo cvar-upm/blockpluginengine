@@ -63,13 +63,11 @@ const T& value = input.value();
 
 The adapters own the underlying grant. The producer adapter therefore keeps
 exclusive writer ownership for its lifetime, while the consumer adapter keeps
-the reader reservation. In this iteration the typed adapters access only the
-native representation; native/serialized synchronization is intentionally
-deferred.
+the reader reservation. Typed producer adapters serialize the native
+representation only when a ROS output is registered for the same blackboard
+label.
 
-The typed ROS input/output blocks in `bpe_system_test` are
-temporary fixtures using the same helpers. They will be replaced by the
-generic boundary plugins from `bpe_ros_boundary_plugins`.
+Generic ROS boundaries are provided by `bpe_ros_boundary_plugins`.
 
 
 
@@ -113,8 +111,13 @@ The process-wide blackboard and other shared runtime state live in
 
 ## BlockPluginManager configuration
 
-The engine node declares a `config_file` ROS parameter. During `on_configure()`, the
-`BlockPluginManager` loads that YAML file, validates the engine-level structure, loads each
+The engine node declares a `config_file` ROS parameter and an `autostart` boolean
+parameter. `autostart` defaults to `false`. When enabled, the executable performs the
+configure and activate lifecycle transitions before entering `spin()`. This is useful for
+manual runs where explicit lifecycle control is not needed.
+
+During `on_configure()`, the
+`BlockPluginManager` loads the YAML file, validates the engine-level structure, loads each
 `IBlockPlugin` through `pluginlib`, injects supported boundary capabilities, passes only the
 `config` subtree to `IBlockPlugin::configure()`, and registers configured execution capabilities
 with the scheduler.
@@ -167,3 +170,23 @@ scheduler:
 ```
 
 Defaults are applied when fields are omitted.
+
+## Lifecycle startup
+
+Manual lifecycle control remains the default:
+
+```bash
+ros2 run block_plugin_engine block_plugin_engine --ros-args \
+  -p config_file:=/path/to/config.yaml
+```
+
+For direct bring-up during development, enable executable autostart:
+
+```bash
+ros2 run block_plugin_engine block_plugin_engine --ros-args \
+  -p config_file:=/path/to/config.yaml \
+  -p autostart:=true
+```
+
+Launch files may alternatively keep `autostart` disabled and drive the configure/activate
+sequence through ROS 2 lifecycle launch actions.

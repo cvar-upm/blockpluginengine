@@ -10,6 +10,7 @@ namespace bpe {
 BPE_LifecycleNode::BPE_LifecycleNode(const rclcpp::NodeOptions& options)
   : rclcpp_lifecycle::LifecycleNode("block_plugin_engine", options) {
   declare_parameter<std::string>("config_file", "");
+  declare_parameter<bool>("autostart", false);
 
   scheduler_ = std::make_shared<BPE_SimpleScheduler>();
   plugin_manager_ =
