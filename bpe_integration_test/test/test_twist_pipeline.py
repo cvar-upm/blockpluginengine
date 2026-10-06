@@ -25,6 +25,7 @@ def generate_test_description():
         package='block_plugin_engine',
         executable='block_plugin_engine',
         name='block_plugin_engine',
+        namespace='',
         output='screen',
         parameters=[{
             'config_file': config_file,
