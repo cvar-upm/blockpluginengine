@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 
+#include <rclcpp/context.hpp>
 #include <rclcpp_lifecycle/lifecycle_node.hpp>
 
 namespace bpe {
@@ -23,8 +24,12 @@ protected:
   CallbackReturn on_shutdown(const rclcpp_lifecycle::State&) override;
 
 private:
+  void register_rcl_preshutdown_callback();
+  void on_rcl_preshutdown() noexcept;
+
   std::shared_ptr<IBlockScheduler> scheduler_;
   std::shared_ptr<BlockPluginManager> plugin_manager_;
+  std::unique_ptr<rclcpp::PreShutdownCallbackHandle> rcl_preshutdown_callback_handle_;
 };
 
 } // namespace bpe

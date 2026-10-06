@@ -1,5 +1,6 @@
 #include "detail/bpe_lifecycle_node.hpp"
 
+#include <functional>
 #include <string>
 
 #include <lifecycle_msgs/msg/state.hpp>
@@ -18,22 +19,45 @@ BPE_LifecycleNode::BPE_LifecycleNode(const rclcpp::NodeOptions& options)
   scheduler_ = std::make_shared<BPE_SimpleScheduler>();
   plugin_manager_ =
       std::make_shared<BlockPluginManager>(scheduler_, get_node_topics_interface(), get_logger());
+
+  register_rcl_preshutdown_callback();
 }
 
 BPE_LifecycleNode::~BPE_LifecycleNode() {
-  scheduler_->stop();
+  const auto context = get_node_base_interface()->get_context();
 
-  const auto state_id = get_current_state().id();
+  if (context->is_valid()) {
+    on_rcl_preshutdown();
+  }
 
-  if (state_id == lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE) {
-    plugin_manager_->stop();
-    plugin_manager_->cleanup();
-    detail::reset_blackboard();
-    detail::reset_ros_type_registry();
-  } else if (state_id == lifecycle_msgs::msg::State::PRIMARY_STATE_INACTIVE) {
-    plugin_manager_->cleanup();
-    detail::reset_blackboard();
-    detail::reset_ros_type_registry();
+  if (rcl_preshutdown_callback_handle_) {
+    context->remove_pre_shutdown_callback(*rcl_preshutdown_callback_handle_);
+    rcl_preshutdown_callback_handle_.reset();
+  }
+}
+
+void BPE_LifecycleNode::register_rcl_preshutdown_callback() {
+  const auto context = get_node_base_interface()->get_context();
+  rcl_preshutdown_callback_handle_ = std::make_unique<rclcpp::PreShutdownCallbackHandle>(
+      context->add_pre_shutdown_callback(
+          std::bind(&BPE_LifecycleNode::on_rcl_preshutdown, this)));
+}
+
+void BPE_LifecycleNode::on_rcl_preshutdown() noexcept {
+  try {
+    if (get_current_state().id() != lifecycle_msgs::msg::State::PRIMARY_STATE_FINALIZED) {
+      CallbackReturn callback_result = CallbackReturn::SUCCESS;
+      const auto& final_state = shutdown(callback_result);
+
+      if (callback_result != CallbackReturn::SUCCESS ||
+          final_state.id() != lifecycle_msgs::msg::State::PRIMARY_STATE_FINALIZED) {
+        RCLCPP_ERROR(get_logger(), "Could not finalize BlockPluginEngine before rcl shutdown");
+      }
+    }
+  } catch (const std::exception& error) {
+    RCLCPP_ERROR(get_logger(), "BlockPluginEngine pre-shutdown failed: %s", error.what());
+  } catch (...) {
+    RCLCPP_ERROR(get_logger(), "BlockPluginEngine pre-shutdown failed with an unknown error");
   }
 }
 
