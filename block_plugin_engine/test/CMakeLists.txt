@@ -109,3 +109,20 @@ install(
   TARGETS scheduler_timing
   DESTINATION lib/${PROJECT_NAME}
 )
+
+ament_add_gtest(test_typed_blackboard
+  test_typed_blackboard.cpp
+)
+
+target_include_directories(test_typed_blackboard
+  PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+)
+
+ament_target_dependencies(test_typed_blackboard
+  rclcpp
+)
+
+target_link_libraries(test_typed_blackboard
+  block_plugin_engine_core
+)

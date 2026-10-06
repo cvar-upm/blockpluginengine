@@ -9,11 +9,10 @@
 #include <rclcpp/qos.hpp>
 
 #include "block_plugin_engine/block_config.hpp"
+#include "block_plugin_engine/typed_blackboard.hpp"
 #include "block_plugin_engine/iblock_plugin.hpp"
 #include "block_plugin_engine/iros_boundary_block.hpp"
 #include "block_plugin_engine_system_test/ros_topic_helpers.hpp"
-#include "lfbb_blackboard/blackboard.hpp"
-#include "lfbb_blackboard/producer_grant_factory.hpp"
 
 namespace bpe_system_test {
 
@@ -39,9 +38,7 @@ public:
         blackboard_output_ =
           config["blackboard_output"].as<std::string>();
 
-        producer_.emplace(
-          lfbb::the_blackboard().register_producer<Message>(
-            blackboard_output_));
+        producer_.emplace(blackboard_output_);
 
         subscription_ =
           create_subscription<Message>(
@@ -51,7 +48,7 @@ public:
             [this](std::shared_ptr<Message> message) {
               if (active_.load(std::memory_order_acquire)) {
                 auto grant = producer_->write_access();
-                grant = std::move(message);
+                grant.value() = *message;
               }
             });
 
@@ -86,7 +83,7 @@ private:
   rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr topics_;
   rclcpp::Subscription<Message>::SharedPtr subscription_;
 
-  std::optional<lfbb::ProducerGrantFactory<Message>> producer_;
+  std::optional<bpe::TypedProducer<Message>> producer_;
 
   std::string topic_;
   std::string blackboard_output_;

@@ -1,5 +1,62 @@
 # BlockPluginEngine
 
+## Shared BPE core and blackboard
+
+`block_plugin_engine` now exports a shared library named `block_plugin_engine_core`.
+The process-wide BPE blackboard is instantiated in that library rather than in
+a header, so all plugins loaded through `pluginlib` use the same object.
+
+The BPE-specific storage is:
+
+```cpp
+bpe::RosProtectedData
+```
+
+with one native type-erased representation and one ROS 2 serialized
+representation. `RosProtectedData` is public because adapters need its
+definition, but plugin code should use the supported helpers/adapters instead
+of manipulating its members directly.
+
+The concrete BPE blackboard is available as:
+
+```cpp
+bpe::BpeBlackboard& bpe::the_blackboard();
+```
+
+`BpeBlackboard` uses the default `bpe_blackboard` initialization margin of 2.
+
+### Typed internal-plugin helpers
+
+Internal plugins that know their ROS message type `T` can use:
+
+```cpp
+bpe::TypedProducer<T>
+bpe::TypedConsumer<T>
+```
+
+Registration through these helpers automatically supplies the typed
+`RosProtectedData` initializer. Runtime access is obtained through RAII
+adapters:
+
+```cpp
+auto output = producer.write_access();
+T& value = output.value();
+
+auto input = consumer.read_access();
+const T& value = input.value();
+```
+
+The adapters own the underlying grant. The producer adapter therefore keeps
+exclusive writer ownership for its lifetime, while the consumer adapter keeps
+the reader reservation. In this iteration the typed adapters access only the
+native representation; native/serialized synchronization is intentionally
+deferred.
+
+The typed ROS input/output blocks in `block_plugin_engine_system_test` are
+temporary fixtures using the same helpers. They will be replaced by the
+generic boundary plugins from `bpe_ros_boundary_plugins`.
+
+
 
 ## Public configuration dependency
 
@@ -18,6 +75,10 @@ The installed public API is limited to `include/block_plugin_engine/`.
 Implementation-only headers live under `src/detail/` and are not installed.
 
 Public API:
+- `RosProtectedData`
+- `BpeBlackboard` / `the_blackboard()`
+- `TypedProducer<T>` / `TypedConsumer<T>`
+- `TypedProducerAdapter<T>` / `TypedConsumerAdapter<T>`
 - `IBlockPlugin`
 - `ITimerBlock`
 - `IRosBoundaryBlock`
@@ -32,6 +93,8 @@ Internal implementation:
 
 `BPE_LifecycleNode` and `BlockPluginManager` are compiled directly into the
 engine executable. `BPE_SimpleScheduler` remains a separate shared library.
+The process-wide blackboard and other shared runtime state live in
+`block_plugin_engine_core`.
 
 ## BlockPluginManager configuration
 

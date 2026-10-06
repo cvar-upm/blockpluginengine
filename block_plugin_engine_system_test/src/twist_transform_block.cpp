@@ -6,11 +6,9 @@
 #include <pluginlib/class_list_macros.hpp>
 
 #include "block_plugin_engine/block_config.hpp"
+#include "block_plugin_engine/typed_blackboard.hpp"
 #include "block_plugin_engine/iblock_plugin.hpp"
 #include "block_plugin_engine/itimer_block.hpp"
-#include "lfbb_blackboard/blackboard.hpp"
-#include "lfbb_blackboard/consumer_grant_factory.hpp"
-#include "lfbb_blackboard/producer_grant_factory.hpp"
 
 namespace bpe_system_test {
 
@@ -49,13 +47,9 @@ public:
             config["angular_z_offset"].as<double>();
         }
 
-        consumer_.emplace(
-          lfbb::the_blackboard().register_consumer<Message>(
-            blackboard_input_));
+        consumer_.emplace(blackboard_input_);
 
-        producer_.emplace(
-          lfbb::the_blackboard().register_producer<Message>(
-            blackboard_output_));
+        producer_.emplace(blackboard_output_);
       }
     } catch (...) {
       result = bpe::BlockResult::FAILURE;
@@ -100,8 +94,8 @@ public:
   }
 
 private:
-  std::optional<lfbb::ConsumerGrantFactory<Message>> consumer_;
-  std::optional<lfbb::ProducerGrantFactory<Message>> producer_;
+  std::optional<bpe::TypedConsumer<Message>> consumer_;
+  std::optional<bpe::TypedProducer<Message>> producer_;
 
   std::string blackboard_input_;
   std::string blackboard_output_;

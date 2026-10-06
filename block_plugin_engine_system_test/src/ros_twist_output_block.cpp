@@ -9,12 +9,11 @@
 #include <rclcpp/qos.hpp>
 
 #include "block_plugin_engine/block_config.hpp"
+#include "block_plugin_engine/typed_blackboard.hpp"
 #include "block_plugin_engine/iblock_plugin.hpp"
 #include "block_plugin_engine/iros_boundary_block.hpp"
 #include "block_plugin_engine/itimer_block.hpp"
 #include "block_plugin_engine_system_test/ros_topic_helpers.hpp"
-#include "lfbb_blackboard/blackboard.hpp"
-#include "lfbb_blackboard/consumer_grant_factory.hpp"
 
 namespace bpe_system_test {
 
@@ -41,9 +40,7 @@ public:
         blackboard_input_ =
           config["blackboard_input"].as<std::string>();
 
-        consumer_.emplace(
-          lfbb::the_blackboard().register_consumer<Message>(
-            blackboard_input_));
+        consumer_.emplace(blackboard_input_);
 
         publisher_ =
           create_publisher<Message>(
@@ -96,7 +93,7 @@ private:
   rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr topics_;
   rclcpp::Publisher<Message>::SharedPtr publisher_;
 
-  std::optional<lfbb::ConsumerGrantFactory<Message>> consumer_;
+  std::optional<bpe::TypedConsumer<Message>> consumer_;
 
   std::string topic_;
   std::string blackboard_input_;

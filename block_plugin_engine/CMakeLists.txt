@@ -6,11 +6,39 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 endif()
 
 find_package(ament_cmake REQUIRED)
+find_package(bpe_blackboard REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(Threads REQUIRED)
+
+#
+# Shared BPE core state
+#
+# The process-wide blackboard must live in one shared library so every plugin
+# loaded through pluginlib observes the same instance.
+#
+
+add_library(block_plugin_engine_core SHARED
+  src/blackboard.cpp
+)
+
+target_compile_features(block_plugin_engine_core PUBLIC cxx_std_20)
+
+target_include_directories(block_plugin_engine_core
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+
+ament_target_dependencies(block_plugin_engine_core
+  rclcpp
+)
+
+target_link_libraries(block_plugin_engine_core
+  bpe_blackboard::bpe_blackboard
+)
 
 #
 # Default scheduler implementation
@@ -81,6 +109,7 @@ install(
 
 install(
   TARGETS
+    block_plugin_engine_core
     bpe_simple_scheduler
     block_plugin_engine
   ARCHIVE DESTINATION lib
@@ -96,8 +125,10 @@ install(
 #
 
 ament_export_include_directories(include)
+ament_export_libraries(block_plugin_engine_core)
 
 ament_export_dependencies(
+  bpe_blackboard
   rclcpp
   rclcpp_lifecycle
   yaml-cpp

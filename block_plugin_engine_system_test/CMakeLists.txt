@@ -3,7 +3,6 @@ project(block_plugin_engine_system_test)
 
 find_package(ament_cmake REQUIRED)
 find_package(block_plugin_engine REQUIRED)
-find_package(lfbb_blackboard REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
@@ -31,11 +30,6 @@ ament_target_dependencies(
   pluginlib
   rclcpp
   geometry_msgs
-)
-
-target_link_libraries(
-  block_plugin_engine_system_test_plugins
-  lfbb_blackboard::lfbb_blackboard
 )
 
 pluginlib_export_plugin_description_file(
