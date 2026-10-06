@@ -1,9 +1,9 @@
 <library path="block_plugin_engine_system_test_plugins">
   <class
-    name="bpe_system_test/RosTwistInputBlock"
-    type="bpe_system_test::RosTwistInputBlock"
+    name="bpe_system_test/TwistProducerBlock"
+    type="bpe_system_test::TwistProducerBlock"
     base_class_type="bpe::IBlockPlugin">
-    <description>TwistStamped ROS input boundary block.</description>
+    <description>Internal deterministic TwistStamped producer block.</description>
   </class>
 
   <class
@@ -14,9 +14,9 @@
   </class>
 
   <class
-    name="bpe_system_test/RosTwistOutputBlock"
-    type="bpe_system_test::RosTwistOutputBlock"
+    name="bpe_system_test/TwistCheckerBlock"
+    type="bpe_system_test::TwistCheckerBlock"
     base_class_type="bpe::IBlockPlugin">
-    <description>TwistStamped ROS output boundary block.</description>
+    <description>Internal TwistStamped validation block.</description>
   </class>
 </library>

@@ -12,8 +12,10 @@
 
   <depend>block_plugin_engine</depend>
   <depend>pluginlib</depend>
-  <depend>rclcpp</depend>
   <depend>geometry_msgs</depend>
+
+  <test_depend>ament_cmake_gtest</test_depend>
+  <test_depend>yaml-cpp</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

@@ -6,10 +6,12 @@ scheduler:
     spin_before_deadline: 500us
 
 blocks:
-  - name: ros_twist_input
-    type: bpe_system_test/RosTwistInputBlock
+  - name: twist_producer
+    type: bpe_system_test/TwistProducerBlock
+    execution:
+      policy: timer
+      period: 10ms
     config:
-      topic: /bpe_test/cmd_vel_in
       blackboard_output: raw_twist
 
   - name: twist_transform
@@ -24,11 +26,10 @@ blocks:
       linear_y_scale: -1.0
       angular_z_offset: 0.25
 
-  - name: ros_twist_output
-    type: bpe_system_test/RosTwistOutputBlock
+  - name: twist_checker
+    type: bpe_system_test/TwistCheckerBlock
     execution:
       policy: timer
       period: 10ms
     config:
-      topic: /bpe_test/cmd_vel_out
       blackboard_input: processed_twist

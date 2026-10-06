@@ -4,13 +4,12 @@ project(block_plugin_engine_system_test)
 find_package(ament_cmake REQUIRED)
 find_package(block_plugin_engine REQUIRED)
 find_package(pluginlib REQUIRED)
-find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 
 add_library(block_plugin_engine_system_test_plugins SHARED
-  src/ros_twist_input_block.cpp
+  src/twist_producer_block.cpp
   src/twist_transform_block.cpp
-  src/ros_twist_output_block.cpp
+  src/twist_checker_block.cpp
 )
 
 target_compile_features(
@@ -28,7 +27,6 @@ ament_target_dependencies(
   block_plugin_engine_system_test_plugins
   block_plugin_engine
   pluginlib
-  rclcpp
   geometry_msgs
 )
 
@@ -48,5 +46,11 @@ install(
   DIRECTORY config
   DESTINATION share/${PROJECT_NAME}
 )
+
+if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+  find_package(yaml-cpp REQUIRED)
+  add_subdirectory(test)
+endif()
 
 ament_package()

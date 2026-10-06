@@ -1,55 +1,32 @@
 #include <atomic>
-#include <memory>
+#include <cstdint>
 #include <string>
-#include <utility>
 
 #include <geometry_msgs/msg/twist_stamped.hpp>
 #include <pluginlib/class_list_macros.hpp>
-#include <rclcpp/qos.hpp>
 
 #include "block_plugin_engine/block_config.hpp"
-#include "block_plugin_engine/typed_blackboard.hpp"
 #include "block_plugin_engine/iblock_plugin.hpp"
-#include "block_plugin_engine/iros_boundary_block.hpp"
 #include "block_plugin_engine/itimer_block.hpp"
-#include "block_plugin_engine_system_test/ros_topic_helpers.hpp"
+#include "block_plugin_engine/typed_blackboard.hpp"
 
 namespace bpe_system_test {
 
-class RosTwistOutputBlock final
+class TwistProducerBlock final
   : public bpe::IBlockPlugin,
-    public bpe::IRosBoundaryBlock,
     public bpe::ITimerBlock {
 public:
   using Message = geometry_msgs::msg::TwistStamped;
-
-  void set_ros_interface(
-    rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr topics) override {
-    topics_ = std::move(topics);
-  }
 
   bpe::BlockResult configure(const bpe::BlockConfig& config) override {
     bpe::BlockResult result = bpe::BlockResult::SUCCESS;
 
     try {
-      if (!topics_ || !config["topic"] || !config["blackboard_input"]) {
+      if (!config["blackboard_output"]) {
         result = bpe::BlockResult::FAILURE;
       } else {
-        topic_ = config["topic"].as<std::string>();
-        blackboard_input_ =
-          config["blackboard_input"].as<std::string>();
-
-        consumer_.bind(blackboard_input_);
-
-        publisher_ =
-          create_publisher<Message>(
-            topics_,
-            topic_,
-            rclcpp::QoS{10});
-
-        if (!publisher_) {
-          result = bpe::BlockResult::FAILURE;
-        }
+        blackboard_output_ = config["blackboard_output"].as<std::string>();
+        producer_.bind(blackboard_output_);
       }
     } catch (...) {
       result = bpe::BlockResult::FAILURE;
@@ -70,7 +47,6 @@ public:
 
   bpe::BlockResult cleanup() override {
     active_.store(false, std::memory_order_release);
-    publisher_.reset();
     return bpe::BlockResult::SUCCESS;
   }
 
@@ -78,30 +54,33 @@ public:
     bpe::ExecutionResult result = bpe::ExecutionResult::SUCCESS;
 
     if (active_.load(std::memory_order_acquire)) {
-      auto input = consumer_.read_access();
+      auto output = producer_.write_access();
+      auto& message = output.value();
 
-      if (input.has_new_value()) {
-        publisher_->publish(input.value());
-      }
+      ++sample_index_;
+      const double value = static_cast<double>(sample_index_);
+
+      message.header.frame_id = "bpe_system_test";
+      message.twist.linear.x = value;
+      message.twist.linear.y = 2.0 * value;
+      message.twist.linear.z = 3.0 * value;
+      message.twist.angular.x = -value;
+      message.twist.angular.y = -2.0 * value;
+      message.twist.angular.z = 0.5 * value;
     }
 
     return result;
   }
 
 private:
-  rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr topics_;
-  rclcpp::Publisher<Message>::SharedPtr publisher_;
-
-  bpe::TypedConsumer<Message> consumer_;
-
-  std::string topic_;
-  std::string blackboard_input_;
-
+  bpe::TypedProducer<Message> producer_;
+  std::string blackboard_output_;
+  std::uint64_t sample_index_{0};
   std::atomic<bool> active_{false};
 };
 
 } // namespace bpe_system_test
 
 PLUGINLIB_EXPORT_CLASS(
-  bpe_system_test::RosTwistOutputBlock,
+  bpe_system_test::TwistProducerBlock,
   bpe::IBlockPlugin)
