@@ -4,10 +4,11 @@
 
 namespace bpe::lfbb {
 
-template <typename ProtectedData>
-ConsumerGrant<ProtectedData>::ConsumerGrant(Ring* ring,
-                                            bool& active,
-                                            std::uint64_t& last_seen_sequence) noexcept
+template <typename ProtectedData, std::size_t InitializationMargin>
+ConsumerGrant<ProtectedData, InitializationMargin>::ConsumerGrant(
+    Ring* ring,
+    bool& active,
+    std::uint64_t& last_seen_sequence) noexcept
     : active_(active) {
   do {
     slot_ = ring->get_last_committed_slot();
@@ -28,40 +29,44 @@ ConsumerGrant<ProtectedData>::ConsumerGrant(Ring* ring,
   }
 }
 
-template <typename ProtectedData> ConsumerGrant<ProtectedData>::~ConsumerGrant() {
+template <typename ProtectedData, std::size_t InitializationMargin>
+ConsumerGrant<ProtectedData, InitializationMargin>::~ConsumerGrant() {
   slot_->release_reader();
   active_ = false;
 }
 
-template <typename ProtectedData>
-const ProtectedData& ConsumerGrant<ProtectedData>::data() const noexcept {
+template <typename ProtectedData, std::size_t InitializationMargin>
+const ProtectedData& ConsumerGrant<ProtectedData, InitializationMargin>::data() const noexcept {
   return slot_->data();
 }
 
-template <typename ProtectedData>
-std::uint64_t ConsumerGrant<ProtectedData>::sequence() const noexcept {
+template <typename ProtectedData, std::size_t InitializationMargin>
+std::uint64_t ConsumerGrant<ProtectedData, InitializationMargin>::sequence() const noexcept {
   return slot_->sequence();
 }
 
-template <typename ProtectedData>
-std::uint64_t ConsumerGrant<ProtectedData>::timestamp_ns() const noexcept {
+template <typename ProtectedData, std::size_t InitializationMargin>
+std::uint64_t ConsumerGrant<ProtectedData, InitializationMargin>::timestamp_ns() const noexcept {
   return slot_->timestamp_ns();
 }
 
-template <typename ProtectedData> ReadStatus ConsumerGrant<ProtectedData>::status() const noexcept {
+template <typename ProtectedData, std::size_t InitializationMargin>
+ReadStatus ConsumerGrant<ProtectedData, InitializationMargin>::status() const noexcept {
   return status_;
 }
 
-template <typename ProtectedData>
-bool ConsumerGrant<ProtectedData>::has_new_value() const noexcept {
+template <typename ProtectedData, std::size_t InitializationMargin>
+bool ConsumerGrant<ProtectedData, InitializationMargin>::has_new_value() const noexcept {
   return status_ == ReadStatus::ok || status_ == ReadStatus::missed;
 }
 
-template <typename ProtectedData> bool ConsumerGrant<ProtectedData>::has_missed() const noexcept {
+template <typename ProtectedData, std::size_t InitializationMargin>
+bool ConsumerGrant<ProtectedData, InitializationMargin>::has_missed() const noexcept {
   return status_ == ReadStatus::missed;
 }
 
-template <typename ProtectedData> std::uint64_t ConsumerGrant<ProtectedData>::missed() const noexcept {
+template <typename ProtectedData, std::size_t InitializationMargin>
+std::uint64_t ConsumerGrant<ProtectedData, InitializationMargin>::missed() const noexcept {
   return missed_;
 }
 

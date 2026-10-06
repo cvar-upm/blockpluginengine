@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <map>
 #include <mutex>
 #include <string>
@@ -11,7 +12,7 @@
 
 namespace bpe::lfbb {
 
-template <typename ProtectedData> class Blackboard {
+template <typename ProtectedData, std::size_t InitializationMargin> class Blackboard {
 public:
   Blackboard() = default;
   ~Blackboard() = default;
@@ -21,16 +22,28 @@ public:
   Blackboard(Blackboard&&) = delete;
   Blackboard& operator=(Blackboard&&) = delete;
 
-  ProducerGrantFactory<ProtectedData> register_producer(const std::string& label);
-  ConsumerGrantFactory<ProtectedData> register_consumer(const std::string& label);
+  ProducerGrantFactory<ProtectedData, InitializationMargin>
+  register_producer(const std::string& label);
+
+  template <typename Initializer>
+  ProducerGrantFactory<ProtectedData, InitializationMargin>
+  register_producer(const std::string& label, const Initializer& initializer);
+
+  ConsumerGrantFactory<ProtectedData, InitializationMargin>
+  register_consumer(const std::string& label);
+
+  template <typename Initializer>
+  ConsumerGrantFactory<ProtectedData, InitializationMargin>
+  register_consumer(const std::string& label, const Initializer& initializer);
 
   bool all_have_producer() const;
   std::vector<std::string> labels_without_producer() const;
 
 private:
+  using Ring = details::ConcurrentRing<ProtectedData, InitializationMargin>;
+
   struct Entry {
-    details::ConcurrentRing<ProtectedData> ring;
-    bool has_producer{false};
+    Ring ring;
   };
 
   mutable std::mutex mutex_;

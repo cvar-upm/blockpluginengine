@@ -14,7 +14,17 @@ struct TestProtectedData {
   std::int32_t value{0};
 };
 
-using TestBlackboard = Blackboard<TestProtectedData>;
+struct TestInitializer {
+  std::size_t* call_count{nullptr};
+  std::int32_t value{0};
+
+  void initialize(TestProtectedData& data) const {
+    ++(*call_count);
+    data.value = value;
+  }
+};
+
+using TestBlackboard = Blackboard<TestProtectedData, 3u>;
 
 static_assert(!std::is_copy_constructible_v<TestBlackboard>);
 static_assert(!std::is_copy_assignable_v<TestBlackboard>);
@@ -57,6 +67,32 @@ TEST(BlackboardTests, RejectsSecondProducerForSameLabel) {
   (void)producer;
 
   EXPECT_THROW(blackboard.register_producer("sample"), std::runtime_error);
+}
+
+TEST(BlackboardTests, RegistrationWithInitializerPreparesProtectedData) {
+  TestBlackboard blackboard;
+  std::size_t call_count = 0u;
+  const TestInitializer initializer{&call_count, 31};
+
+  auto producer = blackboard.register_producer("sample", initializer);
+  auto consumer = blackboard.register_consumer("sample");
+
+  EXPECT_EQ(call_count, 8u);
+
+  {
+    auto reader = consumer.read_access();
+    EXPECT_EQ(reader.status(), ReadStatus::no_data_yet);
+    EXPECT_EQ(reader.data().value, 31);
+  }
+
+  {
+    auto writer = producer.write_access();
+    writer.data().value = 47;
+  }
+
+  auto reader = consumer.read_access();
+  EXPECT_EQ(reader.status(), ReadStatus::ok);
+  EXPECT_EQ(reader.data().value, 47);
 }
 
 TEST(BlackboardTests, LabelsUseIndependentRings) {

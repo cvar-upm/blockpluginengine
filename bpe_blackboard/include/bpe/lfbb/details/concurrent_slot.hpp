@@ -8,7 +8,7 @@
 
 namespace bpe::lfbb::details {
 
-template <typename ProtectedData> class ConcurrentRing;
+template <typename ProtectedData, std::size_t InitializationMargin> class ConcurrentRing;
 
 template <typename ProtectedData> class ConcurrentSlot {
 public:
@@ -45,7 +45,7 @@ private:
   std::uint64_t timestamp_ns_{0};
   ProtectedData data_{};
 
-  friend class ConcurrentRing<ProtectedData>;
+  template <typename, std::size_t> friend class ConcurrentRing;
 };
 
 } // namespace bpe::lfbb::details

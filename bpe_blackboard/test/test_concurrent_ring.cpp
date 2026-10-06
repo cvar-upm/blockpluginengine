@@ -1,6 +1,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <type_traits>
+#include <stdexcept>
 
 #include <gtest/gtest.h>
 
@@ -14,7 +15,19 @@ struct TestProtectedData {
   std::int32_t marker{0};
 };
 
-using TestRing = ConcurrentRing<TestProtectedData>;
+struct TestInitializer {
+  std::size_t* call_count{nullptr};
+  std::int32_t value{0};
+  std::int32_t marker{0};
+
+  void initialize(TestProtectedData& data) const {
+    ++(*call_count);
+    data.value = value;
+    data.marker = marker;
+  }
+};
+
+using TestRing = ConcurrentRing<TestProtectedData, 3u>;
 using TestSlot = TestRing::Slot;
 
 static_assert(!std::is_copy_constructible_v<TestRing>);
@@ -35,9 +48,12 @@ TEST(ConcurrentRingTests, StartsWithFourSlotsAndNoCommittedData) {
   EXPECT_EQ(slot->data().marker, 0);
 }
 
-TEST(ConcurrentRingTests, CapacityTracksRegisteredConsumersUsingPowerOfTwoSizing) {
+TEST(ConcurrentRingTests, CapacityTracksRegisteredConsumersUsingWaitFreeMargin) {
   TestRing ring;
 
+  EXPECT_EQ(ring.capacity(), 4u);
+
+  ring.register_consumer();
   EXPECT_EQ(ring.capacity(), 4u);
 
   ring.register_consumer();
@@ -53,6 +69,74 @@ TEST(ConcurrentRingTests, CapacityTracksRegisteredConsumersUsingPowerOfTwoSizing
 
   ring.register_consumer();
   EXPECT_EQ(ring.capacity(), 16u);
+}
+
+TEST(ConcurrentRingTests, FirstInitializerInitializesAllSlotsAndReservesInitializationMargin) {
+  TestRing ring;
+  std::size_t call_count = 0u;
+  const TestInitializer initializer{&call_count, 17, 23};
+
+  ring.register_producer(initializer);
+
+  EXPECT_TRUE(ring.has_producer());
+  EXPECT_EQ(ring.capacity(), 8u);
+  EXPECT_EQ(call_count, 8u);
+  EXPECT_EQ(ring.get_last_committed_slot()->data().value, 17);
+  EXPECT_EQ(ring.get_last_committed_slot()->data().marker, 23);
+}
+
+TEST(ConcurrentRingTests, RegistrationsWithoutInitializerAreLimitedByInitializationMargin) {
+  TestRing ring;
+  std::size_t call_count = 0u;
+  const TestInitializer initializer{&call_count, 1, 2};
+
+  ring.register_producer(initializer);
+  EXPECT_NO_THROW(ring.register_consumer());
+  EXPECT_NO_THROW(ring.register_consumer());
+  EXPECT_NO_THROW(ring.register_consumer());
+  EXPECT_THROW(ring.register_consumer(), std::runtime_error);
+  EXPECT_EQ(ring.capacity(), 8u);
+}
+
+TEST(ConcurrentRingTests, ProducerRegistrationConsumesInitializationMargin) {
+  TestRing ring;
+  std::size_t call_count = 0u;
+  const TestInitializer initializer{&call_count, 1, 2};
+
+  ring.register_consumer(initializer);
+  EXPECT_NO_THROW(ring.register_producer());
+  EXPECT_NO_THROW(ring.register_consumer());
+  EXPECT_NO_THROW(ring.register_consumer());
+  EXPECT_THROW(ring.register_consumer(), std::runtime_error);
+}
+
+TEST(ConcurrentRingTests, InitializerCanExpandRingAndRestoreInitializationMargin) {
+  TestRing ring;
+  std::size_t call_count = 0u;
+  const TestInitializer initializer{&call_count, 5, 6};
+
+  ring.register_producer(initializer);
+  ring.register_consumer();
+  ring.register_consumer();
+  ring.register_consumer();
+  ASSERT_EQ(ring.capacity(), 8u);
+  ASSERT_EQ(call_count, 8u);
+
+  EXPECT_NO_THROW(ring.register_consumer(initializer));
+  EXPECT_EQ(ring.capacity(), 16u);
+  EXPECT_EQ(call_count, 16u);
+
+  EXPECT_NO_THROW(ring.register_consumer());
+  EXPECT_NO_THROW(ring.register_consumer());
+  EXPECT_NO_THROW(ring.register_consumer());
+  EXPECT_THROW(ring.register_consumer(), std::runtime_error);
+}
+
+TEST(ConcurrentRingTests, RejectsSecondProducerAtRingLevel) {
+  TestRing ring;
+
+  ring.register_producer();
+  EXPECT_THROW(ring.register_producer(), std::runtime_error);
 }
 
 TEST(ConcurrentRingTests, UncommittedWriteIsNotPublished) {

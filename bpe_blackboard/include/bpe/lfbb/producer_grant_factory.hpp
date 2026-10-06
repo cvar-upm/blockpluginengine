@@ -1,16 +1,18 @@
 #pragma once
 
+#include <cstddef>
+
 #include "bpe/lfbb/producer_grant.hpp"
 
 namespace bpe::lfbb {
 
-template <typename ProtectedData> class Blackboard;
+template <typename ProtectedData, std::size_t InitializationMargin> class Blackboard;
 
 namespace details {
-template <typename ProtectedData> class ConcurrentRing;
+template <typename ProtectedData, std::size_t InitializationMargin> class ConcurrentRing;
 } // namespace details
 
-template <typename ProtectedData> class ProducerGrantFactory {
+template <typename ProtectedData, std::size_t InitializationMargin> class ProducerGrantFactory {
 public:
   ~ProducerGrantFactory() = default;
 
@@ -19,17 +21,17 @@ public:
   ProducerGrantFactory(ProducerGrantFactory&&) = delete;
   ProducerGrantFactory& operator=(ProducerGrantFactory&&) = delete;
 
-  ProducerGrant<ProtectedData> write_access();
+  ProducerGrant<ProtectedData, InitializationMargin> write_access();
 
 private:
-  using Ring = details::ConcurrentRing<ProtectedData>;
+  using Ring = details::ConcurrentRing<ProtectedData, InitializationMargin>;
 
   explicit ProducerGrantFactory(Ring* ring) noexcept;
 
   Ring* ring_{nullptr};
   bool active_{false};
 
-  friend class Blackboard<ProtectedData>;
+  friend class Blackboard<ProtectedData, InitializationMargin>;
 };
 
 } // namespace bpe::lfbb

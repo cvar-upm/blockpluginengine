@@ -14,11 +14,11 @@ struct TestProtectedData {
   std::int32_t marker{0};
 };
 
-using TestBlackboard = Blackboard<TestProtectedData>;
-using TestProducerGrant = ProducerGrant<TestProtectedData>;
-using TestConsumerGrant = ConsumerGrant<TestProtectedData>;
-using TestProducerFactory = ProducerGrantFactory<TestProtectedData>;
-using TestConsumerFactory = ConsumerGrantFactory<TestProtectedData>;
+using TestBlackboard = Blackboard<TestProtectedData, 3u>;
+using TestProducerGrant = ProducerGrant<TestProtectedData, 3u>;
+using TestConsumerGrant = ConsumerGrant<TestProtectedData, 3u>;
+using TestProducerFactory = ProducerGrantFactory<TestProtectedData, 3u>;
+using TestConsumerFactory = ConsumerGrantFactory<TestProtectedData, 3u>;
 
 static_assert(!std::is_copy_constructible_v<TestProducerGrant>);
 static_assert(!std::is_copy_assignable_v<TestProducerGrant>);

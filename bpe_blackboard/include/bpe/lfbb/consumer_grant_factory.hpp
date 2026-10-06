@@ -1,18 +1,19 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 
 #include "bpe/lfbb/consumer_grant.hpp"
 
 namespace bpe::lfbb {
 
-template <typename ProtectedData> class Blackboard;
+template <typename ProtectedData, std::size_t InitializationMargin> class Blackboard;
 
 namespace details {
-template <typename ProtectedData> class ConcurrentRing;
+template <typename ProtectedData, std::size_t InitializationMargin> class ConcurrentRing;
 } // namespace details
 
-template <typename ProtectedData> class ConsumerGrantFactory {
+template <typename ProtectedData, std::size_t InitializationMargin> class ConsumerGrantFactory {
 public:
   ~ConsumerGrantFactory() = default;
 
@@ -21,10 +22,10 @@ public:
   ConsumerGrantFactory(ConsumerGrantFactory&&) = delete;
   ConsumerGrantFactory& operator=(ConsumerGrantFactory&&) = delete;
 
-  ConsumerGrant<ProtectedData> read_access();
+  ConsumerGrant<ProtectedData, InitializationMargin> read_access();
 
 private:
-  using Ring = details::ConcurrentRing<ProtectedData>;
+  using Ring = details::ConcurrentRing<ProtectedData, InitializationMargin>;
 
   explicit ConsumerGrantFactory(Ring* ring) noexcept;
 
@@ -32,7 +33,7 @@ private:
   std::uint64_t last_seen_sequence_{0};
   bool active_{false};
 
-  friend class Blackboard<ProtectedData>;
+  friend class Blackboard<ProtectedData, InitializationMargin>;
 };
 
 } // namespace bpe::lfbb

@@ -4,16 +4,19 @@
 
 namespace bpe::lfbb {
 
-template <typename ProtectedData>
-ProducerGrant<ProtectedData>::ProducerGrant(Ring* ring, bool& active) noexcept
+template <typename ProtectedData, std::size_t InitializationMargin>
+ProducerGrant<ProtectedData, InitializationMargin>::ProducerGrant(Ring* ring,
+                                                                   bool& active) noexcept
     : ring_(ring), slot_(ring_->claim_next_write_slot()), active_(active) {}
 
-template <typename ProtectedData> ProducerGrant<ProtectedData>::~ProducerGrant() {
+template <typename ProtectedData, std::size_t InitializationMargin>
+ProducerGrant<ProtectedData, InitializationMargin>::~ProducerGrant() {
   ring_->commit_written_slot();
   active_ = false;
 }
 
-template <typename ProtectedData> ProtectedData& ProducerGrant<ProtectedData>::data() noexcept {
+template <typename ProtectedData, std::size_t InitializationMargin>
+ProtectedData& ProducerGrant<ProtectedData, InitializationMargin>::data() noexcept {
   return slot_->data();
 }
 

@@ -265,6 +265,23 @@ The ring must not interpret the application payload stored inside the slots.
 
 It coordinates slot selection and publication only.
 
+The ring also owns the configuration-time accounting required to size and initialize its slots. Its template form is:
+
+```cpp
+template<typename ProtectedData, std::size_t InitializationMargin>
+class ConcurrentRing;
+```
+
+`InitializationMargin` is not part of the wait-free algorithm. It expresses how many additional producer/consumer registrations may be accepted after an initialization point without supplying an initializer again.
+
+The wait-free slot reserve is a separate invariant of the ring algorithm:
+
+```cpp
+static constexpr std::size_t kWaitFreeSlotMargin = 2;
+```
+
+One slot may be the latest committed sample while another must remain available for the next producer acquisition. Therefore physical capacity is derived from the maximum number of consumers plus this fixed wait-free margin. The producer is tracked as a registration endpoint but does not add another term to the wait-free capacity formula.
+
 ---
 
 ## 9. Grants
@@ -420,7 +437,29 @@ Its responsibility is to prepare a `ProtectedData` instance for a concrete logic
 
 For example, a BPE-specific initializer may create the native object associated with a compile-time `T` while preparing any additional representation required by the slot.
 
-The exact form of this component will be derived from implementation needs rather than fixed prematurely.
+The generic blackboard does not own or retain the initializer type. Initialization is supplied only at registration time through a templated overload. The initializer contract is deliberately minimal:
+
+```cpp
+initializer.initialize(protected_data);
+```
+
+where `protected_data` is passed by reference.
+
+Both producer and consumer registration have two forms:
+
+```cpp
+register_producer(...);
+register_producer(..., initializer);
+
+register_consumer(...);
+register_consumer(..., initializer);
+```
+
+Registrations performed before the first initialization may omit the initializer. The first registration that supplies an initializer prepares every slot in the ring and reserves `InitializationMargin` future registrations. After that point, registrations without an initializer consume that margin. If the margin is exhausted, another registration without an initializer is rejected.
+
+A later registration that supplies an initializer may expand the ring. Only newly created slots are initialized in that case, and the initialization margin is restored from that new configuration point. Existing initialized slots are never reinitialized merely because the ring grows.
+
+This mechanism deliberately knows nothing about the logical type `T`. A BPE-specific initializer may know `T`, construct a native object or prepare any other representation, but `bpe_blackboard` only invokes the standard initialization callback on `ProtectedData`.
 
 ---
 
@@ -933,13 +972,31 @@ The design must preserve the important property of the original blackboard:
 - consumers read the latest committed sample;
 - the ring capacity prevents the writer from exhausting all usable slots while readers hold reservations.
 
-The preserved sizing rule is:
+The fixed wait-free sizing rule is:
 
 ```text
-next_power_of_two(max(4, consumer_count + 3))
+next_power_of_two(max(4, consumer_count + kWaitFreeSlotMargin))
 ```
 
-This rule is treated as part of the proven reference behaviour rather than redesigned speculatively.
+with:
+
+```text
+kWaitFreeSlotMargin = 2
+```
+
+The two slots have a structural meaning: one may be the latest committed slot while another must remain available for the next producer write. This constant is independent from `InitializationMargin`.
+
+At an initialization point, the ring reserves capacity conservatively for the configured number of future registrations:
+
+```text
+next_power_of_two(
+    max(4,
+        consumer_count
+        + InitializationMargin
+        + kWaitFreeSlotMargin))
+```
+
+Every future registration is treated as a possible consumer for this reservation, which preserves the wait-free capacity bound in the worst case. Producer registration consumes the initialization-registration budget but the producer itself is not added to `consumer_count`.
 
 ---
 
@@ -985,7 +1042,7 @@ The low-level concurrency layer is:
 
 ```text
 bpe::lfbb::details::ConcurrentSlot<ProtectedData>
-bpe::lfbb::details::ConcurrentRing<ProtectedData>
+bpe::lfbb::details::ConcurrentRing<ProtectedData, InitializationMargin>
 ```
 
 `ConcurrentSlot` preserves the slot reservation algorithm of the frozen `lfbb_blackboard` reference while separating concurrency protection from the protected data representation.
@@ -994,7 +1051,10 @@ bpe::lfbb::details::ConcurrentRing<ProtectedData>
 
 - initial capacity of four slots;
 - configuration-time growth based on registered consumers;
-- capacity `next_power_of_two(max(4, consumer_count + 3))`;
+- fixed wait-free reserve `kWaitFreeSlotMargin = 2`;
+- configurable `InitializationMargin` for registrations that may occur without an initializer;
+- first-use initialization of all slots through `initializer.initialize(ProtectedData&)`;
+- later initialized expansion of newly created slots only;
 - power-of-two index masking;
 - writable-slot selection with occupied-slot skipping;
 - monotonically increasing commit sequence;
@@ -1006,11 +1066,11 @@ Sequence and timestamp mutation is owned by `ConcurrentRing`; the corresponding 
 The public access layer is now:
 
 ```text
-ProducerGrant<ProtectedData>
-ConsumerGrant<ProtectedData>
-ProducerGrantFactory<ProtectedData>
-ConsumerGrantFactory<ProtectedData>
-Blackboard<ProtectedData>
+ProducerGrant<ProtectedData, InitializationMargin>
+ConsumerGrant<ProtectedData, InitializationMargin>
+ProducerGrantFactory<ProtectedData, InitializationMargin>
+ConsumerGrantFactory<ProtectedData, InitializationMargin>
+Blackboard<ProtectedData, InitializationMargin>
 ```
 
 The grants are pure RAII reservation objects:
@@ -1025,7 +1085,9 @@ Factories represent logical endpoints. They prevent overlapping grants from the 
 
 Factories are neither copyable nor movable. Each factory represents one stable endpoint created during initialization and retained by its owner for the lifetime of that endpoint. Copying would duplicate an endpoint without a corresponding registration, while moving would introduce endpoint relocation that is not part of the intended execution model. After initialization, the blackboard topology and its factories are expected to remain fixed; only grants are created and destroyed during execution.
 
-`Blackboard<ProtectedData>` is currently the generic composition root. It owns one `ConcurrentRing<ProtectedData>` per label, enforces a single producer per label, registers consumers with the corresponding ring, and creates the public factories. It does not yet interpret the logical message type stored inside `ProtectedData`.
+`Blackboard<ProtectedData, InitializationMargin>` is currently the generic composition root. It owns one `ConcurrentRing<ProtectedData, InitializationMargin>` per label, delegates producer/consumer registration and initialization accounting to that ring, and creates the public factories. Producer uniqueness is enforced by the ring itself. The blackboard still does not interpret the logical message type stored inside `ProtectedData`.
+
+The generic initialization hook is now implemented, but no BPE-specific `ProtectedData` or initializer exists in this package. The initializer type is a method-template parameter used only during configuration; it is not stored by the blackboard or ring.
 
 The next development step is Phase 6:
 

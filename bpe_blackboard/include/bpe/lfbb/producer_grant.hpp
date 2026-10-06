@@ -1,15 +1,17 @@
 #pragma once
 
+#include <cstddef>
+
 namespace bpe::lfbb {
 
-template <typename ProtectedData> class ProducerGrantFactory;
+template <typename ProtectedData, std::size_t InitializationMargin> class ProducerGrantFactory;
 
 namespace details {
-template <typename ProtectedData> class ConcurrentRing;
+template <typename ProtectedData, std::size_t InitializationMargin> class ConcurrentRing;
 template <typename ProtectedData> class ConcurrentSlot;
 } // namespace details
 
-template <typename ProtectedData> class ProducerGrant {
+template <typename ProtectedData, std::size_t InitializationMargin> class ProducerGrant {
 public:
   ~ProducerGrant();
 
@@ -21,7 +23,7 @@ public:
   ProducerGrant& operator=(ProducerGrant&&) = delete;
 
 private:
-  using Ring = details::ConcurrentRing<ProtectedData>;
+  using Ring = details::ConcurrentRing<ProtectedData, InitializationMargin>;
   using Slot = details::ConcurrentSlot<ProtectedData>;
 
   ProducerGrant(Ring* ring, bool& active) noexcept;
@@ -30,7 +32,7 @@ private:
   Slot* slot_{nullptr};
   bool& active_;
 
-  friend class ProducerGrantFactory<ProtectedData>;
+  friend class ProducerGrantFactory<ProtectedData, InitializationMargin>;
 };
 
 } // namespace bpe::lfbb
