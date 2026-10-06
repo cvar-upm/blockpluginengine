@@ -986,17 +986,21 @@ kWaitFreeSlotMargin = 2
 
 The two slots have a structural meaning: one may be the latest committed slot while another must remain available for the next producer write. This constant is independent from `InitializationMargin`.
 
-At an initialization point, the ring reserves capacity conservatively for the configured number of future registrations:
+At an initialization point, the ring first computes the structural wait-free capacity and then adds the configured reserve for future registrations:
 
 ```text
-next_power_of_two(
+base_capacity =
     max(4,
         consumer_count
-        + InitializationMargin
-        + kWaitFreeSlotMargin))
+        + kWaitFreeSlotMargin)
+
+capacity =
+    next_power_of_two(
+        base_capacity
+        + InitializationMargin)
 ```
 
-Every future registration is treated as a possible consumer for this reservation, which preserves the wait-free capacity bound in the worst case. Producer registration consumes the initialization-registration budget but the producer itself is not added to `consumer_count`.
+`InitializationMargin` is therefore never absorbed by the structural minimum capacity. Every future registration is treated as a possible consumer for this reservation, which preserves the wait-free capacity bound in the worst case. Producer registration consumes the initialization-registration budget but the producer itself is not added to `consumer_count`.
 
 ---
 

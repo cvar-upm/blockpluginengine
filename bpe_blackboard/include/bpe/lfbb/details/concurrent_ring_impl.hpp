@@ -227,11 +227,10 @@ std::size_t ConcurrentRing<ProtectedData, InitializationMargin>::next_power_of_t
 template <typename ProtectedData, std::size_t InitializationMargin>
 std::size_t ConcurrentRing<ProtectedData, InitializationMargin>::compute_capacity(
     std::size_t consumer_count,
-    std::size_t additional_consumer_margin) noexcept {
-  const std::size_t minimum_required =
-      std::max(kMinimumCapacity,
-               consumer_count + additional_consumer_margin + kWaitFreeSlotMargin);
-  return next_power_of_two(minimum_required);
+    std::size_t uninitialized_registration_margin) noexcept {
+  const std::size_t base_capacity =
+      std::max(kMinimumCapacity, consumer_count + kWaitFreeSlotMargin);
+  return next_power_of_two(base_capacity + uninitialized_registration_margin);
 }
 
 } // namespace bpe::lfbb::details

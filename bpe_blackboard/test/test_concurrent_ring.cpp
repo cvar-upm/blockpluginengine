@@ -28,6 +28,7 @@ struct TestInitializer {
 };
 
 using TestRing = ConcurrentRing<TestProtectedData, 3u>;
+using SmallMarginRing = ConcurrentRing<TestProtectedData, 1u>;
 using TestSlot = TestRing::Slot;
 
 static_assert(!std::is_copy_constructible_v<TestRing>);
@@ -69,6 +70,17 @@ TEST(ConcurrentRingTests, CapacityTracksRegisteredConsumersUsingWaitFreeMargin) 
 
   ring.register_consumer();
   EXPECT_EQ(ring.capacity(), 16u);
+}
+
+TEST(ConcurrentRingTests, InitializationMarginIsAddedAfterMinimumWaitFreeCapacity) {
+  SmallMarginRing ring;
+  std::size_t call_count = 0u;
+  const TestInitializer initializer{&call_count, 11, 13};
+
+  ring.register_producer(initializer);
+
+  EXPECT_EQ(ring.capacity(), 8u);
+  EXPECT_EQ(call_count, 8u);
 }
 
 TEST(ConcurrentRingTests, FirstInitializerInitializesAllSlotsAndReservesInitializationMargin) {

@@ -55,7 +55,7 @@ private:
   static std::uint64_t now_ns() noexcept;
   static std::size_t next_power_of_two(std::size_t value) noexcept;
   static std::size_t compute_capacity(std::size_t consumer_count,
-                                      std::size_t additional_consumer_margin) noexcept;
+                                      std::size_t uninitialized_registration_margin) noexcept;
 
   std::vector<std::unique_ptr<Slot>> buffer_;
   std::size_t capacity_{0};
