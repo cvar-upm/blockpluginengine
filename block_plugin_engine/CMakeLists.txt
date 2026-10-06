@@ -9,7 +9,6 @@ find_package(ament_cmake REQUIRED)
 find_package(bpe_blackboard REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
-find_package(lifecycle_msgs REQUIRED)
 find_package(rosidl_runtime_cpp REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(yaml-cpp REQUIRED)
@@ -94,7 +93,6 @@ target_include_directories(block_plugin_engine
 ament_target_dependencies(block_plugin_engine
   rclcpp
   rclcpp_lifecycle
-  lifecycle_msgs
   pluginlib
 )
 

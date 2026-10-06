@@ -1,9 +1,6 @@
 #include "detail/bpe_lifecycle_node.hpp"
 
-#include <functional>
 #include <string>
-
-#include <lifecycle_msgs/msg/state.hpp>
 
 #include "detail/block_plugin_manager.hpp"
 #include "detail/bpe_simple_scheduler.hpp"
@@ -20,45 +17,6 @@ BPE_LifecycleNode::BPE_LifecycleNode(const rclcpp::NodeOptions& options)
   plugin_manager_ =
       std::make_shared<BlockPluginManager>(scheduler_, get_node_topics_interface(), get_logger());
 
-  register_rcl_preshutdown_callback();
-}
-
-BPE_LifecycleNode::~BPE_LifecycleNode() {
-  const auto context = get_node_base_interface()->get_context();
-
-  if (context->is_valid()) {
-    on_rcl_preshutdown();
-  }
-
-  if (rcl_preshutdown_callback_handle_) {
-    context->remove_pre_shutdown_callback(*rcl_preshutdown_callback_handle_);
-    rcl_preshutdown_callback_handle_.reset();
-  }
-}
-
-void BPE_LifecycleNode::register_rcl_preshutdown_callback() {
-  const auto context = get_node_base_interface()->get_context();
-  rcl_preshutdown_callback_handle_ = std::make_unique<rclcpp::PreShutdownCallbackHandle>(
-      context->add_pre_shutdown_callback(
-          std::bind(&BPE_LifecycleNode::on_rcl_preshutdown, this)));
-}
-
-void BPE_LifecycleNode::on_rcl_preshutdown() noexcept {
-  try {
-    if (get_current_state().id() != lifecycle_msgs::msg::State::PRIMARY_STATE_FINALIZED) {
-      CallbackReturn callback_result = CallbackReturn::SUCCESS;
-      const auto& final_state = shutdown(callback_result);
-
-      if (callback_result != CallbackReturn::SUCCESS ||
-          final_state.id() != lifecycle_msgs::msg::State::PRIMARY_STATE_FINALIZED) {
-        RCLCPP_ERROR(get_logger(), "Could not finalize BlockPluginEngine before rcl shutdown");
-      }
-    }
-  } catch (const std::exception& error) {
-    RCLCPP_ERROR(get_logger(), "BlockPluginEngine pre-shutdown failed: %s", error.what());
-  } catch (...) {
-    RCLCPP_ERROR(get_logger(), "BlockPluginEngine pre-shutdown failed with an unknown error");
-  }
 }
 
 BPE_LifecycleNode::CallbackReturn BPE_LifecycleNode::on_configure(const rclcpp_lifecycle::State&) {
