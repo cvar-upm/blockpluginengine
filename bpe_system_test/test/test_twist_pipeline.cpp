@@ -8,7 +8,7 @@
 
 #include "block_plugin_engine/iblock_plugin.hpp"
 #include "block_plugin_engine/itimer_block.hpp"
-#include "block_plugin_engine_system_test/twist_checker_inspection.hpp"
+#include "bpe_system_test/twist_checker_inspection.hpp"
 
 namespace bpe_system_test::test {
 namespace {

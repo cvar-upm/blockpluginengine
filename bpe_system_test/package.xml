@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="3">
-  <name>block_plugin_engine_system_test</name>
+  <name>bpe_system_test</name>
   <version>0.0.1</version>
 
   <description>System-test plugins for BlockPluginEngine.</description>

@@ -1,4 +1,4 @@
-<library path="block_plugin_engine_system_test_plugins">
+<library path="bpe_system_test_plugins">
   <class
     name="bpe_system_test/TwistProducerBlock"
     type="bpe_system_test::TwistProducerBlock"

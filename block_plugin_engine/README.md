@@ -67,7 +67,7 @@ the reader reservation. In this iteration the typed adapters access only the
 native representation; native/serialized synchronization is intentionally
 deferred.
 
-The typed ROS input/output blocks in `block_plugin_engine_system_test` are
+The typed ROS input/output blocks in `bpe_system_test` are
 temporary fixtures using the same helpers. They will be replaced by the
 generic boundary plugins from `bpe_ros_boundary_plugins`.
 

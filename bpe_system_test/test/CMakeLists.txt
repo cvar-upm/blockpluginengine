@@ -6,7 +6,7 @@ target_compile_features(test_twist_pipeline PUBLIC cxx_std_20)
 
 add_dependencies(
   test_twist_pipeline
-  block_plugin_engine_system_test_plugins
+  bpe_system_test_plugins
 )
 
 target_include_directories(test_twist_pipeline

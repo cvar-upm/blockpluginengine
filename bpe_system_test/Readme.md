@@ -22,14 +22,14 @@ payload and the blackboard sequence progression.
 Run the package test with:
 
 ```bash
-colcon test --packages-select block_plugin_engine_system_test --event-handlers console_direct+
+colcon test --packages-select bpe_system_test --event-handlers console_direct+
 ```
 
 The same pipeline can also be run manually through the BPE lifecycle node:
 
 ```bash
 ros2 run block_plugin_engine block_plugin_engine --ros-args \
-  -p config_file:=$(ros2 pkg prefix block_plugin_engine_system_test)/share/block_plugin_engine_system_test/config/system_test.yaml
+  -p config_file:=$(ros2 pkg prefix bpe_system_test)/share/bpe_system_test/config/system_test.yaml
 
 ros2 lifecycle set /block_plugin_engine configure
 ros2 lifecycle set /block_plugin_engine activate

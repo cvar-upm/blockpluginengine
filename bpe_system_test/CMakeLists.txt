@@ -1,30 +1,30 @@
 cmake_minimum_required(VERSION 3.11)
-project(block_plugin_engine_system_test)
+project(bpe_system_test)
 
 find_package(ament_cmake REQUIRED)
 find_package(block_plugin_engine REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(geometry_msgs REQUIRED)
 
-add_library(block_plugin_engine_system_test_plugins SHARED
+add_library(bpe_system_test_plugins SHARED
   src/twist_producer_block.cpp
   src/twist_transform_block.cpp
   src/twist_checker_block.cpp
 )
 
 target_compile_features(
-  block_plugin_engine_system_test_plugins
+  bpe_system_test_plugins
   PUBLIC cxx_std_20
 )
 
 target_include_directories(
-  block_plugin_engine_system_test_plugins
+  bpe_system_test_plugins
   PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 ament_target_dependencies(
-  block_plugin_engine_system_test_plugins
+  bpe_system_test_plugins
   block_plugin_engine
   pluginlib
   geometry_msgs
@@ -36,7 +36,7 @@ pluginlib_export_plugin_description_file(
 )
 
 install(
-  TARGETS block_plugin_engine_system_test_plugins
+  TARGETS bpe_system_test_plugins
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin

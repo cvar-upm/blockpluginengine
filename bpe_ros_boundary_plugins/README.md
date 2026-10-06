@@ -10,5 +10,5 @@ The intended pair is:
 The package exists already to fix the ownership boundary, but the generic
 plugins and their boundary-specific adapters are intentionally deferred until
 the serialized/native synchronization design is implemented. The typed ROS 2
-boundary blocks currently present in `block_plugin_engine_system_test` remain
+boundary blocks currently present in `bpe_system_test` remain
 temporary test fixtures and will be replaced by these generic plugins.
