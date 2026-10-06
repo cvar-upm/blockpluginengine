@@ -16,6 +16,7 @@ public:
   ~ProducerGrant();
 
   ProtectedData& data() noexcept;
+  void cancel() noexcept;
 
   ProducerGrant(const ProducerGrant&) = delete;
   ProducerGrant& operator=(const ProducerGrant&) = delete;
@@ -31,6 +32,7 @@ private:
   Ring* ring_{nullptr};
   Slot* slot_{nullptr};
   bool& active_;
+  bool cancelled_{false};
 
   friend class ProducerGrantFactory<ProtectedData, InitializationMargin>;
 };

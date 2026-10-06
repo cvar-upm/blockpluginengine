@@ -8,11 +8,15 @@
 #include <string>
 #include <utility>
 
+#include <rclcpp/serialization.hpp>
+#include <rosidl_runtime_cpp/traits.hpp>
+
 #include "bpe/lfbb/consumer_grant.hpp"
 #include "bpe/lfbb/consumer_grant_factory.hpp"
 #include "bpe/lfbb/producer_grant.hpp"
 #include "bpe/lfbb/producer_grant_factory.hpp"
 #include "block_plugin_engine/blackboard.hpp"
+#include "block_plugin_engine/ros_type_registry.hpp"
 
 namespace bpe {
 
@@ -24,6 +28,27 @@ public:
     data.native = std::make_shared<T>();
   }
 };
+
+template <typename T>
+void serialize_native(const void* native, rclcpp::SerializedMessage* serialized) {
+  static const rclcpp::Serialization<T> serialization;
+  serialization.serialize_message(native, serialized);
+}
+
+template <typename T>
+void deserialize_native(const rclcpp::SerializedMessage* serialized, void* native) {
+  static const rclcpp::Serialization<T> serialization;
+  serialization.deserialize_message(serialized, native);
+}
+
+template <typename T>
+const RosTypeInfo& register_typed_ros_type(const std::string& label) {
+  return the_ros_type_registry().register_typed(
+      label,
+      rosidl_generator_traits::name<T>(),
+      &serialize_native<T>,
+      &deserialize_native<T>);
+}
 
 using ProducerFactory = decltype(
     std::declval<BpeBlackboard&>().register_producer(std::declval<const std::string&>()));
@@ -39,7 +64,16 @@ template <typename T> class TypedConsumer;
 
 template <typename T> class TypedProducerAdapter {
 public:
-  ~TypedProducerAdapter() = default;
+  ~TypedProducerAdapter() noexcept(false) {
+    if (type_info_->requires_serialization()) {
+      try {
+        type_info_->serialize(grant_.data().native.get(), grant_.data().serialized);
+      } catch (...) {
+        grant_.cancel();
+        throw;
+      }
+    }
+  }
 
   T& value() noexcept {
     return *static_cast<T*>(grant_.data().native.get());
@@ -51,10 +85,11 @@ public:
   TypedProducerAdapter& operator=(TypedProducerAdapter&&) = delete;
 
 private:
-  explicit TypedProducerAdapter(detail::ProducerFactory& factory)
-    : grant_(factory.write_access()) {}
+  TypedProducerAdapter(detail::ProducerFactory& factory, const RosTypeInfo& type_info)
+    : grant_(factory.write_access()), type_info_(&type_info) {}
 
   detail::ProducerGrant grant_;
+  const RosTypeInfo* type_info_{nullptr};
 
   friend class TypedProducer<T>;
 };
@@ -122,7 +157,7 @@ public:
       throw std::logic_error("TypedProducer is not bound");
     }
 
-    return TypedProducerAdapter<T>(binding_->factory);
+    return TypedProducerAdapter<T>(binding_->factory, *binding_->type_info);
   }
 
   TypedProducer(const TypedProducer&) = delete;
@@ -133,10 +168,12 @@ public:
 private:
   struct Binding {
     explicit Binding(const std::string& label)
-      : factory(the_blackboard().register_producer(
+      : type_info(&detail::register_typed_ros_type<T>(label)),
+        factory(the_blackboard().register_producer(
           label,
           detail::RosProtectedDataInitializer<T>{})) {}
 
+    const RosTypeInfo* type_info;
     detail::ProducerFactory factory;
   };
 
@@ -172,10 +209,12 @@ public:
 private:
   struct Binding {
     explicit Binding(const std::string& label)
-      : factory(the_blackboard().register_consumer(
+      : type_info(&detail::register_typed_ros_type<T>(label)),
+        factory(the_blackboard().register_consumer(
           label,
           detail::RosProtectedDataInitializer<T>{})) {}
 
+    const RosTypeInfo* type_info;
     detail::ConsumerFactory factory;
   };
 

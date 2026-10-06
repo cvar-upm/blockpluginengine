@@ -114,6 +114,13 @@ void ConcurrentRing<ProtectedData, InitializationMargin>::commit_written_slot() 
 }
 
 template <typename ProtectedData, std::size_t InitializationMargin>
+void ConcurrentRing<ProtectedData, InitializationMargin>::cancel_written_slot() noexcept {
+  Slot* slot = buffer_[write_claim_index_ & index_mask_].get();
+  slot->release_writer();
+  write_claim_index_ = last_committed_index_.load(std::memory_order_relaxed);
+}
+
+template <typename ProtectedData, std::size_t InitializationMargin>
 typename ConcurrentRing<ProtectedData, InitializationMargin>::Slot*
 ConcurrentRing<ProtectedData, InitializationMargin>::get_last_committed_slot() noexcept {
   const std::size_t sequence = last_committed_index_.load(std::memory_order_acquire);

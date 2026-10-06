@@ -329,9 +329,12 @@ A producer grant reserves a slot for writing.
 
 It gives mutable access to the protected data.
 
-The reservation remains active until the grant is released or destroyed.
+The reservation remains active until the grant is destroyed.
 
-The logical sample is committed once.
+Normally the logical sample is committed when the grant is destroyed. A producer grant may also be
+`cancel()`led before destruction. A cancelled grant releases the writer reservation without changing
+the commit sequence, timestamp or last-committed position. The modified contents of the uncommitted
+slot remain private and are simply reusable by a later producer acquisition.
 
 ### 9.2. Consumer grant
 
@@ -1069,7 +1072,8 @@ Blackboard<ProtectedData, InitializationMargin = 2>
 
 The grants are pure RAII reservation objects:
 
-- a producer grant owns one writer reservation and commits it on destruction;
+- a producer grant owns one writer reservation and commits it on destruction unless it has been cancelled;
+- cancelling a producer grant releases the slot without publishing the tentative write;
 - a consumer grant owns one reader reservation and releases it on destruction;
 - producer access is mutable;
 - consumer access is const;
@@ -1083,6 +1087,6 @@ Factories are neither copyable nor movable. Each factory represents one stable e
 
 The generic initialization hook is now implemented, but no BPE-specific `ProtectedData` or initializer exists in this package. The initializer type is a method-template parameter used only during configuration; it is not stored by the blackboard or ring.
 
-The BPE-specific Phase 6 storage now lives above this package, in `block_plugin_engine`, as `RosProtectedData`. The generic blackboard remains unaware of ROS 2 and continues to operate only on the `ProtectedData` template parameter. Typed and future generic boundary adapters also belong above this package.
+The BPE-specific Phase 6 storage now lives above this package, in `block_plugin_engine`, as `RosProtectedData`. The generic blackboard remains unaware of ROS 2 and continues to operate only on the `ProtectedData` template parameter. Typed and generic ROS boundary adapters also belong above this package.
 
 No changes to the existing `lfbb_blackboard` repository are required.

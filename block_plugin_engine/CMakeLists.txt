@@ -9,6 +9,7 @@ find_package(ament_cmake REQUIRED)
 find_package(bpe_blackboard REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
+find_package(rosidl_runtime_cpp REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(Threads REQUIRED)
@@ -22,6 +23,7 @@ find_package(Threads REQUIRED)
 
 add_library(block_plugin_engine_core SHARED
   src/blackboard.cpp
+  src/ros_type_registry.cpp
 )
 
 target_compile_features(block_plugin_engine_core PUBLIC cxx_std_20)
@@ -34,6 +36,7 @@ target_include_directories(block_plugin_engine_core
 
 ament_target_dependencies(block_plugin_engine_core
   rclcpp
+  rosidl_runtime_cpp
 )
 
 target_link_libraries(block_plugin_engine_core
@@ -131,11 +134,13 @@ ament_export_dependencies(
   bpe_blackboard
   rclcpp
   rclcpp_lifecycle
+  rosidl_runtime_cpp
   yaml-cpp
 )
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
+  find_package(geometry_msgs REQUIRED)
   add_subdirectory(test)
 endif()
 

@@ -32,6 +32,7 @@ public:
 
   Slot* claim_next_write_slot() noexcept;
   void commit_written_slot() noexcept;
+  void cancel_written_slot() noexcept;
   Slot* get_last_committed_slot() noexcept;
 
   std::size_t capacity() const noexcept;

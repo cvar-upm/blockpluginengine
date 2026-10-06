@@ -3,14 +3,13 @@
 
 #include <gtest/gtest.h>
 
+#include <geometry_msgs/msg/vector3.hpp>
+
 #include "block_plugin_engine/typed_blackboard.hpp"
 
 namespace {
 
-struct TestMessage {
-  int value{0};
-  double gain{0.0};
-};
+using TestMessage = geometry_msgs::msg::Vector3;
 
 TEST(TypedBlackboard, ProducerAndConsumerShareTypedNativeRepresentation) {
   bpe::TypedProducer<TestMessage> producer;
@@ -21,15 +20,15 @@ TEST(TypedBlackboard, ProducerAndConsumerShareTypedNativeRepresentation) {
 
   {
     auto output = producer.write_access();
-    output.value().value = 42;
-    output.value().gain = 1.5;
+    output.value().x = 42.0;
+    output.value().y = 1.5;
   }
 
   auto input = consumer.read_access();
 
   ASSERT_TRUE(input.has_new_value());
-  EXPECT_EQ(input.value().value, 42);
-  EXPECT_DOUBLE_EQ(input.value().gain, 1.5);
+  EXPECT_DOUBLE_EQ(input.value().x, 42.0);
+  EXPECT_DOUBLE_EQ(input.value().y, 1.5);
 }
 
 TEST(TypedBlackboard, ConsumerCanBindBeforeProducerWhenItKnowsTheType) {
@@ -41,13 +40,13 @@ TEST(TypedBlackboard, ConsumerCanBindBeforeProducerWhenItKnowsTheType) {
 
   {
     auto output = producer.write_access();
-    output.value().value = 7;
+    output.value().x = 7.0;
   }
 
   auto input = consumer.read_access();
 
   ASSERT_TRUE(input.has_new_value());
-  EXPECT_EQ(input.value().value, 7);
+  EXPECT_DOUBLE_EQ(input.value().x, 7.0);
 }
 
 TEST(TypedBlackboard, AccessBeforeBindIsRejected) {

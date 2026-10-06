@@ -114,13 +114,14 @@ ament_add_gtest(test_typed_blackboard
   test_typed_blackboard.cpp
 )
 
+ament_target_dependencies(test_typed_blackboard
+  geometry_msgs
+  rclcpp
+)
+
 target_include_directories(test_typed_blackboard
   PRIVATE
     ${PROJECT_SOURCE_DIR}/include
-)
-
-ament_target_dependencies(test_typed_blackboard
-  rclcpp
 )
 
 target_link_libraries(test_typed_blackboard
