@@ -2,8 +2,11 @@
 
 #include <string>
 
+#include <lifecycle_msgs/msg/state.hpp>
+
 #include "detail/block_plugin_manager.hpp"
 #include "detail/bpe_simple_scheduler.hpp"
+#include "detail/runtime_state.hpp"
 
 namespace bpe {
 
@@ -15,6 +18,23 @@ BPE_LifecycleNode::BPE_LifecycleNode(const rclcpp::NodeOptions& options)
   scheduler_ = std::make_shared<BPE_SimpleScheduler>();
   plugin_manager_ =
       std::make_shared<BlockPluginManager>(scheduler_, get_node_topics_interface(), get_logger());
+}
+
+BPE_LifecycleNode::~BPE_LifecycleNode() {
+  scheduler_->stop();
+
+  const auto state_id = get_current_state().id();
+
+  if (state_id == lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE) {
+    plugin_manager_->stop();
+    plugin_manager_->cleanup();
+    detail::reset_blackboard();
+    detail::reset_ros_type_registry();
+  } else if (state_id == lifecycle_msgs::msg::State::PRIMARY_STATE_INACTIVE) {
+    plugin_manager_->cleanup();
+    detail::reset_blackboard();
+    detail::reset_ros_type_registry();
+  }
 }
 
 BPE_LifecycleNode::CallbackReturn BPE_LifecycleNode::on_configure(const rclcpp_lifecycle::State&) {
@@ -44,6 +64,8 @@ BPE_LifecycleNode::CallbackReturn BPE_LifecycleNode::on_configure(const rclcpp_l
   }
 
   if (!plugin_manager_->configure(config["blocks"])) {
+    detail::reset_blackboard();
+    detail::reset_ros_type_registry();
     RCLCPP_ERROR(get_logger(), "Could not configure BlockPlugins");
     return CallbackReturn::FAILURE;
   }
@@ -85,8 +107,12 @@ BPE_LifecycleNode::CallbackReturn BPE_LifecycleNode::on_cleanup(const rclcpp_lif
   RCLCPP_INFO(get_logger(), "Cleaning up BlockPluginEngine");
 
   scheduler_->stop();
+  const bool cleanup_ok = plugin_manager_->cleanup();
 
-  if (!plugin_manager_->cleanup()) {
+  detail::reset_blackboard();
+  detail::reset_ros_type_registry();
+
+  if (!cleanup_ok) {
     RCLCPP_ERROR(get_logger(), "Could not clean up BlockPlugins");
     return CallbackReturn::FAILURE;
   }
@@ -100,6 +126,9 @@ BPE_LifecycleNode::CallbackReturn BPE_LifecycleNode::on_shutdown(const rclcpp_li
   scheduler_->stop();
   plugin_manager_->stop();
   plugin_manager_->cleanup();
+
+  detail::reset_blackboard();
+  detail::reset_ros_type_registry();
 
   return CallbackReturn::SUCCESS;
 }

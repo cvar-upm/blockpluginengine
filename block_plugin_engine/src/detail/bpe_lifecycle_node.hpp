@@ -13,6 +13,7 @@ class BlockPluginManager;
 class BPE_LifecycleNode : public rclcpp_lifecycle::LifecycleNode {
 public:
   explicit BPE_LifecycleNode(const rclcpp::NodeOptions& options = rclcpp::NodeOptions());
+  ~BPE_LifecycleNode() override;
 
 protected:
   CallbackReturn on_configure(const rclcpp_lifecycle::State&) override;

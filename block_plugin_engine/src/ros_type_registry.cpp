@@ -1,9 +1,21 @@
 #include "block_plugin_engine/ros_type_registry.hpp"
 
+#include <memory>
 #include <stdexcept>
 #include <utility>
 
+#include "detail/runtime_state.hpp"
+
 namespace bpe {
+namespace {
+
+std::unique_ptr<RosTypeRegistry>& ros_type_registry_instance() {
+  static std::unique_ptr<RosTypeRegistry> instance = std::make_unique<RosTypeRegistry>();
+  return instance;
+}
+
+} // namespace
+
 
 RosTypeInfo::RosTypeInfo(std::string ros_type) : ros_type_(std::move(ros_type)) {}
 
@@ -97,8 +109,14 @@ RosTypeInfo& RosTypeRegistry::get_or_create(const std::string& label,
 }
 
 RosTypeRegistry& the_ros_type_registry() {
-  static RosTypeRegistry instance;
-  return instance;
+  return *ros_type_registry_instance();
 }
 
+namespace detail {
+
+void reset_ros_type_registry() {
+  ros_type_registry_instance() = std::make_unique<RosTypeRegistry>();
+}
+
+} // namespace detail
 } // namespace bpe
