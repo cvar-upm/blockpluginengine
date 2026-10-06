@@ -179,5 +179,22 @@ TEST(BlackboardTests, SeveralConsumerEndpointsCanHoldDifferentSamples) {
   EXPECT_EQ(reader_6.data().value, 6);
 }
 
+
+TEST(BlackboardTests, UsesDefaultInitializationMargin) {
+  Blackboard<TestProtectedData> blackboard;
+
+  auto producer = blackboard.register_producer("default_margin");
+  auto consumer = blackboard.register_consumer("default_margin");
+
+  {
+    auto output = producer.write_access();
+    output.data().value = 19;
+  }
+
+  auto input = consumer.read_access();
+  ASSERT_TRUE(input.has_new_value());
+  EXPECT_EQ(input.data().value, 19);
+}
+
 } // namespace
 } // namespace bpe::lfbb

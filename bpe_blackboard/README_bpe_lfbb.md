@@ -701,26 +701,16 @@ At this point the new implementation should reproduce the relevant behaviour of 
 
 ### Phase 6 — BPE `ProtectedData`
 
-Introduce the real BPE protected data structure containing:
-
-```text
-native + serialized
-```
-
-without changing the concurrency algorithms.
+Implemented above this package in `block_plugin_engine`. The BPE-specific
+`RosProtectedData` contains native type-erased storage plus ROS 2 serialized
+storage, while `bpe_blackboard` remains independent from ROS 2.
 
 ### Phase 7 — Accessors and initialization
 
-Introduce:
-
-```text
-TypedAccessor<T>
-NativeAccessor
-SerializedAccessor
-ProtectedDataInitializer
-```
-
-and validate the typed and runtime access paths.
+The generic initializer callback is implemented in this package. Typed access
+now begins in `block_plugin_engine` through BPE-specific RAII adapters that
+wrap the generic grants and expose `T`. Native type-erased and serialized
+boundary adapters remain for the following iterations.
 
 ### Phase 8 — Generic ROS boundaries
 
@@ -1012,7 +1002,7 @@ The following invariants define the architecture and should be preserved through
 2. `ProtectedData` does not implement its own synchronization.
 3. `ConcurrentRing` coordinates slots but does not interpret their data.
 4. Grants represent reservation lifetime only.
-5. Accessors interpret protected data but do not own concurrency reservations.
+5. `bpe_blackboard` grants own concurrency reservations; BPE-specific adapters may wrap/own a grant to couple the reservation lifetime to a typed or serialized access operation.
 6. Initialization/materialization is separate from access.
 7. Native and serialized forms belong to the same logical sample.
 8. Native and serialized forms share one slot and one commit.
@@ -1040,7 +1030,7 @@ The ROS 2 package and the exported header-only library are both named:
 bpe_blackboard
 ```
 
-Phases 1 through 5 are implemented.
+Phases 1 through 5 and the generic initializer hook are implemented.
 
 The low-level concurrency layer is:
 
@@ -1074,7 +1064,7 @@ ProducerGrant<ProtectedData, InitializationMargin>
 ConsumerGrant<ProtectedData, InitializationMargin>
 ProducerGrantFactory<ProtectedData, InitializationMargin>
 ConsumerGrantFactory<ProtectedData, InitializationMargin>
-Blackboard<ProtectedData, InitializationMargin>
+Blackboard<ProtectedData, InitializationMargin = 2>
 ```
 
 The grants are pure RAII reservation objects:
@@ -1089,12 +1079,10 @@ Factories represent logical endpoints. They prevent overlapping grants from the 
 
 Factories are neither copyable nor movable. Each factory represents one stable endpoint created during initialization and retained by its owner for the lifetime of that endpoint. Copying would duplicate an endpoint without a corresponding registration, while moving would introduce endpoint relocation that is not part of the intended execution model. After initialization, the blackboard topology and its factories are expected to remain fixed; only grants are created and destroyed during execution.
 
-`Blackboard<ProtectedData, InitializationMargin>` is currently the generic composition root. It owns one `ConcurrentRing<ProtectedData, InitializationMargin>` per label, delegates producer/consumer registration and initialization accounting to that ring, and creates the public factories. Producer uniqueness is enforced by the ring itself. The blackboard still does not interpret the logical message type stored inside `ProtectedData`.
+`Blackboard<ProtectedData, InitializationMargin>` is currently the generic composition root. The public `Blackboard` template defaults `InitializationMargin` to `2`; lower-level ring, grant and factory templates keep the margin explicit. It owns one `ConcurrentRing<ProtectedData, InitializationMargin>` per label, delegates producer/consumer registration and initialization accounting to that ring, and creates the public factories. Producer uniqueness is enforced by the ring itself. The blackboard still does not interpret the logical message type stored inside `ProtectedData`.
 
 The generic initialization hook is now implemented, but no BPE-specific `ProtectedData` or initializer exists in this package. The initializer type is a method-template parameter used only during configuration; it is not stored by the blackboard or ring.
 
-The next development step is Phase 6:
-
-> Introduce the BPE protected-data representation containing coherent native and serialized storage, without modifying the concurrency algorithms.
+The BPE-specific Phase 6 storage now lives above this package, in `block_plugin_engine`, as `RosProtectedData`. The generic blackboard remains unaware of ROS 2 and continues to operate only on the `ProtectedData` template parameter. Typed and future generic boundary adapters also belong above this package.
 
 No changes to the existing `lfbb_blackboard` repository are required.

@@ -12,7 +12,7 @@
 
 namespace bpe::lfbb {
 
-template <typename ProtectedData, std::size_t InitializationMargin> class Blackboard {
+template <typename ProtectedData, std::size_t InitializationMargin = 2u> class Blackboard {
 public:
   Blackboard() = default;
   ~Blackboard() = default;

@@ -31,8 +31,7 @@ void ConcurrentRing<ProtectedData, InitializationMargin>::register_producer(
   if (producer_registered_) {
     throw std::runtime_error("Producer already registered");
   } else {
-    const std::size_t required_capacity =
-        compute_capacity(consumer_count_, InitializationMargin);
+    const std::size_t required_capacity = compute_capacity(consumer_count_, InitializationMargin);
 
     if (initialized_) {
       resize_and_fill(required_capacity, initializer);
@@ -69,8 +68,7 @@ template <typename Initializer>
 void ConcurrentRing<ProtectedData, InitializationMargin>::register_consumer(
     const Initializer& initializer) {
   const std::size_t new_consumer_count = consumer_count_ + 1u;
-  const std::size_t required_capacity =
-      compute_capacity(new_consumer_count, InitializationMargin);
+  const std::size_t required_capacity = compute_capacity(new_consumer_count, InitializationMargin);
 
   if (initialized_) {
     resize_and_fill(required_capacity, initializer);
@@ -156,8 +154,7 @@ void ConcurrentRing<ProtectedData, InitializationMargin>::resize_and_fill(
 template <typename ProtectedData, std::size_t InitializationMargin>
 template <typename Initializer>
 void ConcurrentRing<ProtectedData, InitializationMargin>::resize_and_fill(
-    std::size_t new_capacity,
-    const Initializer& initializer) {
+    std::size_t new_capacity, const Initializer& initializer) {
   if (new_capacity > capacity_) {
     std::vector<std::unique_ptr<Slot>> new_slots;
     new_slots.reserve(new_capacity - capacity_);
@@ -194,7 +191,8 @@ bool ConcurrentRing<ProtectedData, InitializationMargin>::can_register_without_i
 }
 
 template <typename ProtectedData, std::size_t InitializationMargin>
-void ConcurrentRing<ProtectedData, InitializationMargin>::account_registration_without_initializer() {
+void ConcurrentRing<ProtectedData,
+                    InitializationMargin>::account_registration_without_initializer() {
   if (initialized_) {
     ++registrations_since_initialization_;
   }
@@ -208,13 +206,13 @@ void ConcurrentRing<ProtectedData, InitializationMargin>::reset_initialization_m
 template <typename ProtectedData, std::size_t InitializationMargin>
 std::uint64_t ConcurrentRing<ProtectedData, InitializationMargin>::now_ns() noexcept {
   return static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(
-                                       std::chrono::steady_clock::now().time_since_epoch())
-                                       .count());
+                                        std::chrono::steady_clock::now().time_since_epoch())
+                                        .count());
 }
 
 template <typename ProtectedData, std::size_t InitializationMargin>
-std::size_t ConcurrentRing<ProtectedData, InitializationMargin>::next_power_of_two(
-    std::size_t value) noexcept {
+std::size_t
+ConcurrentRing<ProtectedData, InitializationMargin>::next_power_of_two(std::size_t value) noexcept {
   std::size_t power = 1u;
   if (value > 1u) {
     while (power < value) {
@@ -226,8 +224,7 @@ std::size_t ConcurrentRing<ProtectedData, InitializationMargin>::next_power_of_t
 
 template <typename ProtectedData, std::size_t InitializationMargin>
 std::size_t ConcurrentRing<ProtectedData, InitializationMargin>::compute_capacity(
-    std::size_t consumer_count,
-    std::size_t uninitialized_registration_margin) noexcept {
+    std::size_t consumer_count, std::size_t uninitialized_registration_margin) noexcept {
   const std::size_t base_capacity =
       std::max(kMinimumCapacity, consumer_count + kWaitFreeSlotMargin);
   return next_power_of_two(base_capacity + uninitialized_registration_margin);
