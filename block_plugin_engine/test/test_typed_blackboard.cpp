@@ -1,3 +1,4 @@
+#include <stdexcept>
 #include <string>
 
 #include <gtest/gtest.h>
@@ -12,8 +13,11 @@ struct TestMessage {
 };
 
 TEST(TypedBlackboard, ProducerAndConsumerShareTypedNativeRepresentation) {
-  bpe::TypedProducer<TestMessage> producer{"typed_blackboard.sample"};
-  bpe::TypedConsumer<TestMessage> consumer{"typed_blackboard.sample"};
+  bpe::TypedProducer<TestMessage> producer;
+  bpe::TypedConsumer<TestMessage> consumer;
+
+  producer.bind("typed_blackboard.sample");
+  consumer.bind("typed_blackboard.sample");
 
   {
     auto output = producer.write_access();
@@ -28,9 +32,12 @@ TEST(TypedBlackboard, ProducerAndConsumerShareTypedNativeRepresentation) {
   EXPECT_DOUBLE_EQ(input.value().gain, 1.5);
 }
 
-TEST(TypedBlackboard, ConsumerCanRegisterBeforeProducerWhenItKnowsTheType) {
-  bpe::TypedConsumer<TestMessage> consumer{"typed_blackboard.consumer_first"};
-  bpe::TypedProducer<TestMessage> producer{"typed_blackboard.consumer_first"};
+TEST(TypedBlackboard, ConsumerCanBindBeforeProducerWhenItKnowsTheType) {
+  bpe::TypedConsumer<TestMessage> consumer;
+  bpe::TypedProducer<TestMessage> producer;
+
+  consumer.bind("typed_blackboard.consumer_first");
+  producer.bind("typed_blackboard.consumer_first");
 
   {
     auto output = producer.write_access();
@@ -41,6 +48,25 @@ TEST(TypedBlackboard, ConsumerCanRegisterBeforeProducerWhenItKnowsTheType) {
 
   ASSERT_TRUE(input.has_new_value());
   EXPECT_EQ(input.value().value, 7);
+}
+
+TEST(TypedBlackboard, AccessBeforeBindIsRejected) {
+  bpe::TypedProducer<TestMessage> producer;
+  bpe::TypedConsumer<TestMessage> consumer;
+
+  EXPECT_THROW(producer.write_access(), std::logic_error);
+  EXPECT_THROW(consumer.read_access(), std::logic_error);
+}
+
+TEST(TypedBlackboard, RebindingIsRejected) {
+  bpe::TypedProducer<TestMessage> producer;
+  bpe::TypedConsumer<TestMessage> consumer;
+
+  producer.bind("typed_blackboard.rebind_producer");
+  consumer.bind("typed_blackboard.rebind_consumer");
+
+  EXPECT_THROW(producer.bind("typed_blackboard.other_producer"), std::logic_error);
+  EXPECT_THROW(consumer.bind("typed_blackboard.other_consumer"), std::logic_error);
 }
 
 } // namespace

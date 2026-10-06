@@ -1,5 +1,4 @@
 #include <atomic>
-#include <optional>
 #include <string>
 
 #include <geometry_msgs/msg/twist_stamped.hpp>
@@ -47,9 +46,9 @@ public:
             config["angular_z_offset"].as<double>();
         }
 
-        consumer_.emplace(blackboard_input_);
+        consumer_.bind(blackboard_input_);
 
-        producer_.emplace(blackboard_output_);
+        producer_.bind(blackboard_output_);
       }
     } catch (...) {
       result = bpe::BlockResult::FAILURE;
@@ -77,10 +76,10 @@ public:
     bpe::ExecutionResult result = bpe::ExecutionResult::SUCCESS;
 
     if (active_.load(std::memory_order_acquire)) {
-      auto input = consumer_->read_access();
+      auto input = consumer_.read_access();
 
       if (input.has_new_value()) {
-        auto output = producer_->write_access();
+        auto output = producer_.write_access();
 
         output.value() = input.value();
 
@@ -94,8 +93,8 @@ public:
   }
 
 private:
-  std::optional<bpe::TypedConsumer<Message>> consumer_;
-  std::optional<bpe::TypedProducer<Message>> producer_;
+  bpe::TypedConsumer<Message> consumer_;
+  bpe::TypedProducer<Message> producer_;
 
   std::string blackboard_input_;
   std::string blackboard_output_;

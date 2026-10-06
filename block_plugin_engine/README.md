@@ -34,9 +34,24 @@ bpe::TypedProducer<T>
 bpe::TypedConsumer<T>
 ```
 
-Registration through these helpers automatically supplies the typed
-`RosProtectedData` initializer. Runtime access is obtained through RAII
-adapters:
+The endpoint object is declared independently from configuration and is
+explicitly bound to a blackboard label during plugin configuration:
+
+```cpp
+bpe::TypedProducer<T> producer;
+bpe::TypedConsumer<T> consumer;
+
+producer.bind(output_label);
+consumer.bind(input_label);
+```
+
+`bind()` performs the blackboard registration and automatically supplies the
+typed `RosProtectedData` initializer. Binding is mandatory and may only happen
+once. Runtime access before binding is rejected. The registration state needed
+for deferred configuration is kept inside the helper and is not exposed in the
+plugin API.
+
+Runtime access is obtained through RAII adapters:
 
 ```cpp
 auto output = producer.write_access();

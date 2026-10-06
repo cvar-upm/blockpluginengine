@@ -12,6 +12,8 @@ namespace bpe {
 // adapters provide the supported access paths to the native and serialized
 // representations.
 struct RosProtectedData {
+  RosProtectedData() = default;
+
   std::shared_ptr<void> native;
   rclcpp::SerializedMessage serialized;
 };

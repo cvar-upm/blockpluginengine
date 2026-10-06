@@ -1,6 +1,5 @@
 #include <atomic>
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 
@@ -40,7 +39,7 @@ public:
         blackboard_input_ =
           config["blackboard_input"].as<std::string>();
 
-        consumer_.emplace(blackboard_input_);
+        consumer_.bind(blackboard_input_);
 
         publisher_ =
           create_publisher<Message>(
@@ -79,7 +78,7 @@ public:
     bpe::ExecutionResult result = bpe::ExecutionResult::SUCCESS;
 
     if (active_.load(std::memory_order_acquire)) {
-      auto input = consumer_->read_access();
+      auto input = consumer_.read_access();
 
       if (input.has_new_value()) {
         publisher_->publish(input.value());
@@ -93,7 +92,7 @@ private:
   rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr topics_;
   rclcpp::Publisher<Message>::SharedPtr publisher_;
 
-  std::optional<bpe::TypedConsumer<Message>> consumer_;
+  bpe::TypedConsumer<Message> consumer_;
 
   std::string topic_;
   std::string blackboard_input_;

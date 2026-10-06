@@ -3,6 +3,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
+#include <stdexcept>
 #include <string>
 #include <utility>
 
@@ -104,14 +106,23 @@ private:
 
 template <typename T> class TypedProducer {
 public:
-  explicit TypedProducer(const std::string& label)
-    : factory_(
-        the_blackboard().register_producer(label, detail::RosProtectedDataInitializer<T>{})) {}
-
+  TypedProducer() = default;
   ~TypedProducer() = default;
 
+  void bind(const std::string& label) {
+    if (binding_.has_value()) {
+      throw std::logic_error("TypedProducer already bound");
+    } else {
+      binding_.emplace(label);
+    }
+  }
+
   TypedProducerAdapter<T> write_access() {
-    return TypedProducerAdapter<T>(factory_);
+    if (!binding_.has_value()) {
+      throw std::logic_error("TypedProducer is not bound");
+    }
+
+    return TypedProducerAdapter<T>(binding_->factory);
   }
 
   TypedProducer(const TypedProducer&) = delete;
@@ -120,19 +131,37 @@ public:
   TypedProducer& operator=(TypedProducer&&) = delete;
 
 private:
-  detail::ProducerFactory factory_;
+  struct Binding {
+    explicit Binding(const std::string& label)
+      : factory(the_blackboard().register_producer(
+          label,
+          detail::RosProtectedDataInitializer<T>{})) {}
+
+    detail::ProducerFactory factory;
+  };
+
+  std::optional<Binding> binding_;
 };
 
 template <typename T> class TypedConsumer {
 public:
-  explicit TypedConsumer(const std::string& label)
-    : factory_(
-        the_blackboard().register_consumer(label, detail::RosProtectedDataInitializer<T>{})) {}
-
+  TypedConsumer() = default;
   ~TypedConsumer() = default;
 
+  void bind(const std::string& label) {
+    if (binding_.has_value()) {
+      throw std::logic_error("TypedConsumer already bound");
+    } else {
+      binding_.emplace(label);
+    }
+  }
+
   TypedConsumerAdapter<T> read_access() {
-    return TypedConsumerAdapter<T>(factory_);
+    if (!binding_.has_value()) {
+      throw std::logic_error("TypedConsumer is not bound");
+    }
+
+    return TypedConsumerAdapter<T>(binding_->factory);
   }
 
   TypedConsumer(const TypedConsumer&) = delete;
@@ -141,7 +170,16 @@ public:
   TypedConsumer& operator=(TypedConsumer&&) = delete;
 
 private:
-  detail::ConsumerFactory factory_;
+  struct Binding {
+    explicit Binding(const std::string& label)
+      : factory(the_blackboard().register_consumer(
+          label,
+          detail::RosProtectedDataInitializer<T>{})) {}
+
+    detail::ConsumerFactory factory;
+  };
+
+  std::optional<Binding> binding_;
 };
 
 } // namespace bpe

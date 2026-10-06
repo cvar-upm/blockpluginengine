@@ -1,6 +1,5 @@
 #include <atomic>
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 
@@ -38,7 +37,7 @@ public:
         blackboard_output_ =
           config["blackboard_output"].as<std::string>();
 
-        producer_.emplace(blackboard_output_);
+        producer_.bind(blackboard_output_);
 
         subscription_ =
           create_subscription<Message>(
@@ -47,7 +46,7 @@ public:
             rclcpp::QoS{10},
             [this](std::shared_ptr<Message> message) {
               if (active_.load(std::memory_order_acquire)) {
-                auto grant = producer_->write_access();
+                auto grant = producer_.write_access();
                 grant.value() = *message;
               }
             });
@@ -83,7 +82,7 @@ private:
   rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr topics_;
   rclcpp::Subscription<Message>::SharedPtr subscription_;
 
-  std::optional<bpe::TypedProducer<Message>> producer_;
+  bpe::TypedProducer<Message> producer_;
 
   std::string topic_;
   std::string blackboard_output_;
