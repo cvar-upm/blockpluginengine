@@ -105,13 +105,27 @@ BPE_LifecycleNode::CallbackReturn BPE_LifecycleNode::on_cleanup(const rclcpp_lif
 BPE_LifecycleNode::CallbackReturn BPE_LifecycleNode::on_shutdown(const rclcpp_lifecycle::State&) {
   RCLCPP_INFO(get_logger(), "Shutting down BlockPluginEngine");
 
+  RCLCPP_INFO(get_logger(), "Shutdown: stopping scheduler");
   scheduler_->stop();
-  plugin_manager_->stop();
-  plugin_manager_->cleanup();
+  RCLCPP_INFO(get_logger(), "Shutdown: scheduler stopped");
 
+  RCLCPP_INFO(get_logger(), "Shutdown: stopping plugins");
+  const bool stop_ok = plugin_manager_->stop();
+  RCLCPP_INFO(get_logger(), "Shutdown: plugins stopped (%s)", stop_ok ? "ok" : "with errors");
+
+  RCLCPP_INFO(get_logger(), "Shutdown: cleaning up plugins");
+  const bool cleanup_ok = plugin_manager_->cleanup();
+  RCLCPP_INFO(get_logger(), "Shutdown: plugins cleaned up (%s)", cleanup_ok ? "ok" : "with errors");
+
+  RCLCPP_INFO(get_logger(), "Shutdown: resetting blackboard");
   detail::reset_blackboard();
-  detail::reset_ros_type_registry();
+  RCLCPP_INFO(get_logger(), "Shutdown: blackboard reset");
 
+  RCLCPP_INFO(get_logger(), "Shutdown: resetting ROS type registry");
+  detail::reset_ros_type_registry();
+  RCLCPP_INFO(get_logger(), "Shutdown: ROS type registry reset");
+
+  RCLCPP_INFO(get_logger(), "Shutdown: lifecycle cleanup completed");
   return CallbackReturn::SUCCESS;
 }
 

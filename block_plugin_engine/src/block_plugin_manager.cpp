@@ -137,9 +137,13 @@ bool BlockPluginManager::stop() {
   bool success = true;
 
   for (auto it = blocks_.rbegin(); it != blocks_.rend(); ++it) {
+    RCLCPP_INFO(logger_, "Stopping Block '%s'", it->name.c_str());
+
     if (it->plugin->stop() != BlockResult::SUCCESS) {
       RCLCPP_ERROR(logger_, "Failed to stop Block '%s'", it->name.c_str());
       success = false;
+    } else {
+      RCLCPP_INFO(logger_, "Stopped Block '%s'", it->name.c_str());
     }
   }
 
@@ -149,16 +153,24 @@ bool BlockPluginManager::stop() {
 bool BlockPluginManager::cleanup() {
   bool success = true;
 
+  RCLCPP_INFO(logger_, "Clearing scheduler block references");
   scheduler_->clear();
+  RCLCPP_INFO(logger_, "Scheduler block references cleared");
 
   for (auto it = blocks_.rbegin(); it != blocks_.rend(); ++it) {
+    RCLCPP_INFO(logger_, "Cleaning up Block '%s'", it->name.c_str());
+
     if (it->plugin->cleanup() != BlockResult::SUCCESS) {
       RCLCPP_ERROR(logger_, "Failed to clean up Block '%s'", it->name.c_str());
       success = false;
+    } else {
+      RCLCPP_INFO(logger_, "Cleaned up Block '%s'", it->name.c_str());
     }
   }
 
+  RCLCPP_INFO(logger_, "Destroying Block instances");
   blocks_.clear();
+  RCLCPP_INFO(logger_, "Block instances destroyed");
   return success;
 }
 

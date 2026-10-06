@@ -60,26 +60,39 @@ int main(int argc, char* argv[]) {
         executor.spin_once(std::chrono::milliseconds(20));
       }
 
+      RCLCPP_INFO(node->get_logger(), "Main: leaving executor loop");
       executor.remove_node(node->get_node_base_interface());
+      RCLCPP_INFO(node->get_logger(), "Main: node removed from executor");
 
       if (rclcpp::ok()) {
         using CallbackReturn =
             rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
 
+        RCLCPP_INFO(node->get_logger(), "Main: requesting lifecycle shutdown");
         CallbackReturn callback_result = CallbackReturn::SUCCESS;
         node->shutdown(callback_result);
 
         if (callback_result != CallbackReturn::SUCCESS) {
           RCLCPP_ERROR(node->get_logger(), "BlockPluginEngine shutdown transition failed");
           result = 1;
+        } else {
+          RCLCPP_INFO(node->get_logger(), "Main: lifecycle shutdown completed");
         }
       } else {
         RCLCPP_ERROR(node->get_logger(), "ROS context became invalid before BlockPluginEngine shutdown");
         result = 1;
       }
+
+      RCLCPP_INFO(node->get_logger(), "Main: executor scope ending");
     }
+
+    RCLCPP_INFO(node->get_logger(), "Main: executor destroyed");
+    RCLCPP_INFO(node->get_logger(), "Main: destroying lifecycle node");
+    node.reset();
+    RCLCPP_INFO(rclcpp::get_logger("block_plugin_engine"), "Main: lifecycle node destroyed");
   }
 
+  RCLCPP_INFO(rclcpp::get_logger("block_plugin_engine"), "Main: shutting down ROS context");
   rclcpp::shutdown();
 
   return result;
