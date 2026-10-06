@@ -2,7 +2,6 @@
 #include <cstddef>
 #include <memory>
 #include <string>
-#include <utility>
 
 #include <pluginlib/class_list_macros.hpp>
 #include <rclcpp/create_generic_publisher.hpp>
@@ -17,14 +16,14 @@
 
 namespace bpe_ros_boundary_plugins {
 
-class RosGenericOutputBlock final
+class RosOutputBlock final
   : public bpe::IBlockPlugin,
     public bpe::IRosBoundaryBlock,
     public bpe::ITimerBlock {
 public:
   void set_ros_interface(
-      rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr topics) override {
-    topics_ = std::move(topics);
+      const rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr& topics) override {
+    topics_ = topics;
   }
 
   bpe::BlockResult configure(const bpe::BlockConfig& config) override {
@@ -107,5 +106,5 @@ private:
 } // namespace bpe_ros_boundary_plugins
 
 PLUGINLIB_EXPORT_CLASS(
-  bpe_ros_boundary_plugins::RosGenericOutputBlock,
+  bpe_ros_boundary_plugins::RosOutputBlock,
   bpe::IBlockPlugin)

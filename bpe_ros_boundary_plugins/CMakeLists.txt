@@ -11,8 +11,8 @@ find_package(pluginlib REQUIRED)
 find_package(rclcpp REQUIRED)
 
 add_library(bpe_ros_boundary_plugins SHARED
-  src/ros_generic_input_block.cpp
-  src/ros_generic_output_block.cpp
+  src/ros_input_block.cpp
+  src/ros_output_block.cpp
 )
 
 target_compile_features(bpe_ros_boundary_plugins PUBLIC cxx_std_20)

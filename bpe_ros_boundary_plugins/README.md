@@ -4,8 +4,8 @@ Generic ROS 2 boundary plugins for BlockPluginEngine.
 
 The package provides:
 
-- `bpe_ros_boundary_plugins/RosGenericInputBlock`: generic ROS 2 subscription -> BPE blackboard;
-- `bpe_ros_boundary_plugins/RosGenericOutputBlock`: BPE blackboard -> generic ROS 2 publication.
+- `bpe_ros_boundary_plugins/RosInputBlock`: generic ROS 2 subscription -> BPE blackboard;
+- `bpe_ros_boundary_plugins/RosOutputBlock`: BPE blackboard -> generic ROS 2 publication.
 
 Both plugins operate on `rclcpp::SerializedMessage` and do not know the C++ ROS message type. The
 message type is configured with its ROS name (for example `geometry_msgs/msg/TwistStamped`) and is
@@ -25,7 +25,7 @@ Input boundary:
 
 ```yaml
 - name: ros_input
-  type: bpe_ros_boundary_plugins/RosGenericInputBlock
+  type: bpe_ros_boundary_plugins/RosInputBlock
   config:
     topic: /input
     ros_type: geometry_msgs/msg/TwistStamped
@@ -37,7 +37,7 @@ Output boundary:
 
 ```yaml
 - name: ros_output
-  type: bpe_ros_boundary_plugins/RosGenericOutputBlock
+  type: bpe_ros_boundary_plugins/RosOutputBlock
   execution:
     policy: timer
     period: 20ms

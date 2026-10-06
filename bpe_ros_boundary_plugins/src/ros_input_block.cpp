@@ -1,8 +1,8 @@
 #include <atomic>
 #include <cstddef>
+#include <functional>
 #include <memory>
 #include <string>
-#include <utility>
 
 #include <pluginlib/class_list_macros.hpp>
 #include <rclcpp/create_generic_subscription.hpp>
@@ -17,13 +17,13 @@
 
 namespace bpe_ros_boundary_plugins {
 
-class RosGenericInputBlock final
+class RosInputBlock final
   : public bpe::IBlockPlugin,
     public bpe::IRosBoundaryBlock {
 public:
   void set_ros_interface(
-      rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr topics) override {
-    topics_ = std::move(topics);
+      const rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr& topics) override {
+    topics_ = topics;
   }
 
   bpe::BlockResult configure(const bpe::BlockConfig& config) override {
@@ -52,12 +52,7 @@ public:
               topic_,
               ros_type_,
               rclcpp::QoS(qos_depth_),
-              [this](std::shared_ptr<rclcpp::SerializedMessage> message) {
-                if (active_.load(std::memory_order_acquire)) {
-                  auto output = producer_.write_access();
-                  output.serialized() = *message;
-                }
-              });
+              std::bind(&RosInputBlock::on_message, this, std::placeholders::_1));
         }
       }
     } catch (...) {
@@ -91,6 +86,13 @@ public:
   }
 
 private:
+  void on_message(std::shared_ptr<rclcpp::SerializedMessage> message) {
+    if (active_.load(std::memory_order_acquire)) {
+      auto output = producer_.write_access();
+      output.serialized() = *message;
+    }
+  }
+
   detail::SerializedProducer producer_;
 
   rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr topics_;
@@ -106,5 +108,5 @@ private:
 } // namespace bpe_ros_boundary_plugins
 
 PLUGINLIB_EXPORT_CLASS(
-  bpe_ros_boundary_plugins::RosGenericInputBlock,
+  bpe_ros_boundary_plugins::RosInputBlock,
   bpe::IBlockPlugin)
