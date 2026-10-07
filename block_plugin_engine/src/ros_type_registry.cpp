@@ -4,6 +4,8 @@
 #include <stdexcept>
 #include <utility>
 
+#include <rclcpp/logging.hpp>
+
 #include "detail/runtime_state.hpp"
 
 namespace bpe {
@@ -115,7 +117,14 @@ RosTypeRegistry& the_ros_type_registry() {
 namespace detail {
 
 void reset_ros_type_registry() {
-  ros_type_registry_instance() = std::make_unique<RosTypeRegistry>();
+  auto replacement = std::make_unique<RosTypeRegistry>();
+  auto& instance = ros_type_registry_instance();
+
+  RCLCPP_INFO(rclcpp::get_logger("block_plugin_engine"),
+              "Runtime state: destroying ROS type registry instance");
+  instance = std::move(replacement);
+  RCLCPP_INFO(rclcpp::get_logger("block_plugin_engine"),
+              "Runtime state: ROS type registry instance destroyed and recreated");
 }
 
 } // namespace detail

@@ -1,6 +1,9 @@
 #include "block_plugin_engine/blackboard.hpp"
 
 #include <memory>
+#include <utility>
+
+#include <rclcpp/logging.hpp>
 
 #include "detail/runtime_state.hpp"
 
@@ -21,7 +24,14 @@ BpeBlackboard& the_blackboard() {
 namespace detail {
 
 void reset_blackboard() {
-  blackboard_instance() = std::make_unique<BpeBlackboard>();
+  auto replacement = std::make_unique<BpeBlackboard>();
+  auto& instance = blackboard_instance();
+
+  RCLCPP_INFO(rclcpp::get_logger("block_plugin_engine"),
+              "Runtime state: destroying blackboard instance");
+  instance = std::move(replacement);
+  RCLCPP_INFO(rclcpp::get_logger("block_plugin_engine"),
+              "Runtime state: blackboard instance destroyed and recreated");
 }
 
 } // namespace detail

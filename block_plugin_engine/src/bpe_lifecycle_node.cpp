@@ -125,6 +125,14 @@ BPE_LifecycleNode::CallbackReturn BPE_LifecycleNode::on_shutdown(const rclcpp_li
   detail::reset_ros_type_registry();
   RCLCPP_INFO(get_logger(), "Shutdown: ROS type registry reset");
 
+  RCLCPP_INFO(get_logger(), "Shutdown: destroying plugin manager");
+  plugin_manager_.reset();
+  RCLCPP_INFO(get_logger(), "Shutdown: plugin manager destroyed");
+
+  RCLCPP_INFO(get_logger(), "Shutdown: destroying scheduler");
+  scheduler_.reset();
+  RCLCPP_INFO(get_logger(), "Shutdown: scheduler destroyed");
+
   RCLCPP_INFO(get_logger(), "Shutdown: lifecycle cleanup completed");
   return CallbackReturn::SUCCESS;
 }
