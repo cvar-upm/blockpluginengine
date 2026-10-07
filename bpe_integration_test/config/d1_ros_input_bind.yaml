@@ -1,0 +1,13 @@
+scheduler:
+  realtime:
+    enabled: false
+
+  timing:
+    spin_before_deadline: 500us
+
+blocks:
+  - name: debug_ros_input_bind
+    type: bpe_ros_boundary_plugins/DebugRosInputBindBlock
+    config:
+      ros_type: geometry_msgs/msg/TwistStamped
+      blackboard_output: raw_twist

@@ -12,4 +12,28 @@
     base_class_type="bpe::IBlockPlugin">
     <description>Generic BPE blackboard to serialized ROS 2 publication boundary.</description>
   </class>
+
+  <!-- Temporary diagnostic plugins. Remove these registrations when the ROS input
+       subscription lifetime issue has been isolated. Keep the source fixtures under
+       src/debug/ for future regression work if useful. -->
+  <class
+    name="bpe_ros_boundary_plugins/DebugRosInputBindBlock"
+    type="bpe_ros_boundary_plugins::debug::DebugRosInputBindBlock"
+    base_class_type="bpe::IBlockPlugin">
+    <description>Diagnostic fixture: serialized blackboard producer binding only.</description>
+  </class>
+
+  <class
+    name="bpe_ros_boundary_plugins/DebugRosSubscriptionMemberBlock"
+    type="bpe_ros_boundary_plugins::debug::DebugRosSubscriptionMemberBlock"
+    base_class_type="bpe::IBlockPlugin">
+    <description>Diagnostic fixture: generic ROS subscription with member callback only.</description>
+  </class>
+
+  <class
+    name="bpe_ros_boundary_plugins/DebugRosSubscriptionFunctionBlock"
+    type="bpe_ros_boundary_plugins::debug::DebugRosSubscriptionFunctionBlock"
+    base_class_type="bpe::IBlockPlugin">
+    <description>Diagnostic fixture: generic ROS subscription with object-independent callback.</description>
+  </class>
 </library>
