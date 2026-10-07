@@ -47,3 +47,13 @@ Output boundary:
     blackboard_input: processed_twist
     qos_depth: 10
 ```
+
+## Archived diagnostic fixtures
+
+`src/debug/` contains source-only fixtures that were used to isolate a shutdown/lifetime fault in the
+ROS input boundary. They are intentionally excluded from the library build and from `plugins.xml`.
+
+The failing case was reduced to creating a generic ROS subscription from a dynamically loaded plugin.
+Keeping the plugin manager and its class loader alive until after `BPE_LifecycleNode` destruction
+eliminated the shutdown fault. `BPECompositionRoot` therefore enforces that destruction order
+explicitly. See `src/debug/README.md` for the individual diagnostic fixtures and experiment summary.

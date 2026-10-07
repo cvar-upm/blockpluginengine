@@ -12,7 +12,36 @@ if(BUILD_TESTING)
   find_package(launch_testing_ament_cmake REQUIRED)
 
   add_launch_test(
+    test/test_configure_shutdown.py
+    TARGET test_configure_shutdown_00_empty
+    ARGS "config_name:=00_empty.yaml"
+    TIMEOUT 30
+  )
+
+  add_launch_test(
+    test/test_configure_shutdown.py
+    TARGET test_configure_shutdown_10_internal_transform
+    ARGS "config_name:=10_internal_transform.yaml"
+    TIMEOUT 30
+  )
+
+  add_launch_test(
+    test/test_configure_shutdown.py
+    TARGET test_configure_shutdown_20_ros_input
+    ARGS "config_name:=20_ros_input.yaml"
+    TIMEOUT 30
+  )
+
+  add_launch_test(
+    test/test_configure_shutdown.py
+    TARGET test_configure_shutdown_30_ros_output
+    ARGS "config_name:=30_ros_output.yaml"
+    TIMEOUT 30
+  )
+
+  add_launch_test(
     test/test_twist_pipeline.py
+    TARGET test_90_full_pipeline
     TIMEOUT 30
   )
 endif()

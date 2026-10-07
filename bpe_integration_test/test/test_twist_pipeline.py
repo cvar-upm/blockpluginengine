@@ -18,7 +18,7 @@ def generate_test_description():
     config_file = os.path.join(
         get_package_share_directory('bpe_integration_test'),
         'config',
-        'twist_pipeline.yaml',
+        '90_full_pipeline.yaml',
     )
 
     engine = LifecycleNode(
