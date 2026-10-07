@@ -27,10 +27,10 @@ void reset_blackboard() {
   auto replacement = std::make_unique<BpeBlackboard>();
   auto& instance = blackboard_instance();
 
-  RCLCPP_INFO(rclcpp::get_logger("block_plugin_engine"),
+  RCLCPP_DEBUG(rclcpp::get_logger("block_plugin_engine"),
               "Runtime state: destroying blackboard instance");
   instance = std::move(replacement);
-  RCLCPP_INFO(rclcpp::get_logger("block_plugin_engine"),
+  RCLCPP_DEBUG(rclcpp::get_logger("block_plugin_engine"),
               "Runtime state: blackboard instance destroyed and recreated");
 }
 

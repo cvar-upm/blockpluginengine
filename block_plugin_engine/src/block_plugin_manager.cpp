@@ -94,6 +94,7 @@ BlockPluginManager::BlockPluginManager(
     loader_("block_plugin_engine", "bpe::IBlockPlugin", "plugin", plugin_xml_paths) {}
 
 bool BlockPluginManager::configure(const YAML::Node& blocks_config) {
+  RCLCPP_DEBUG(logger_, "BlockPluginManager: configuring plugins");
   if (!blocks_.empty()) {
     RCLCPP_ERROR(logger_, "BlockPluginManager is already configured");
     return false;
@@ -104,6 +105,8 @@ bool BlockPluginManager::configure(const YAML::Node& blocks_config) {
     return false;
   }
 
+  RCLCPP_DEBUG(logger_, "BlockPluginManager: %zu plugin configurations loaded", configs.size());
+
   for (const auto& config : configs) {
     if (!configure_instance(config)) {
       rollback_configuration();
@@ -111,14 +114,18 @@ bool BlockPluginManager::configure(const YAML::Node& blocks_config) {
     }
   }
 
+  RCLCPP_DEBUG(logger_, "BlockPluginManager: configuration completed");
   return true;
 }
 
 bool BlockPluginManager::start() {
+  RCLCPP_DEBUG(logger_, "BlockPluginManager: starting plugins");
   std::size_t started = 0;
 
   for (auto& instance : blocks_) {
+    RCLCPP_DEBUG(logger_, "Starting Block '%s'", instance.name.c_str());
     if (instance.plugin->start() == BlockResult::SUCCESS) {
+      RCLCPP_DEBUG(logger_, "Started Block '%s'", instance.name.c_str());
       ++started;
     } else {
       RCLCPP_ERROR(logger_, "Failed to start Block '%s'", instance.name.c_str());
@@ -130,6 +137,7 @@ bool BlockPluginManager::start() {
       return false;
     }
   }
+  RCLCPP_DEBUG(logger_, "BlockPluginManager: plugins started");
   return true;
 }
 
@@ -137,13 +145,13 @@ bool BlockPluginManager::stop() {
   bool success = true;
 
   for (auto it = blocks_.rbegin(); it != blocks_.rend(); ++it) {
-    RCLCPP_INFO(logger_, "Stopping Block '%s'", it->name.c_str());
+    RCLCPP_DEBUG(logger_, "Stopping Block '%s'", it->name.c_str());
 
     if (it->plugin->stop() != BlockResult::SUCCESS) {
       RCLCPP_ERROR(logger_, "Failed to stop Block '%s'", it->name.c_str());
       success = false;
     } else {
-      RCLCPP_INFO(logger_, "Stopped Block '%s'", it->name.c_str());
+      RCLCPP_DEBUG(logger_, "Stopped Block '%s'", it->name.c_str());
     }
   }
 
@@ -153,24 +161,24 @@ bool BlockPluginManager::stop() {
 bool BlockPluginManager::cleanup() {
   bool success = true;
 
-  RCLCPP_INFO(logger_, "Clearing scheduler block references");
+  RCLCPP_DEBUG(logger_, "Clearing scheduler block references");
   scheduler_->clear();
-  RCLCPP_INFO(logger_, "Scheduler block references cleared");
+  RCLCPP_DEBUG(logger_, "Scheduler block references cleared");
 
   for (auto it = blocks_.rbegin(); it != blocks_.rend(); ++it) {
-    RCLCPP_INFO(logger_, "Cleaning up Block '%s'", it->name.c_str());
+    RCLCPP_DEBUG(logger_, "Cleaning up Block '%s'", it->name.c_str());
 
     if (it->plugin->cleanup() != BlockResult::SUCCESS) {
       RCLCPP_ERROR(logger_, "Failed to clean up Block '%s'", it->name.c_str());
       success = false;
     } else {
-      RCLCPP_INFO(logger_, "Cleaned up Block '%s'", it->name.c_str());
+      RCLCPP_DEBUG(logger_, "Cleaned up Block '%s'", it->name.c_str());
     }
   }
 
-  RCLCPP_INFO(logger_, "Destroying Block instances");
+  RCLCPP_DEBUG(logger_, "Destroying Block instances");
   blocks_.clear();
-  RCLCPP_INFO(logger_, "Block instances destroyed");
+  RCLCPP_DEBUG(logger_, "Block instances destroyed");
   return success;
 }
 
@@ -226,6 +234,11 @@ bool BlockPluginManager::load_configuration(const YAML::Node& blocks,
 bool BlockPluginManager::configure_instance(const BlockInstanceConfig& config) {
   std::shared_ptr<IBlockPlugin> plugin;
 
+  RCLCPP_DEBUG(logger_,
+               "Loading Block '%s' of type '%s'",
+               config.name.c_str(),
+               config.type.c_str());
+
   try {
     plugin = loader_.createSharedInstance(config.type);
   } catch (const pluginlib::PluginlibException& error) {
@@ -233,15 +246,20 @@ bool BlockPluginManager::configure_instance(const BlockInstanceConfig& config) {
     return false;
   }
 
+  RCLCPP_DEBUG(logger_, "Loaded Block '%s'", config.name.c_str());
+
   if (auto* ros = dynamic_cast<IRosBoundaryBlock*>(plugin.get())) {
+    RCLCPP_DEBUG(logger_, "Injecting ROS interface into Block '%s'", config.name.c_str());
     ros->set_ros_interface(ros_topics_);
   }
 
+  RCLCPP_DEBUG(logger_, "Configuring Block '%s'", config.name.c_str());
   if (plugin->configure(config.config) != BlockResult::SUCCESS) {
     RCLCPP_ERROR(logger_, "Failed to configure Block '%s'", config.name.c_str());
     return false;
   }
 
+  RCLCPP_DEBUG(logger_, "Configured Block '%s'", config.name.c_str());
   blocks_.push_back({config.name, plugin});
 
   if (config.execution) {
@@ -253,6 +271,7 @@ bool BlockPluginManager::configure_instance(const BlockInstanceConfig& config) {
       return false;
     }
 
+    RCLCPP_DEBUG(logger_, "Registering Block '%s' in scheduler", config.name.c_str());
     const SchedulerResult scheduler_result =
         scheduler_->add(config.name, *timer, *config.execution);
 
@@ -260,6 +279,7 @@ bool BlockPluginManager::configure_instance(const BlockInstanceConfig& config) {
       RCLCPP_ERROR(logger_, "Could not register Block '%s' in the scheduler", config.name.c_str());
       return false;
     }
+    RCLCPP_DEBUG(logger_, "Registered Block '%s' in scheduler", config.name.c_str());
   }
 
   return true;

@@ -100,12 +100,23 @@ Public API:
 - `ExecutionConfig`
 
 Internal implementation:
+- `BPECompositionRoot`
 - `BPE_LifecycleNode`
 - `BlockPluginManager`
 - `BPE_SimpleScheduler`
 
-`BPE_LifecycleNode` and `BlockPluginManager` are compiled directly into the
-engine executable. `BPE_SimpleScheduler` remains a separate shared library.
+`BPECompositionRoot`, `BPE_LifecycleNode` and `BlockPluginManager` are compiled
+directly into the engine executable. `BPE_SimpleScheduler` remains a separate
+shared library.
+
+`BPECompositionRoot` owns the runtime trio and makes its physical lifetime
+explicit. Its destructor deliberately destroys `BPE_LifecycleNode` first, then
+`BlockPluginManager`, and finally the scheduler. Integration diagnostics showed
+that destroying the manager/ClassLoader before the lifecycle node causes node
+teardown to fail when dynamically loaded plugins have created ROS subscriptions.
+Keeping the manager alive also keeps those plugin DSOs loaded through node
+teardown. This order is therefore a runtime correctness requirement, not an
+incidental member-declaration detail.
 The process-wide blackboard and other shared runtime state live in
 `block_plugin_engine_core`.
 

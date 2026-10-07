@@ -120,10 +120,10 @@ void reset_ros_type_registry() {
   auto replacement = std::make_unique<RosTypeRegistry>();
   auto& instance = ros_type_registry_instance();
 
-  RCLCPP_INFO(rclcpp::get_logger("block_plugin_engine"),
+  RCLCPP_DEBUG(rclcpp::get_logger("block_plugin_engine"),
               "Runtime state: destroying ROS type registry instance");
   instance = std::move(replacement);
-  RCLCPP_INFO(rclcpp::get_logger("block_plugin_engine"),
+  RCLCPP_DEBUG(rclcpp::get_logger("block_plugin_engine"),
               "Runtime state: ROS type registry instance destroyed and recreated");
 }
 

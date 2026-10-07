@@ -72,12 +72,13 @@ target_link_libraries(bpe_simple_scheduler
 #
 # BlockPluginEngine executable
 #
-# BPE_LifecycleNode and BlockPluginManager are internal implementation
-# details and are compiled directly into the executable.
+# BPECompositionRoot, BPE_LifecycleNode and BlockPluginManager are internal
+# implementation details and are compiled directly into the executable.
 #
 
 add_executable(block_plugin_engine
   src/main.cpp
+  src/bpe_composition_root.cpp
   src/bpe_lifecycle_node.cpp
   src/block_plugin_manager.cpp
 )
