@@ -1,93 +1,345 @@
-# BlockPluginEngine
+# Block Plugin Engine
 
+Block Plugin Engine (BPE) is a ROS 2 execution framework for dynamically loaded processing blocks.
 
+BPE provides a single ROS 2 lifecycle node, a plugin manager, a periodic scheduler, and a concurrent blackboard used to exchange data between blocks. ROS 2 is primarily treated as an input/output boundary: processing blocks can remain independent from ROS unless they explicitly implement a ROS boundary.
 
-## Getting started
+The system is designed around a fixed configuration established before execution and an execution path with predictable concurrency and memory behaviour.
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+## Key features and guarantees
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+BPE currently provides the following architectural properties:
 
-## Add your files
+- A single `rclcpp_lifecycle::LifecycleNode` acts as the ROS 2 integration point.
+- Processing components are dynamically loaded through `pluginlib`.
+- Multiple instances of the same plugin type may be configured.
+- The block topology is fixed after configuration; plugins are not added or removed while the system is running.
+- Data exchange between blocks uses the `bpe_blackboard` concurrent blackboard.
+- Blackboard data access during execution does not use mutex-based blocking.
+- Under its defined single-producer/multiple-consumer topology and slot-capacity contract, blackboard producer and consumer access provides wait-free progress.
+- Consumers read the latest committed value and do not interfere with each other.
+- BPE has two main execution domains:
+  - the main ROS executor thread;
+  - the dedicated scheduler worker thread.
+- The scheduler is designed for periodic real-time-oriented execution:
+  - fixed cyclic schedule;
+  - absolute deadlines using `clock_nanosleep(..., TIMER_ABSTIME)`;
+  - configurable wake-early interval;
+  - final busy-wait until the deadline;
+  - no allocations in the cyclic execution path after startup.
+- ROS input and output are implemented as generic boundaries and do not require compile-time knowledge of the ROS message type.
+- Internal plugins use normal typed C++ messages.
+- Serialization is performed only when a ROS output requires it.
+- The runtime composition and destruction order are explicit design contracts rather than incidental C++ member lifetime.
 
-* [Create](https://docs.gitlab.com/user/project/repository/web_editor/#create-a-file) or [upload](https://docs.gitlab.com/user/project/repository/web_editor/#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+These properties are described in detail in [`docs/architecture.md`](docs/architecture.md).
 
+## Main architecture
+
+The main runtime components are:
+
+```text
+BPECompositionRoot
+├── BPE_LifecycleNode
+├── BlockPluginManager
+└── Scheduler
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/cvar-upm/alpha/sherec/wp5/blockpluginengine.git
-git branch -M main
-git push -uf origin main
+
+`BPECompositionRoot` is the composition root and owner of the runtime components. It constructs the system, connects its dependencies, and enforces the required destruction order.
+
+`BPE_LifecycleNode` maps the ROS 2 lifecycle to BPE operations.
+
+`BlockPluginManager` loads, configures, starts, stops, and destroys block plugins.
+
+The scheduler executes blocks implementing `ITimerBlock`.
+
+The blackboard provides concurrent communication between producers and consumers.
+
+### Lifetime contract
+
+The destruction order is deliberately explicit:
+
+```text
+BPE_LifecycleNode
+        ↓
+BlockPluginManager / pluginlib ClassLoader
+        ↓
+Scheduler
 ```
 
-## Integrate with your tools
+This order is part of the correctness contract.
 
-* [Set up project integrations](https://gitlab.com/cvar-upm/alpha/sherec/wp5/blockpluginengine/-/settings/integrations)
+Plugins may create ROS entities such as generic subscriptions. ROS can retain internal references associated with those entities until the lifecycle node itself is destroyed. Therefore plugin shared libraries must remain loaded until destruction of the `BPE_LifecycleNode` has completed.
 
-## Collaborate with your team
+Changing this order can introduce invalid references to code from already unloaded plugin libraries.
 
-* [Invite team members and collaborators](https://docs.gitlab.com/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/user/project/merge_requests/creating_merge_requests/)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/user/project/issues/managing_issues/#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+## Block interfaces
 
-## Test and Deploy
+Every block implements:
 
-Use the built-in continuous integration in GitLab.
+```cpp
+bpe::IBlockPlugin
+```
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/topics/autodevops/requirements/)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ci/environments/protected_environments/)
+which provides the block lifecycle:
 
-***
+```text
+configure
+start
+stop
+cleanup
+```
 
-# Editing this README
+Periodic blocks additionally implement:
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+```cpp
+bpe::ITimerBlock
+```
 
-## Suggestions for a good README
+ROS boundary blocks implement:
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+```cpp
+bpe::IRosBoundaryBlock
+```
 
-## Name
-Choose a self-explaining name for your project.
+which allows BPE to inject the ROS `NodeTopicsInterface`.
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+The current boundary convention is:
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+```text
+IRosBoundaryBlock + !ITimerBlock
+    → ROS input
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+IRosBoundaryBlock + ITimerBlock
+    → ROS output
+```
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+An input is callback-driven by ROS.
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+An output is driven by the BPE scheduler.
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+## Blackboard access
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+Internal plugins normally use the typed BPE API:
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+```cpp
+bpe::TypedConsumer<Message> consumer_;
+bpe::TypedProducer<Message> producer_;
+```
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+During configuration:
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+```cpp
+consumer_.bind("input_label");
+producer_.bind("output_label");
+```
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+During execution:
 
-## License
-For open source projects, say how it is licensed.
+```cpp
+auto input = consumer_.read_access();
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+if (input.has_new_value()) {
+  auto output = producer_.write_access();
+  output.value() = input.value();
+}
+```
+
+The typed API hides the internal `RosProtectedData`, grant factories, serialized representation, and type-erasure mechanisms.
+
+## ROS boundaries
+
+The package `bpe_ros_boundary_plugins` provides two generic ROS plugins:
+
+```text
+bpe_ros_boundary_plugins/RosInputBlock
+bpe_ros_boundary_plugins/RosOutputBlock
+```
+
+`RosInputBlock` receives a serialized ROS message, stores the serialized representation in the blackboard, and deserializes the corresponding native representation for typed consumers.
+
+`RosOutputBlock` reads the serialized representation from the blackboard and publishes it through a generic ROS publisher.
+
+The associated `RosTypeRegistry` validates type compatibility and provides the type-erased serialization/deserialization operations required by the boundary.
+
+## Configuration
+
+BPE is configured using YAML.
+
+A typical pipeline is:
+
+```yaml
+scheduler:
+  cycle: 10ms
+  wake_early: 0.5ms
+
+blocks:
+  - name: ros_input
+    type: bpe_ros_boundary_plugins/RosInputBlock
+    config:
+      topic: /bpe_test/input
+      ros_type: geometry_msgs/msg/TwistStamped
+      blackboard_output: raw_twist
+      qos_depth: 10
+
+  - name: transform
+    type: bpe_system_test/TwistTransformBlock
+    execution:
+      period: 10ms
+    config:
+      blackboard_input: raw_twist
+      blackboard_output: processed_twist
+
+  - name: ros_output
+    type: bpe_ros_boundary_plugins/RosOutputBlock
+    execution:
+      period: 10ms
+    config:
+      topic: /bpe_test/output
+      ros_type: geometry_msgs/msg/TwistStamped
+      blackboard_input: processed_twist
+      qos_depth: 10
+```
+
+The complete configuration format and constraints are documented in [`docs/configuration.md`](docs/configuration.md).
+
+## Lifecycle
+
+BPE uses the normal ROS 2 lifecycle:
+
+```text
+UNCONFIGURED
+     ↓ configure
+INACTIVE
+     ↓ activate
+ACTIVE
+     ↓ deactivate
+INACTIVE
+     ↓ cleanup
+UNCONFIGURED
+```
+
+Shutdown may transition the node to `FINALIZED`.
+
+Configuration establishes the plugin topology, blackboard registrations, type information, ROS boundaries, and scheduler configuration.
+
+Activation starts the plugins and the scheduler.
+
+Stopping and cleanup are performed in explicit order so that the scheduler cannot continue executing block instances while they are being destroyed.
+
+## Running BPE
+
+Run the node with a configuration file:
+
+```bash
+ros2 run block_plugin_engine block_plugin_engine --ros-args \
+  -p config_file:=/path/to/config.yaml
+```
+
+Lifecycle transitions can then be controlled normally:
+
+```bash
+ros2 lifecycle set /block_plugin_engine configure
+ros2 lifecycle set /block_plugin_engine activate
+ros2 lifecycle set /block_plugin_engine deactivate
+ros2 lifecycle set /block_plugin_engine cleanup
+```
+
+For applications where the node should immediately configure and activate itself:
+
+```bash
+ros2 run block_plugin_engine block_plugin_engine --ros-args \
+  -p config_file:=/path/to/config.yaml \
+  -p autostart:=true
+```
+
+`autostart` is disabled by default.
+
+## Process shutdown
+
+The executable handles `SIGINT` and `SIGTERM` explicitly instead of delegating process shutdown entirely to the default `rclcpp` signal handler.
+
+The signal handler itself only sets a signal-safe flag.
+
+The main executor loop detects the request and performs the orderly lifecycle shutdown while the ROS context is still valid. Runtime objects are then destroyed in the order enforced by `BPECompositionRoot`, and `rclcpp::shutdown()` is called afterwards.
+
+This explicit sequence is intentional and forms part of the runtime lifecycle design.
+
+## Packages
+
+The current repository contains the following main packages:
+
+### `bpe_blackboard`
+
+Header-only concurrent blackboard implementation.
+
+It provides the generic concurrent ring, producer/consumer grants, factories, and the public blackboard facade.
+
+### `block_plugin_engine`
+
+Core BPE runtime.
+
+Contains:
+
+- `BPECompositionRoot`;
+- `BPE_LifecycleNode`;
+- `BlockPluginManager`;
+- scheduler interfaces and implementation;
+- typed blackboard adapters;
+- `RosProtectedData`;
+- `RosTypeRegistry`;
+- the BPE executable.
+
+### `bpe_ros_boundary_plugins`
+
+Generic ROS input and output plugins.
+
+### `bpe_system_test`
+
+Auxiliary plugins used for system-level tests, including the deterministic `TwistStamped` transformation pipeline.
+
+### `bpe_integration_test`
+
+End-to-end integration tests using a real BPE node, lifecycle transitions, dynamically loaded plugins, ROS publishers/subscribers, serialization, blackboard communication, and clean process shutdown.
+
+## Testing
+
+The project uses several test levels:
+
+```text
+bpe_blackboard
+    concurrent data structure behaviour
+
+block_plugin_engine
+    plugin manager
+    scheduler
+    typed blackboard integration
+
+bpe_system_test
+    block-level processing pipeline
+
+bpe_integration_test
+    complete ROS 2 end-to-end system
+```
+
+The integration package contains progressively more complete configurations:
+
+```text
+00_empty.yaml
+10_internal_transform.yaml
+20_ros_input.yaml
+30_ros_output.yaml
+90_full_pipeline.yaml
+```
+
+These configurations are intentionally retained as regression scenarios.
+
+In particular, the ROS-input-only case exercises an important lifetime contract between dynamically loaded subscription plugins and the lifecycle node.
+
+See [`docs/testing.md`](docs/testing.md) for the testing strategy and commands.
+
+## Further documentation
+
+- [`docs/architecture.md`](docs/architecture.md) — architecture, guarantees, concurrency model, lifecycle, ownership, and design contracts.
+- [`docs/configuration.md`](docs/configuration.md) — YAML configuration format and plugin configuration.
+- [`docs/testing.md`](docs/testing.md) — test architecture, integration scenarios, and regression strategy.
