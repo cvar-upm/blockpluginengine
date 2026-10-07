@@ -1,4 +1,3 @@
-#include <atomic>
 #include <cstddef>
 #include <memory>
 #include <string>
@@ -57,18 +56,7 @@ public:
     return result;
   }
 
-  bpe::BlockResult start() override {
-    active_.store(true, std::memory_order_release);
-    return bpe::BlockResult::SUCCESS;
-  }
-
-  bpe::BlockResult stop() override {
-    active_.store(false, std::memory_order_release);
-    return bpe::BlockResult::SUCCESS;
-  }
-
   bpe::BlockResult cleanup() override {
-    active_.store(false, std::memory_order_release);
     publisher_.reset();
     return bpe::BlockResult::SUCCESS;
   }
@@ -76,15 +64,13 @@ public:
   bpe::ExecutionResult execute() override {
     bpe::ExecutionResult result = bpe::ExecutionResult::SUCCESS;
 
-    if (active_.load(std::memory_order_acquire)) {
-      try {
-        auto input = consumer_.read_access();
-        if (input.has_new_value()) {
-          publisher_->publish(input.serialized());
-        }
-      } catch (...) {
-        result = bpe::ExecutionResult::FAILURE;
+    try {
+      auto input = consumer_.read_access();
+      if (input.has_new_value()) {
+        publisher_->publish(input.serialized());
       }
+    } catch (...) {
+      result = bpe::ExecutionResult::FAILURE;
     }
 
     return result;
@@ -100,7 +86,6 @@ private:
   std::string ros_type_;
   std::string blackboard_input_;
   std::size_t qos_depth_{10u};
-  std::atomic<bool> active_{false};
 };
 
 } // namespace bpe_ros_boundary_plugins

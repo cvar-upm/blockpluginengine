@@ -53,52 +53,35 @@ public:
     return result;
   }
 
-  bpe::BlockResult start() override {
-    active_.store(true, std::memory_order_release);
-    return bpe::BlockResult::SUCCESS;
-  }
-
-  bpe::BlockResult stop() override {
-    active_.store(false, std::memory_order_release);
-    return bpe::BlockResult::SUCCESS;
-  }
-
-  bpe::BlockResult cleanup() override {
-    active_.store(false, std::memory_order_release);
-    return bpe::BlockResult::SUCCESS;
-  }
-
   bpe::ExecutionResult execute() override {
     bpe::ExecutionResult result = bpe::ExecutionResult::SUCCESS;
 
-    if (active_.load(std::memory_order_acquire)) {
-      auto input = consumer_.read_access();
+    auto input = consumer_.read_access();
 
-      if (input.has_new_value()) {
-        bool valid = message_is_expected(input.value());
+    if (input.has_new_value()) {
+      bool valid = message_is_expected(input.value());
 
-        if (input.has_missed()) {
-          missed_samples_.fetch_add(
-            static_cast<std::size_t>(input.missed()),
-            std::memory_order_relaxed);
-        }
+      if (input.has_missed()) {
+        missed_samples_.fetch_add(
+          static_cast<std::size_t>(input.missed()),
+          std::memory_order_relaxed);
+      }
 
-        if (last_sequence_ == 0) {
-          if (input.sequence() != 1) {
-            valid = false;
-          }
-        } else if (input.sequence() != last_sequence_ + 1) {
+      if (last_sequence_ == 0) {
+        if (input.sequence() != 1) {
           valid = false;
         }
-
-        last_sequence_ = input.sequence();
-
-        if (!valid) {
-          errors_.fetch_add(1, std::memory_order_relaxed);
-        }
-
-        checked_samples_.fetch_add(1, std::memory_order_release);
+      } else if (input.sequence() != last_sequence_ + 1) {
+        valid = false;
       }
+
+      last_sequence_ = input.sequence();
+
+      if (!valid) {
+        errors_.fetch_add(1, std::memory_order_relaxed);
+      }
+
+      checked_samples_.fetch_add(1, std::memory_order_release);
     }
 
     return result;
@@ -123,7 +106,6 @@ private:
   std::atomic<std::size_t> checked_samples_{0};
   std::atomic<std::size_t> errors_{0};
   std::atomic<std::size_t> missed_samples_{0};
-  std::atomic<bool> active_{false};
 };
 
 } // namespace bpe_system_test

@@ -1,4 +1,3 @@
-#include <atomic>
 #include <cstdint>
 #include <string>
 
@@ -35,39 +34,22 @@ public:
     return result;
   }
 
-  bpe::BlockResult start() override {
-    active_.store(true, std::memory_order_release);
-    return bpe::BlockResult::SUCCESS;
-  }
-
-  bpe::BlockResult stop() override {
-    active_.store(false, std::memory_order_release);
-    return bpe::BlockResult::SUCCESS;
-  }
-
-  bpe::BlockResult cleanup() override {
-    active_.store(false, std::memory_order_release);
-    return bpe::BlockResult::SUCCESS;
-  }
-
   bpe::ExecutionResult execute() override {
     bpe::ExecutionResult result = bpe::ExecutionResult::SUCCESS;
 
-    if (active_.load(std::memory_order_acquire)) {
-      auto output = producer_.write_access();
-      auto& message = output.value();
+    auto output = producer_.write_access();
+    auto& message = output.value();
 
-      ++sample_index_;
-      const double value = static_cast<double>(sample_index_);
+    ++sample_index_;
+    const double value = static_cast<double>(sample_index_);
 
-      message.header.frame_id = "bpe_system_test";
-      message.twist.linear.x = value;
-      message.twist.linear.y = 2.0 * value;
-      message.twist.linear.z = 3.0 * value;
-      message.twist.angular.x = -value;
-      message.twist.angular.y = -2.0 * value;
-      message.twist.angular.z = 0.5 * value;
-    }
+    message.header.frame_id = "bpe_system_test";
+    message.twist.linear.x = value;
+    message.twist.linear.y = 2.0 * value;
+    message.twist.linear.z = 3.0 * value;
+    message.twist.angular.x = -value;
+    message.twist.angular.y = -2.0 * value;
+    message.twist.angular.z = 0.5 * value;
 
     return result;
   }
@@ -76,7 +58,6 @@ private:
   bpe::TypedProducer<Message> producer_;
   std::string blackboard_output_;
   std::uint64_t sample_index_{0};
-  std::atomic<bool> active_{false};
 };
 
 } // namespace bpe_system_test

@@ -11,9 +11,18 @@ public:
   virtual ~IBlockPlugin() = default;
 
   virtual BlockResult configure(const BlockConfig& config) = 0;
-  virtual BlockResult start() = 0;
-  virtual BlockResult stop() = 0;
-  virtual BlockResult cleanup() = 0;
+
+  virtual BlockResult start() {
+    return BlockResult::SUCCESS;
+  }
+
+  virtual BlockResult stop() {
+    return BlockResult::SUCCESS;
+  }
+
+  virtual BlockResult cleanup() {
+    return BlockResult::SUCCESS;
+  }
 };
 
 } // namespace bpe
