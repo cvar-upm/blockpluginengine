@@ -12,7 +12,7 @@ namespace bpe_system_test {
 
 class TwistTransformBlock final : public bpe::IBlockPlugin, public bpe::ITimerBlock {
 public:
-  using Message = geometry_msgs::msg::TwistStamped;
+  using TwistSt = geometry_msgs::msg::TwistStamped;
 
   bpe::BlockResult configure(const bpe::BlockConfig& config) override {
     bpe::BlockResult result = bpe::BlockResult::SUCCESS;
@@ -67,8 +67,8 @@ public:
   }
 
 private:
-  bpe::TypedConsumer<Message> consumer_;
-  bpe::TypedProducer<Message> producer_;
+  bpe::TypedConsumer<TwistSt> consumer_;
+  bpe::TypedProducer<TwistSt> producer_;
 
   std::string blackboard_input_;
   std::string blackboard_output_;

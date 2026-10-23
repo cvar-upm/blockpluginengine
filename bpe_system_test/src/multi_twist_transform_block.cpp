@@ -13,7 +13,7 @@ namespace bpe_system_test {
 // Two channels deliberately share the same ROS message type.
 class MultiTwistTransformBlock final : public bpe::IBlockPlugin, public bpe::ITimerBlock {
 public:
-  using Message = geometry_msgs::msg::TwistStamped;
+  using TwistSt = geometry_msgs::msg::TwistStamped;
 
   enum InputId : std::size_t { FIRST_INPUT, SECOND_INPUT };
   enum OutputId : std::size_t { FIRST_OUTPUT, SECOND_OUTPUT };
@@ -25,8 +25,8 @@ public:
       }
       const auto inputs = config["blackboard_inputs"];
       const auto outputs = config["blackboard_outputs"];
-      if (!inputs.IsSequence() || inputs.size() != 2 ||
-          !outputs.IsSequence() || outputs.size() != 2) {
+      if (!inputs.IsSequence() || inputs.size() != 2 || !outputs.IsSequence() ||
+          outputs.size() != 2) {
         return bpe::BlockResult::FAILURE;
       }
 
@@ -50,15 +50,15 @@ public:
   }
 
 private:
-  static void transform(const Message& source, Message& destination) {
+  static void transform(const TwistSt& source, TwistSt& destination) {
     destination = source;
     destination.twist.linear.x *= 2.0;
     destination.twist.linear.y *= -1.0;
     destination.twist.angular.z += 0.25;
   }
 
-  bpe::MultiConsumer<Message, Message> consumer_;
-  bpe::MultiProducer<Message, Message> producer_;
+  bpe::MultiConsumer<TwistSt, TwistSt> consumer_;
+  bpe::MultiProducer<TwistSt, TwistSt> producer_;
 };
 
 } // namespace bpe_system_test
