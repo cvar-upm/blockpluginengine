@@ -42,6 +42,7 @@ target_compile_definitions(test_multi_twist_pipeline PRIVATE
 ament_target_dependencies(test_multi_twist_pipeline
   block_plugin_engine
   pluginlib
+  geometry_msgs
 )
 
 target_link_libraries(test_multi_twist_pipeline yaml-cpp)
