@@ -10,6 +10,7 @@ add_library(bpe_system_test_plugins SHARED
   src/twist_producer_block.cpp
   src/twist_transform_block.cpp
   src/twist_checker_block.cpp
+  src/multi_twist_transform_block.cpp
 )
 
 target_compile_features(
