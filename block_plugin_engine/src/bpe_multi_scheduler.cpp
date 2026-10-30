@@ -113,9 +113,10 @@ SchedulerResult BPE_MultiScheduler::start(std::chrono::nanoseconds origin) {
   if (running_ || schedulers_.empty()) return SchedulerResult::INVALID_STATE;
   const auto now = monotonic_now();
   if (origin.count() < 0 || now.count() < 0) return SchedulerResult::SYSTEM_ERROR;
-  if (origin < now || start_delay_.count() > std::numeric_limits<std::int64_t>::max() - origin.count())
+  if (start_delay_.count() > std::numeric_limits<std::int64_t>::max() - origin.count())
     return SchedulerResult::INVALID_CONFIG;
   const auto shared_origin = origin + start_delay_;
+  if (shared_origin <= now) return SchedulerResult::INVALID_CONFIG;
   std::size_t started = 0;
   SchedulerResult result = SchedulerResult::SUCCESS;
   for (auto& scheduler : schedulers_) {
