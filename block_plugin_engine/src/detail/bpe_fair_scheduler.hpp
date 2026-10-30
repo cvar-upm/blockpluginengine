@@ -9,20 +9,21 @@
 #include <vector>
 
 #include "block_plugin_engine/iblock_scheduler.hpp"
+#include "block_plugin_engine/itimer_block_with_info.hpp"
 
 namespace bpe {
 
-struct SimpleSchedulerConfig {
+struct FairSchedulerConfig {
   bool realtime_enabled{true};
   bool realtime_required{false};
   int realtime_priority{50};
   std::chrono::nanoseconds spin_before_deadline{std::chrono::microseconds{100}};
 };
 
-class BPE_SimpleScheduler final : public IBlockScheduler {
+class BPE_FairScheduler final : public IBlockScheduler {
 public:
-  BPE_SimpleScheduler() = default;
-  ~BPE_SimpleScheduler() override;
+  BPE_FairScheduler() = default;
+  ~BPE_FairScheduler() override;
 
   SchedulerResult configure(const SchedulerConfig& config) override;
 
@@ -39,6 +40,8 @@ private:
   struct ScheduledBlock {
     std::string name;
     ITimerBlock* block{nullptr};
+    ITimerBlockWithInfo* block_with_info{nullptr};
+    std::uint64_t activation_index{0};
     std::int64_t period_ns{0};
     timespec next_execution{};
   };
@@ -56,7 +59,7 @@ private:
   void wait_until(const timespec& deadline);
   void busy_wait_until(const timespec& deadline);
 
-  SimpleSchedulerConfig config_;
+  FairSchedulerConfig config_;
   std::vector<ScheduledBlock> blocks_;
   std::thread worker_;
 

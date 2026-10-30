@@ -1,4 +1,4 @@
-#include "detail/bpe_simple_scheduler.hpp"
+#include "detail/bpe_fair_scheduler.hpp"
 
 #include <algorithm>
 #include <cerrno>
@@ -12,6 +12,7 @@
 #include <time.h>
 
 #include "block_plugin_engine/itimer_block.hpp"
+#include "block_plugin_engine/itimer_block_with_info.hpp"
 
 namespace bpe {
 namespace {
@@ -28,17 +29,17 @@ bool ends_with(std::string_view value, std::string_view suffix) {
 
 } // namespace
 
-BPE_SimpleScheduler::~BPE_SimpleScheduler() {
+BPE_FairScheduler::~BPE_FairScheduler() {
   stop();
 }
 
-SchedulerResult BPE_SimpleScheduler::configure(const SchedulerConfig& config) {
+SchedulerResult BPE_FairScheduler::configure(const SchedulerConfig& config) {
   SchedulerResult result = SchedulerResult::SUCCESS;
 
   if (running_.load(std::memory_order_acquire)) {
     result = SchedulerResult::INVALID_STATE;
   } else {
-    SimpleSchedulerConfig parsed{};
+    FairSchedulerConfig parsed{};
 
     try {
       if (config && !config.IsMap()) {
@@ -92,7 +93,7 @@ SchedulerResult BPE_SimpleScheduler::configure(const SchedulerConfig& config) {
   return result;
 }
 
-SchedulerResult BPE_SimpleScheduler::add(const std::string& instance_name,
+SchedulerResult BPE_FairScheduler::add(const std::string& instance_name,
                                          ITimerBlock& block,
                                          const ExecutionConfig& config) {
   SchedulerResult result = SchedulerResult::SUCCESS;
@@ -114,14 +115,15 @@ SchedulerResult BPE_SimpleScheduler::add(const std::string& instance_name,
       result = SchedulerResult::INVALID_CONFIG;
     } else {
       blocks_.push_back(
-          ScheduledBlock{instance_name, &block, to_nanoseconds(config.period), timespec{}});
+          ScheduledBlock{instance_name, &block, dynamic_cast<ITimerBlockWithInfo*>(&block),
+                         0, to_nanoseconds(config.period), timespec{}});
     }
   }
 
   return result;
 }
 
-SchedulerResult BPE_SimpleScheduler::remove(const std::string& instance_name) {
+SchedulerResult BPE_FairScheduler::remove(const std::string& instance_name) {
   SchedulerResult result = SchedulerResult::SUCCESS;
 
   if (running_.load(std::memory_order_acquire)) {
@@ -142,7 +144,7 @@ SchedulerResult BPE_SimpleScheduler::remove(const std::string& instance_name) {
   return result;
 }
 
-SchedulerResult BPE_SimpleScheduler::start() {
+SchedulerResult BPE_FairScheduler::start() {
   SchedulerResult result = SchedulerResult::SUCCESS;
 
   if (running_.load(std::memory_order_acquire)) {
@@ -162,7 +164,7 @@ SchedulerResult BPE_SimpleScheduler::start() {
         worker_ready_.store(true, std::memory_order_release);
         start_gate_.store(true, std::memory_order_release);
       } else {
-        worker_ = std::thread(&BPE_SimpleScheduler::worker_loop, this);
+        worker_ = std::thread(&BPE_FairScheduler::worker_loop, this);
 
         while (!worker_ready_.load(std::memory_order_acquire)) {
           std::this_thread::yield();
@@ -184,7 +186,7 @@ SchedulerResult BPE_SimpleScheduler::start() {
   return result;
 }
 
-SchedulerResult BPE_SimpleScheduler::stop() {
+SchedulerResult BPE_FairScheduler::stop() {
   if (running_.exchange(false, std::memory_order_acq_rel)) {
     start_gate_.store(true, std::memory_order_release);
 
@@ -196,7 +198,7 @@ SchedulerResult BPE_SimpleScheduler::stop() {
   return SchedulerResult::SUCCESS;
 }
 
-SchedulerResult BPE_SimpleScheduler::clear() {
+SchedulerResult BPE_FairScheduler::clear() {
   SchedulerResult result = SchedulerResult::SUCCESS;
 
   if (running_.load(std::memory_order_acquire)) {
@@ -208,15 +210,15 @@ SchedulerResult BPE_SimpleScheduler::clear() {
   return result;
 }
 
-bool BPE_SimpleScheduler::time_before(const timespec& lhs, const timespec& rhs) {
+bool BPE_FairScheduler::time_before(const timespec& lhs, const timespec& rhs) {
   return lhs.tv_sec < rhs.tv_sec || (lhs.tv_sec == rhs.tv_sec && lhs.tv_nsec < rhs.tv_nsec);
 }
 
-bool BPE_SimpleScheduler::time_reached(const timespec& now, const timespec& deadline) {
+bool BPE_FairScheduler::time_reached(const timespec& now, const timespec& deadline) {
   return !time_before(now, deadline);
 }
 
-timespec BPE_SimpleScheduler::subtract_ns(const timespec& time, std::int64_t nanoseconds) {
+timespec BPE_FairScheduler::subtract_ns(const timespec& time, std::int64_t nanoseconds) {
   timespec result = time;
 
   result.tv_sec -= nanoseconds / NANOSECONDS_PER_SECOND;
@@ -230,7 +232,7 @@ timespec BPE_SimpleScheduler::subtract_ns(const timespec& time, std::int64_t nan
   return result;
 }
 
-void BPE_SimpleScheduler::add_ns(timespec& time, std::int64_t nanoseconds) {
+void BPE_FairScheduler::add_ns(timespec& time, std::int64_t nanoseconds) {
   time.tv_sec += nanoseconds / NANOSECONDS_PER_SECOND;
   time.tv_nsec += nanoseconds % NANOSECONDS_PER_SECOND;
 
@@ -240,7 +242,7 @@ void BPE_SimpleScheduler::add_ns(timespec& time, std::int64_t nanoseconds) {
   }
 }
 
-bool BPE_SimpleScheduler::parse_duration(const YAML::Node& node, std::chrono::nanoseconds& value) {
+bool BPE_FairScheduler::parse_duration(const YAML::Node& node, std::chrono::nanoseconds& value) {
   bool success = false;
 
   if (node.IsScalar()) {
@@ -281,7 +283,7 @@ bool BPE_SimpleScheduler::parse_duration(const YAML::Node& node, std::chrono::na
   return success;
 }
 
-SchedulerResult BPE_SimpleScheduler::validate_start_configuration() const {
+SchedulerResult BPE_FairScheduler::validate_start_configuration() const {
   SchedulerResult result = SchedulerResult::SUCCESS;
 
   if (config_.spin_before_deadline.count() < 0) {
@@ -299,7 +301,7 @@ SchedulerResult BPE_SimpleScheduler::validate_start_configuration() const {
   return result;
 }
 
-bool BPE_SimpleScheduler::configure_realtime_thread() {
+bool BPE_FairScheduler::configure_realtime_thread() {
   bool success = true;
 
   if (config_.realtime_enabled) {
@@ -312,17 +314,18 @@ bool BPE_SimpleScheduler::configure_realtime_thread() {
   return success;
 }
 
-void BPE_SimpleScheduler::initialize_deadlines() {
+void BPE_FairScheduler::initialize_deadlines() {
   timespec now{};
   clock_gettime(CLOCK_MONOTONIC, &now);
 
   for (auto& block : blocks_) {
+    block.activation_index = 0;
     block.next_execution = now;
     add_ns(block.next_execution, block.period_ns);
   }
 }
 
-void BPE_SimpleScheduler::worker_loop() {
+void BPE_FairScheduler::worker_loop() {
   const bool realtime_ok = configure_realtime_thread();
   realtime_setup_ok_.store(realtime_ok, std::memory_order_release);
   worker_ready_.store(true, std::memory_order_release);
@@ -331,8 +334,9 @@ void BPE_SimpleScheduler::worker_loop() {
   }
 
   while (running_.load(std::memory_order_acquire)) {
-    const ScheduledBlock* earliest = &blocks_.front();
-
+    // Select one activation per pass: minimum nominal deadline, with insertion
+    // order as the stable tie breaker. No allocations occur in this loop.
+    ScheduledBlock* earliest = &blocks_.front();
     for (std::size_t i = 1; i < blocks_.size(); ++i) {
       if (time_before(blocks_[i].next_execution, earliest->next_execution)) {
         earliest = &blocks_[i];
@@ -341,27 +345,37 @@ void BPE_SimpleScheduler::worker_loop() {
 
     const timespec wake_time =
         subtract_ns(earliest->next_execution, config_.spin_before_deadline.count());
-
     wait_until(wake_time);
-
     if (running_.load(std::memory_order_acquire)) {
       busy_wait_until(earliest->next_execution);
     }
 
-    timespec now{};
-    clock_gettime(CLOCK_MONOTONIC, &now);
-
-    for (auto& block : blocks_) {
-      if (running_.load(std::memory_order_acquire) && time_reached(now, block.next_execution)) {
-        block.block->execute();
-        add_ns(block.next_execution, block.period_ns);
-        clock_gettime(CLOCK_MONOTONIC, &now);
+    if (running_.load(std::memory_order_acquire)) {
+      timespec now{};
+      clock_gettime(CLOCK_MONOTONIC, &now);
+      if (time_reached(now, earliest->next_execution)) {
+        if (earliest->block_with_info != nullptr) {
+          const std::int64_t scheduled_ns =
+              static_cast<std::int64_t>(earliest->next_execution.tv_sec) *
+                  NANOSECONDS_PER_SECOND + earliest->next_execution.tv_nsec;
+          const std::int64_t now_ns =
+              static_cast<std::int64_t>(now.tv_sec) * NANOSECONDS_PER_SECOND + now.tv_nsec;
+          const TimerExecutionInfo info{
+              earliest->activation_index,
+              std::chrono::nanoseconds{scheduled_ns},
+              std::chrono::nanoseconds{std::max<std::int64_t>(0, now_ns - scheduled_ns)}};
+          earliest->block_with_info->execute(info);
+        } else {
+          earliest->block->execute();
+        }
+        ++earliest->activation_index;
+        add_ns(earliest->next_execution, earliest->period_ns);
       }
     }
   }
 }
 
-void BPE_SimpleScheduler::wait_until(const timespec& deadline) {
+void BPE_FairScheduler::wait_until(const timespec& deadline) {
   timespec now{};
   clock_gettime(CLOCK_MONOTONIC, &now);
 
@@ -374,7 +388,7 @@ void BPE_SimpleScheduler::wait_until(const timespec& deadline) {
   }
 }
 
-void BPE_SimpleScheduler::busy_wait_until(const timespec& deadline) {
+void BPE_FairScheduler::busy_wait_until(const timespec& deadline) {
   timespec now{};
   clock_gettime(CLOCK_MONOTONIC, &now);
 

@@ -71,18 +71,18 @@ install(
   RUNTIME DESTINATION bin
 )
 
-ament_add_gtest(test_bpe_simple_scheduler
-  test_bpe_simple_scheduler.cpp
+ament_add_gtest(test_bpe_fair_scheduler
+  test_bpe_fair_scheduler.cpp
 )
 
-target_include_directories(test_bpe_simple_scheduler
+target_include_directories(test_bpe_fair_scheduler
   PRIVATE
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/src
 )
 
-target_link_libraries(test_bpe_simple_scheduler
-  bpe_simple_scheduler
+target_link_libraries(test_bpe_fair_scheduler
+  bpe_fair_scheduler
   yaml-cpp
 )
 
@@ -101,7 +101,7 @@ target_include_directories(scheduler_timing
 )
 
 target_link_libraries(scheduler_timing
-  bpe_simple_scheduler
+  bpe_fair_scheduler
   yaml-cpp
 )
 

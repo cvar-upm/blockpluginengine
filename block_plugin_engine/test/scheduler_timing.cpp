@@ -10,13 +10,13 @@
 #include <string>
 #include <vector>
 
-#include "detail/bpe_simple_scheduler.hpp"
+#include "detail/bpe_fair_scheduler.hpp"
 #include "scheduler_test_support.hpp"
 
 namespace {
 
 using namespace std::chrono_literals;
-using bpe::BPE_SimpleScheduler;
+using bpe::BPE_FairScheduler;
 using bpe::SchedulerResult;
 using bpe::test_support::RecordingTimerBlock;
 
@@ -252,7 +252,7 @@ int main(int argc, char** argv) {
     work_iterations,
     work_iterations};
 
-  BPE_SimpleScheduler scheduler;
+  BPE_FairScheduler scheduler;
 
   const auto configure_result =
     scheduler.configure(

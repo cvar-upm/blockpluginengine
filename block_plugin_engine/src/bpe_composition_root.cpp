@@ -6,7 +6,7 @@
 
 #include "detail/block_plugin_manager.hpp"
 #include "detail/bpe_lifecycle_node.hpp"
-#include "detail/bpe_simple_scheduler.hpp"
+#include "detail/bpe_fair_scheduler.hpp"
 
 namespace bpe {
 
@@ -15,7 +15,7 @@ BPECompositionRoot::BPECompositionRoot(const rclcpp::NodeOptions& options) {
   RCLCPP_INFO(logger, "Constructing BlockPluginEngine composition root");
 
   RCLCPP_DEBUG(logger, "Composition root: creating scheduler");
-  scheduler_ = std::make_shared<BPE_SimpleScheduler>();
+  scheduler_ = std::make_shared<BPE_FairScheduler>();
 
   RCLCPP_DEBUG(logger, "Composition root: creating lifecycle node");
   node_ = std::make_shared<BPE_LifecycleNode>(scheduler_, options);

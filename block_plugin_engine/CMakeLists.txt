@@ -46,18 +46,18 @@ target_link_libraries(block_plugin_engine_core
 #
 # Default scheduler implementation
 #
-# IBlockScheduler is public API, but BPE_SimpleScheduler is an internal
+# IBlockScheduler is public API, but BPE_FairScheduler is an internal
 # implementation.  It is built as a shared library so the scheduler can
 # remain physically separated from the engine executable.
 #
 
-add_library(bpe_simple_scheduler SHARED
-  src/bpe_simple_scheduler.cpp
+add_library(bpe_fair_scheduler SHARED
+  src/bpe_fair_scheduler.cpp
 )
 
-target_compile_features(bpe_simple_scheduler PUBLIC cxx_std_20)
+target_compile_features(bpe_fair_scheduler PUBLIC cxx_std_20)
 
-target_include_directories(bpe_simple_scheduler
+target_include_directories(bpe_fair_scheduler
   PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
   PUBLIC
@@ -65,7 +65,7 @@ target_include_directories(bpe_simple_scheduler
     $<INSTALL_INTERFACE:include>
 )
 
-target_link_libraries(bpe_simple_scheduler
+target_link_libraries(bpe_fair_scheduler
   Threads::Threads
 )
 
@@ -99,7 +99,7 @@ ament_target_dependencies(block_plugin_engine
 
 target_link_libraries(block_plugin_engine
   block_plugin_engine_core
-  bpe_simple_scheduler
+  bpe_fair_scheduler
   yaml-cpp
 )
 
@@ -115,7 +115,7 @@ install(
 install(
   TARGETS
     block_plugin_engine_core
-    bpe_simple_scheduler
+    bpe_fair_scheduler
     block_plugin_engine
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
