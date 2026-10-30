@@ -101,7 +101,7 @@ SchedulerResult BPE_FairScheduler::add(const std::string& instance_name,
   if (running_.load(std::memory_order_acquire)) {
     result = SchedulerResult::INVALID_STATE;
   } else if (config.policy != ExecutionPolicy::TIMER || config.period.count() <= 0 ||
-             config.offset.count() < 0) {
+             config.offset.count() < 0 || config.thread != 0) {
     result = SchedulerResult::INVALID_CONFIG;
   } else if (config_.spin_before_deadline.count() < 0 ||
              config_.spin_before_deadline >= config.period) {
@@ -145,16 +145,20 @@ SchedulerResult BPE_FairScheduler::remove(const std::string& instance_name) {
   return result;
 }
 
-SchedulerResult BPE_FairScheduler::start() {
+SchedulerResult BPE_FairScheduler::start(std::chrono::nanoseconds origin) {
   SchedulerResult result = SchedulerResult::SUCCESS;
 
   if (running_.load(std::memory_order_acquire)) {
     result = SchedulerResult::INVALID_STATE;
   } else {
-    result = validate_start_configuration();
+    if (origin.count() < 0) {
+      result = SchedulerResult::INVALID_CONFIG;
+    } else {
+      result = validate_start_configuration();
+    }
 
     if (result == SchedulerResult::SUCCESS) {
-      initialize_deadlines();
+      initialize_deadlines(origin);
 
       worker_ready_.store(false, std::memory_order_release);
       start_gate_.store(false, std::memory_order_release);
@@ -315,9 +319,10 @@ bool BPE_FairScheduler::configure_realtime_thread() {
   return success;
 }
 
-void BPE_FairScheduler::initialize_deadlines() {
+void BPE_FairScheduler::initialize_deadlines(std::chrono::nanoseconds origin) {
   timespec now{};
-  clock_gettime(CLOCK_MONOTONIC, &now);
+  now.tv_sec = static_cast<time_t>(origin.count() / NANOSECONDS_PER_SECOND);
+  now.tv_nsec = static_cast<long>(origin.count() % NANOSECONDS_PER_SECOND);
 
   for (auto& block : blocks_) {
     block.activation_index = 0;

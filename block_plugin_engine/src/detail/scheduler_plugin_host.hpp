@@ -16,7 +16,8 @@ public:
   SchedulerResult configure(const SchedulerConfig& config) override;
   SchedulerResult add(const std::string&, ITimerBlock&, const ExecutionConfig&) override;
   SchedulerResult remove(const std::string&) override;
-  SchedulerResult start() override;
+  using IBlockScheduler::start;
+  SchedulerResult start(std::chrono::nanoseconds origin) override;
   SchedulerResult stop() override;
   SchedulerResult clear() override;
 private:

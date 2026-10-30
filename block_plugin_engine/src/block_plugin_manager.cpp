@@ -83,6 +83,13 @@ ExecutionConfig parse_execution_config(const YAML::Node& node) {
   if (node["offset"]) {
     config.offset = parse_duration(node["offset"], "execution.offset", true);
   }
+  if (node["thread"]) {
+    const auto index = node["thread"].as<std::int64_t>();
+    if (index < 0) {
+      throw std::runtime_error("execution.thread must be nonnegative");
+    }
+    config.thread = static_cast<std::size_t>(index);
+  }
   return config;
 }
 

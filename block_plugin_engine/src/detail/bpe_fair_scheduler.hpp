@@ -32,7 +32,8 @@ public:
                       const ExecutionConfig& config) override;
 
   SchedulerResult remove(const std::string& instance_name) override;
-  SchedulerResult start() override;
+  using IBlockScheduler::start;
+  SchedulerResult start(std::chrono::nanoseconds origin) override;
   SchedulerResult stop() override;
   SchedulerResult clear() override;
 
@@ -55,7 +56,7 @@ private:
 
   SchedulerResult validate_start_configuration() const;
   bool configure_realtime_thread();
-  void initialize_deadlines();
+  void initialize_deadlines(std::chrono::nanoseconds origin);
   void worker_loop();
   void wait_until(const timespec& deadline);
   void busy_wait_until(const timespec& deadline);

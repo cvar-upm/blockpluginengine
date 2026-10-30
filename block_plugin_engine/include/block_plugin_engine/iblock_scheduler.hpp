@@ -1,6 +1,8 @@
 #pragma once
 
 #include <string>
+#include <chrono>
+#include <time.h>
 
 #include "block_plugin_engine/execution_config.hpp"
 #include "block_plugin_engine/scheduler_config.hpp"
@@ -21,7 +23,15 @@ public:
   add(const std::string& instance_name, ITimerBlock& block, const ExecutionConfig& config) = 0;
 
   virtual SchedulerResult remove(const std::string& instance_name) = 0;
-  virtual SchedulerResult start() = 0;
+  // Monotonic absolute origin shared by composable schedulers.
+  virtual SchedulerResult start(std::chrono::nanoseconds origin) = 0;
+  virtual SchedulerResult start() {
+    timespec now{};
+    if (clock_gettime(CLOCK_MONOTONIC, &now) != 0) {
+      return SchedulerResult::SYSTEM_ERROR;
+    }
+    return start(std::chrono::seconds{now.tv_sec} + std::chrono::nanoseconds{now.tv_nsec});
+  }
   virtual SchedulerResult stop() = 0;
   virtual SchedulerResult clear() = 0;
 };

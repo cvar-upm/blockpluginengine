@@ -127,3 +127,7 @@ target_include_directories(test_typed_blackboard
 target_link_libraries(test_typed_blackboard
   block_plugin_engine_core
 )
+
+ament_add_gtest(test_bpe_multi_scheduler test_bpe_multi_scheduler.cpp)
+target_include_directories(test_bpe_multi_scheduler PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(test_bpe_multi_scheduler bpe_multi_scheduler yaml-cpp)

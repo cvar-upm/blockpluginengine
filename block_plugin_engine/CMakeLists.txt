@@ -51,6 +51,14 @@ target_link_libraries(block_plugin_engine_core
 # remain physically separated from the engine executable.
 #
 
+add_library(bpe_multi_scheduler SHARED src/bpe_multi_scheduler.cpp)
+target_compile_features(bpe_multi_scheduler PUBLIC cxx_std_20)
+target_include_directories(bpe_multi_scheduler PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+ament_target_dependencies(bpe_multi_scheduler pluginlib)
+target_link_libraries(bpe_multi_scheduler yaml-cpp)
+
 add_library(bpe_fair_scheduler SHARED
   src/bpe_fair_scheduler.cpp
 )
@@ -121,6 +129,7 @@ install(
   TARGETS
     block_plugin_engine_core
     bpe_fair_scheduler
+    bpe_multi_scheduler
     block_plugin_engine
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib

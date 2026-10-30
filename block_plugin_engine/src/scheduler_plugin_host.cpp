@@ -52,8 +52,8 @@ SchedulerResult SchedulerPluginHost::add(const std::string& name, ITimerBlock& b
 SchedulerResult SchedulerPluginHost::remove(const std::string& name) {
   return scheduler_ ? scheduler_->remove(name) : SchedulerResult::INVALID_STATE;
 }
-SchedulerResult SchedulerPluginHost::start() {
-  return scheduler_ ? scheduler_->start() : SchedulerResult::INVALID_STATE;
+SchedulerResult SchedulerPluginHost::start(std::chrono::nanoseconds origin) {
+  return scheduler_ ? scheduler_->start(origin) : SchedulerResult::INVALID_STATE;
 }
 SchedulerResult SchedulerPluginHost::stop() {
   return scheduler_ ? scheduler_->stop() : SchedulerResult::SUCCESS;
