@@ -379,39 +379,6 @@ void report_block(const char* name, const RecordingTimerBlock& block) {
   std::cerr << std::endl;
 }
 
-void check_workload(const RecordingTimerBlock& block,
-                    double min_factor, double max_factor) {
-  const auto n = std::min(block.count(), MAX_SAMPLES);
-  const double rate = calibration().iterations_per_second;
-  for (std::size_t i = 0; i < n; ++i) {
-    const double expected_ns = static_cast<double>(block.iterations(i)) / rate * 1e9;
-    const double actual_ns = static_cast<double>(block.execution_time(i).count());
-    EXPECT_GE(actual_ns, expected_ns * min_factor) << "Workload too fast at sample " << i;
-    EXPECT_LE(actual_ns, expected_ns * max_factor) << "Workload too slow at sample " << i;
-  }
-}
-
-void check_periodic_timing(const RecordingTimerBlock& block) {
-  const std::int64_t reference = block.timestamp_ns(0);
-
-  for (std::size_t i = 1; i < SAMPLE_COUNT; ++i) {
-    const auto interval =
-        std::chrono::nanoseconds{block.timestamp_ns(i) - block.timestamp_ns(i - 1)};
-
-    EXPECT_GE(interval, PERIOD - INTERVAL_TOLERANCE) << "Sample " << i << " interval too short";
-
-    EXPECT_LE(interval, PERIOD + INTERVAL_TOLERANCE) << "Sample " << i << " interval too long";
-
-    const std::int64_t expected = reference + static_cast<std::int64_t>(i) * PERIOD_NS;
-
-    const auto phase_error = std::chrono::nanoseconds{block.timestamp_ns(i) - expected};
-
-    EXPECT_GE(phase_error, -PHASE_TOLERANCE) << "Sample " << i << " is too early";
-
-    EXPECT_LE(phase_error, PHASE_TOLERANCE) << "Sample " << i << " is too late";
-  }
-}
-
 TEST(BPEFairSchedulerTest, PeriodicExecutionMaintainsPhase) {
   const std::size_t work_iterations = iterations_for_duration(NORMAL_WORK_TIME);
 
