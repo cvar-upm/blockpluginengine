@@ -51,6 +51,11 @@ public:
     return SchedulerResult::SUCCESS;
   }
 
+  SchedulerResult start(std::chrono::nanoseconds origin) override {
+    (void)origin;
+    return start();
+  }
+
   SchedulerResult stop() override {
     running_ = false;
     return SchedulerResult::SUCCESS;
