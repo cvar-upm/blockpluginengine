@@ -100,7 +100,8 @@ SchedulerResult BPE_FairScheduler::add(const std::string& instance_name,
 
   if (running_.load(std::memory_order_acquire)) {
     result = SchedulerResult::INVALID_STATE;
-  } else if (config.policy != ExecutionPolicy::TIMER || config.period.count() <= 0) {
+  } else if (config.policy != ExecutionPolicy::TIMER || config.period.count() <= 0 ||
+             config.offset.count() < 0) {
     result = SchedulerResult::INVALID_CONFIG;
   } else if (config_.spin_before_deadline.count() < 0 ||
              config_.spin_before_deadline >= config.period) {
@@ -116,7 +117,7 @@ SchedulerResult BPE_FairScheduler::add(const std::string& instance_name,
     } else {
       blocks_.push_back(
           ScheduledBlock{instance_name, &block, dynamic_cast<ITimerBlockWithInfo*>(&block),
-                         0, to_nanoseconds(config.period), timespec{}});
+                         0, to_nanoseconds(config.period), to_nanoseconds(config.offset), timespec{}});
     }
   }
 
@@ -322,6 +323,7 @@ void BPE_FairScheduler::initialize_deadlines() {
     block.activation_index = 0;
     block.next_execution = now;
     add_ns(block.next_execution, block.period_ns);
+    add_ns(block.next_execution, block.offset_ns);
   }
 }
 
@@ -398,3 +400,6 @@ void BPE_FairScheduler::busy_wait_until(const timespec& deadline) {
 }
 
 } // namespace bpe
+
+#include <pluginlib/class_list_macros.hpp>
+PLUGINLIB_EXPORT_CLASS(bpe::BPE_FairScheduler, bpe::IBlockScheduler)

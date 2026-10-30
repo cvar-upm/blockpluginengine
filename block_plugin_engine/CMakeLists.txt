@@ -65,6 +65,8 @@ target_include_directories(bpe_fair_scheduler
     $<INSTALL_INTERFACE:include>
 )
 
+ament_target_dependencies(bpe_fair_scheduler pluginlib)
+
 target_link_libraries(bpe_fair_scheduler
   Threads::Threads
 )
@@ -79,6 +81,7 @@ target_link_libraries(bpe_fair_scheduler
 add_executable(block_plugin_engine
   src/main.cpp
   src/bpe_composition_root.cpp
+  src/scheduler_plugin_host.cpp
   src/bpe_lifecycle_node.cpp
   src/block_plugin_manager.cpp
 )
@@ -99,9 +102,11 @@ ament_target_dependencies(block_plugin_engine
 
 target_link_libraries(block_plugin_engine
   block_plugin_engine_core
-  bpe_fair_scheduler
   yaml-cpp
 )
+
+# Export the built-in scheduler as a selectable plugin.
+pluginlib_export_plugin_description_file(block_plugin_engine scheduler_plugins.xml)
 
 #
 # Install only the public API headers.

@@ -682,3 +682,42 @@ TEST(BPEFairSchedulerTest, NominalOrderAndActivationInfo) {
 
 } // namespace
 } // namespace bpe::test
+
+namespace bpe::test {
+namespace {
+TEST(BPEFairSchedulerTest, OffsetChangesNominalPhaseWithoutChangingPeriod) {
+  std::vector<int> order;
+  InfoRecorder first(order, 1);
+  InfoRecorder second(order, 2);
+  BPE_FairScheduler scheduler;
+  ASSERT_EQ(scheduler.configure(normal_test_config()), SchedulerResult::SUCCESS);
+  auto config_a = timer_config(20ms);
+  auto config_b = timer_config(20ms);
+  config_b.offset = 10ms;
+  ASSERT_EQ(scheduler.add("a", first, config_a), SchedulerResult::SUCCESS);
+  ASSERT_EQ(scheduler.add("b", second, config_b), SchedulerResult::SUCCESS);
+  ASSERT_EQ(scheduler.start(), SchedulerResult::SUCCESS);
+  std::this_thread::sleep_for(130ms);
+  ASSERT_EQ(scheduler.stop(), SchedulerResult::SUCCESS);
+  ASSERT_GE(first.infos().size(), 4u);
+  ASSERT_GE(second.infos().size(), 4u);
+  EXPECT_EQ(second.infos()[0].scheduled_time - first.infos()[0].scheduled_time, 10ms);
+  for (std::size_t i = 1; i < first.infos().size(); ++i) {
+    EXPECT_EQ(first.infos()[i].scheduled_time - first.infos()[i-1].scheduled_time, 20ms);
+  }
+  for (std::size_t i = 1; i < second.infos().size(); ++i) {
+    EXPECT_EQ(second.infos()[i].scheduled_time - second.infos()[i-1].scheduled_time, 20ms);
+  }
+}
+
+TEST(BPEFairSchedulerTest, RejectsNegativeOffset) {
+  BPE_FairScheduler scheduler;
+  std::vector<int> order;
+  InfoRecorder recorder(order, 1);
+  ASSERT_EQ(scheduler.configure(normal_test_config()), SchedulerResult::SUCCESS);
+  auto config = timer_config(20ms);
+  config.offset = -1ms;
+  EXPECT_EQ(scheduler.add("bad", recorder, config), SchedulerResult::INVALID_CONFIG);
+}
+} // namespace
+} // namespace bpe::test

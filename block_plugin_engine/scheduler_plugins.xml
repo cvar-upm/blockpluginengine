@@ -1,0 +1,7 @@
+<library path="bpe_fair_scheduler">
+  <class name="block_plugin_engine/FairScheduler"
+         type="bpe::BPE_FairScheduler"
+         base_class_type="bpe::IBlockScheduler">
+    <description>Nominal-deadline fair scheduler</description>
+  </class>
+</library>

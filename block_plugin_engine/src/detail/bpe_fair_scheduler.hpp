@@ -43,6 +43,7 @@ private:
     ITimerBlockWithInfo* block_with_info{nullptr};
     std::uint64_t activation_index{0};
     std::int64_t period_ns{0};
+    std::int64_t offset_ns{0};
     timespec next_execution{};
   };
 

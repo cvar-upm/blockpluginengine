@@ -18,9 +18,11 @@
 namespace bpe {
 namespace {
 
-std::chrono::nanoseconds parse_period(const YAML::Node& node) {
+std::chrono::nanoseconds parse_duration(const YAML::Node& node,
+                                        const std::string& field,
+                                        bool allow_zero) {
   if (!node || !node.IsScalar()) {
-    throw std::runtime_error("execution.period must be a scalar");
+    throw std::runtime_error(field + " must be a scalar");
   }
 
   const std::string value = node.as<std::string>();
@@ -47,14 +49,14 @@ std::chrono::nanoseconds parse_period(const YAML::Node& node) {
     const auto number = value.substr(0, value.size() - suffix.size());
     std::size_t parsed = 0;
     const auto amount = std::stoll(number, &parsed);
-    if (parsed != number.size() || amount <= 0) {
-      throw std::runtime_error("execution.period must be greater than zero");
+    if (parsed != number.size() || (amount < 0 || (!allow_zero && amount == 0))) {
+      throw std::runtime_error(field + " must be nonnegative (period must be positive)");
     }
 
     return std::chrono::nanoseconds{amount * unit.multiplier};
   }
 
-  throw std::runtime_error("execution.period must use ns, us, ms or s");
+  throw std::runtime_error(field + " must use ns, us, ms or s");
 }
 
 ExecutionConfig parse_execution_config(const YAML::Node& node) {
@@ -77,7 +79,10 @@ ExecutionConfig parse_execution_config(const YAML::Node& node) {
 
   ExecutionConfig config;
   config.policy = ExecutionPolicy::TIMER;
-  config.period = parse_period(node["period"]);
+  config.period = parse_duration(node["period"], "execution.period", false);
+  if (node["offset"]) {
+    config.offset = parse_duration(node["offset"], "execution.offset", true);
+  }
   return config;
 }
 
