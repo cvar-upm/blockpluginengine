@@ -380,3 +380,31 @@ private:
 };
 
 } // namespace bpe
+ 
+// For structured bindings
+namespace std
+{
+  template <typename... Ts>
+  struct tuple_size<bpe::MultiConsumerAccess<Ts...>>
+      : integral_constant<size_t, sizeof...(Ts)>
+  {
+  };
+
+  template <size_t I, typename... Ts>
+  struct tuple_element<I, bpe::MultiConsumerAccess<Ts...>>
+  {
+    using type = bpe::TypedConsumerAdapter<tuple_element_t<I, tuple<Ts...>>>;
+  };
+
+  template <typename... Ts>
+  struct tuple_size<bpe::MultiProducerAccess<Ts...>>
+      : integral_constant<size_t, sizeof...(Ts)>
+  {
+  };
+
+  template <size_t I, typename... Ts>
+  struct tuple_element<I, bpe::MultiProducerAccess<Ts...>>
+  {
+    using type = bpe::TypedProducerAdapter<tuple_element_t<I, tuple<Ts...>>>;
+  };
+} // namespace std

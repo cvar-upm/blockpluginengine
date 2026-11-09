@@ -44,8 +44,9 @@ public:
     auto inputs = consumer_.read_access();
     auto outputs = producer_.write_access();
 
-    transform(inputs.get<FIRST_INPUT>().value(), outputs.get<FIRST_OUTPUT>().value());
-    transform(inputs.get<SECOND_INPUT>().value(), outputs.get<SECOND_OUTPUT>().value());
+    auto& [in_acc_first, in_acc_second] = inputs;
+    transform(in_acc_first.value(), outputs.get<FIRST_OUTPUT>().value());
+    transform(in_acc_second.value(), outputs.get<SECOND_OUTPUT>().value());
     return bpe::ExecutionResult::SUCCESS;
   }
 
