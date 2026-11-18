@@ -23,6 +23,7 @@ find_package(Threads REQUIRED)
 
 add_library(block_plugin_engine_core SHARED
   src/blackboard.cpp
+  src/event_service.cpp
   src/ros_type_registry.cpp
 )
 
@@ -58,6 +59,14 @@ target_include_directories(bpe_multi_scheduler PRIVATE ${CMAKE_CURRENT_SOURCE_DI
   $<INSTALL_INTERFACE:include>)
 ament_target_dependencies(bpe_multi_scheduler pluginlib)
 target_link_libraries(bpe_multi_scheduler yaml-cpp)
+
+add_library(bpe_hybrid_fair_scheduler SHARED src/bpe_hybrid_fair_scheduler.cpp)
+target_compile_features(bpe_hybrid_fair_scheduler PUBLIC cxx_std_20)
+target_include_directories(bpe_hybrid_fair_scheduler PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+ament_target_dependencies(bpe_hybrid_fair_scheduler pluginlib)
+target_link_libraries(bpe_hybrid_fair_scheduler Threads::Threads block_plugin_engine_core)
 
 add_library(bpe_fair_scheduler SHARED
   src/bpe_fair_scheduler.cpp
@@ -129,6 +138,7 @@ install(
   TARGETS
     block_plugin_engine_core
     bpe_fair_scheduler
+    bpe_hybrid_fair_scheduler
     bpe_multi_scheduler
     block_plugin_engine
   ARCHIVE DESTINATION lib

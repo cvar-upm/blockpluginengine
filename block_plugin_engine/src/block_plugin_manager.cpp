@@ -14,6 +14,7 @@
 #include "block_plugin_engine/iblock_scheduler.hpp"
 #include "block_plugin_engine/iros_boundary_block.hpp"
 #include "block_plugin_engine/itimer_block.hpp"
+#include "block_plugin_engine/event_service.hpp"
 
 namespace bpe {
 namespace {
@@ -69,19 +70,28 @@ ExecutionConfig parse_execution_config(const YAML::Node& node) {
   }
 
   const auto policy = node["policy"].as<std::string>();
-  if (policy != "timer") {
+  if (policy != "timer" && policy != "event") {
     throw std::runtime_error("unsupported execution.policy: " + policy);
   }
 
   if (!node["period"]) {
-    throw std::runtime_error("execution.period is required for timer policy");
+    throw std::runtime_error("execution.period is required");
   }
 
   ExecutionConfig config;
-  config.policy = ExecutionPolicy::TIMER;
+  config.policy = policy == "timer" ? ExecutionPolicy::TIMER : ExecutionPolicy::EVENT;
   config.period = parse_duration(node["period"], "execution.period", false);
   if (node["offset"]) {
     config.offset = parse_duration(node["offset"], "execution.offset", true);
+  }
+  if (config.policy == ExecutionPolicy::EVENT) {
+    if (!node["event_tag"] || node["event_tag"].as<std::string>().empty() || !node["order"]) {
+      throw std::runtime_error("event policy requires event_tag and order");
+    }
+    config.event_tag = node["event_tag"].as<std::string>();
+    const auto order = node["order"].as<std::int64_t>();
+    if (order < 0) throw std::runtime_error("execution.order must be nonnegative");
+    config.pipeline_order = static_cast<std::size_t>(order);
   }
   if (node["thread"]) {
     const auto index = node["thread"].as<std::int64_t>();
@@ -263,6 +273,10 @@ bool BlockPluginManager::configure_instance(const BlockInstanceConfig& config) {
   if (auto* ros = dynamic_cast<IRosBoundaryBlock*>(plugin.get())) {
     RCLCPP_DEBUG(logger_, "Injecting ROS interface into Block '%s'", config.name.c_str());
     ros->set_ros_interface(ros_topics_);
+  }
+
+  if (auto* events = dynamic_cast<IEventServiceUser*>(plugin.get())) {
+    events->set_event_service(EventService::instance());
   }
 
   RCLCPP_DEBUG(logger_, "Configuring Block '%s'", config.name.c_str());

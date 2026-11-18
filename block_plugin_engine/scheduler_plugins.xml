@@ -13,3 +13,11 @@
     <description>Composition of independently configured scheduler plugins</description>
   </class>
 </library>
+
+<library path="bpe_hybrid_fair_scheduler">
+  <class name="block_plugin_engine/HybridFairScheduler"
+         type="bpe::BPE_HybridFairScheduler"
+         base_class_type="bpe::IBlockScheduler">
+    <description>Fair timer and event window scheduler</description>
+  </class>
+</library>
