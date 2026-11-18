@@ -1,4 +1,4 @@
-#include "test_event_log.hpp"
+#include "event_log.hpp"
 
 #include <iostream>
 #include <mutex>

@@ -1,0 +1,309 @@
+#include <algorithm>
+#include <chrono>
+#include <memory>
+#include <string>
+#include <vector>
+
+#include <gtest/gtest.h>
+#include <rclcpp/logger.hpp>
+
+#include "block_plugin_engine/execution_config.hpp"
+#include "block_plugin_engine/iblock_scheduler.hpp"
+#include "block_plugin_engine/itimer_block.hpp"
+#include "detail/block_plugin_manager.hpp"
+#include "mocks/scheduler_mock.hpp"
+#include "tools/event_log.hpp"
+
+namespace bpe::test {
+namespace {
+
+class BlockPluginManagerTest : public ::testing::Test {
+protected:
+  void SetUp() override {
+    clear_events();
+
+    scheduler_ = std::make_shared<SchedulerMock>();
+    ros_topics_.reset();
+
+    manager_ = std::make_unique<BlockPluginManager>(scheduler_,
+                                                    ros_topics_,
+                                                    rclcpp::get_logger("bpe_test"),
+                                                    std::vector<std::string>{BPE_TEST_PLUGIN_XML});
+  }
+
+  std::shared_ptr<SchedulerMock> scheduler_;
+  rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr ros_topics_;
+  std::unique_ptr<BlockPluginManager> manager_;
+};
+
+YAML::Node load_blocks_config(const std::string& filename) {
+  const YAML::Node root = YAML::LoadFile(std::string{BPE_TEST_CONFIG_DIR} + "/" + filename);
+  return root["blocks"];
+}
+
+TEST_F(BlockPluginManagerTest, LoadsAndRunsValidConfiguration) {
+  ASSERT_TRUE(manager_->configure(load_blocks_config("test_03_valid.yaml")));
+
+  ASSERT_EQ(scheduler_->entries().size(), 1U);
+  EXPECT_EQ(scheduler_->entries()[0].name, "timer");
+  EXPECT_EQ(scheduler_->entries()[0].config.policy, ExecutionPolicy::TIMER);
+  EXPECT_EQ(scheduler_->entries()[0].config.period, std::chrono::milliseconds{10});
+
+  EXPECT_EQ(events(),
+            (std::vector<std::string>{
+                "basic_a.configure:10",
+                "basic_b.configure:20",
+                "timer.configure:periodic",
+                "idle_timer.configure:not_scheduled",
+            }));
+
+  ASSERT_TRUE(manager_->start());
+
+  EXPECT_EQ(scheduler_->execute("timer"), ExecutionResult::SUCCESS);
+
+  ASSERT_TRUE(manager_->stop());
+  ASSERT_TRUE(manager_->cleanup());
+
+  EXPECT_EQ(events(),
+            (std::vector<std::string>{
+                "basic_a.configure:10",
+                "basic_b.configure:20",
+                "timer.configure:periodic",
+                "idle_timer.configure:not_scheduled",
+                "basic_a.start",
+                "basic_b.start",
+                "timer.start",
+                "idle_timer.start",
+                "timer.execute",
+                "idle_timer.stop",
+                "timer.stop",
+                "basic_b.stop",
+                "basic_a.stop",
+                "idle_timer.cleanup",
+                "timer.cleanup",
+                "basic_b.cleanup",
+                "basic_a.cleanup",
+            }));
+}
+
+TEST_F(BlockPluginManagerTest, RejectsDuplicateNamesBeforeLoadingPlugins) {
+  EXPECT_FALSE(manager_->configure(load_blocks_config("test_03_duplicate_name.yaml")));
+  EXPECT_TRUE(events().empty());
+}
+
+TEST_F(BlockPluginManagerTest, RejectsExecutionForNonTimerBlock) {
+  EXPECT_FALSE(manager_->configure(load_blocks_config("test_03_invalid_execution.yaml")));
+
+  EXPECT_EQ(events(),
+            (std::vector<std::string>{
+                "basic.configure:42",
+                "basic.cleanup",
+            }));
+
+  EXPECT_TRUE(scheduler_->entries().empty());
+}
+
+TEST_F(BlockPluginManagerTest, RollsBackPreviousBlocksOnConfigureFailure) {
+  EXPECT_FALSE(manager_->configure(load_blocks_config("test_03_configure_failure.yaml")));
+
+  EXPECT_EQ(events(),
+            (std::vector<std::string>{
+                "basic.configure:42",
+                "failing.configure",
+                "basic.cleanup",
+            }));
+}
+
+TEST_F(BlockPluginManagerTest, StopsPreviouslyStartedBlocksOnStartFailure) {
+  ASSERT_TRUE(manager_->configure(load_blocks_config("test_03_start_failure.yaml")));
+
+  clear_events();
+
+  EXPECT_FALSE(manager_->start());
+
+  EXPECT_EQ(events(),
+            (std::vector<std::string>{
+                "basic.start",
+                "failing.start",
+                "basic.stop",
+            }));
+
+  ASSERT_TRUE(manager_->cleanup());
+}
+
+
+// Construct invalid configurations in memory: these must fail before loading any plugin.
+class BlockConfigValidationTest : public BlockPluginManagerTest,
+                                  public ::testing::WithParamInterface<std::string> {};
+
+TEST_P(BlockConfigValidationTest, RejectsMalformedBlockConfiguration) {
+  EXPECT_FALSE(manager_->configure(YAML::Load(GetParam())));
+  EXPECT_TRUE(events().empty());
+  EXPECT_TRUE(scheduler_->entries().empty());
+}
+INSTANTIATE_TEST_SUITE_P(InvalidBlocks, BlockConfigValidationTest,
+  ::testing::Values(
+    "{}", "null", "42", "[3]", "[{}]", "[{name: a}]", "[{type: bpe_test/TestBasicBlock}]",
+    "[{name: '', type: bpe_test/TestBasicBlock}]", "[{name: x, type: ''}]",
+    "[{name: x, type: bpe_test/TestTimerBlock, execution: 10}]",
+    "[{name: x, type: bpe_test/TestTimerBlock, execution: {}}]",
+    "[{name: x, type: bpe_test/TestTimerBlock, execution: {policy: unknown, period: 10ms}}]",
+    "[{name: x, type: bpe_test/TestTimerBlock, execution: {policy: timer}}]",
+    "[{name: x, type: bpe_test/TestTimerBlock, execution: {policy: timer, period: 0ms}}]",
+    "[{name: x, type: bpe_test/TestTimerBlock, execution: {policy: timer, period: -1ms}}]",
+    "[{name: x, type: bpe_test/TestTimerBlock, execution: {policy: timer, period: 10h}}]",
+    "[{name: x, type: bpe_test/TestTimerBlock, execution: {policy: timer, period: abcms}}]",
+    "[{name: x, type: bpe_test/TestTimerBlock, execution: {policy: timer, period: 10ms, offset: -1ms}}]",
+    "[{name: x, type: bpe_test/TestTimerBlock, execution: {policy: timer, period: 10ms, thread: -1}}]",
+    "[{name: x, type: bpe_test/TestTimerBlock, execution: {policy: event, period: 10ms}}]",
+    "[{name: x, type: bpe_test/TestTimerBlock, execution: {policy: event, period: 10ms, event_tag: tag}}]",
+    "[{name: x, type: bpe_test/TestTimerBlock, execution: {policy: event, period: 10ms, order: 0}}]",
+    "[{name: x, type: bpe_test/TestTimerBlock, execution: {policy: event, period: 10ms, event_tag: tag, order: -1}}]"
+  ));
+
+TEST_F(BlockPluginManagerTest, RejectsUnknownPluginType) {
+  const auto blocks = YAML::Load("[{name: missing, type: bpe_test/NoSuchBlock}]");
+  EXPECT_FALSE(manager_->configure(blocks));
+  EXPECT_TRUE(scheduler_->entries().empty());
+  EXPECT_TRUE(events().empty());
+}
+
+TEST_F(BlockPluginManagerTest, RegistersCompleteExecutionConfiguration) {
+  auto blocks = YAML::Load(R"(
+- name: timer
+  type: bpe_test/TestTimerBlock
+  config: {id: timer, label: periodic}
+  execution: {policy: timer, period: 20ms, offset: 2ms, thread: 3}
+- name: event
+  type: bpe_test/TestTimerBlock
+  config: {id: event, label: event_driven}
+  execution: {policy: event, period: 100ms, offset: 4ms, thread: 1, event_tag: trigger, order: 7}
+)");
+  ASSERT_TRUE(manager_->configure(blocks));
+  ASSERT_EQ(scheduler_->entries().size(), 2U);
+  const auto& timer = scheduler_->entries()[0];
+  EXPECT_EQ(timer.name, "timer");
+  EXPECT_EQ(timer.config.policy, ExecutionPolicy::TIMER);
+  EXPECT_EQ(timer.config.period, std::chrono::milliseconds(20));
+  EXPECT_EQ(timer.config.offset, std::chrono::milliseconds(2));
+  EXPECT_EQ(timer.config.thread, 3U);
+  const auto& event = scheduler_->entries()[1];
+  EXPECT_EQ(event.name, "event");
+  EXPECT_EQ(event.config.policy, ExecutionPolicy::EVENT);
+  EXPECT_EQ(event.config.period, std::chrono::milliseconds(100));
+  EXPECT_EQ(event.config.offset, std::chrono::milliseconds(4));
+  EXPECT_EQ(event.config.thread, 1U);
+  EXPECT_EQ(event.config.event_tag, "trigger");
+  EXPECT_EQ(event.config.pipeline_order, 7U);
+  EXPECT_TRUE(manager_->cleanup());
+}
+
+TEST_F(BlockPluginManagerTest, DoesNotScheduleBlocksWithoutExecution) {
+  ASSERT_TRUE(manager_->configure(YAML::Load(R"(
+- name: plain
+  type: bpe_test/TestBasicBlock
+  config: {id: plain, value: 5}
+- name: idle_timer
+  type: bpe_test/TestTimerBlock
+  config: {id: idle, label: unscheduled}
+)")));
+  EXPECT_TRUE(scheduler_->entries().empty());
+  EXPECT_TRUE(scheduler_->calls().empty());
+  EXPECT_TRUE(manager_->cleanup());
+}
+
+TEST_F(BlockPluginManagerTest, RollsBackWhenSchedulerRejectsAdd) {
+  scheduler_->set_add_result(SchedulerResult::INVALID_CONFIG);
+  EXPECT_FALSE(manager_->configure(YAML::Load(R"(
+- name: plain
+  type: bpe_test/TestBasicBlock
+  config: {id: plain, value: 9}
+- name: timer
+  type: bpe_test/TestTimerBlock
+  config: {id: timer, label: rejected}
+  execution: {policy: timer, period: 10ms}
+)")));
+  EXPECT_EQ(scheduler_->calls(), (std::vector<std::string>{"add:timer", "clear"}));
+  EXPECT_TRUE(scheduler_->entries().empty());
+  EXPECT_EQ(events(), (std::vector<std::string>{
+    "plain.configure:9", "timer.configure:rejected", "timer.cleanup", "plain.cleanup"}));
+}
+
+TEST_F(BlockPluginManagerTest, CleanupClearsSchedulerBeforeBlockCleanup) {
+  ASSERT_TRUE(manager_->configure(load_blocks_config("test_03_valid.yaml")));
+  clear_events();
+  EXPECT_TRUE(manager_->cleanup());
+  EXPECT_EQ(scheduler_->calls(), (std::vector<std::string>{"add:timer", "clear"}));
+  EXPECT_TRUE(scheduler_->entries().empty());
+  EXPECT_EQ(events(), (std::vector<std::string>{
+      "idle_timer.cleanup", "timer.cleanup", "basic_b.cleanup", "basic_a.cleanup"}));
+  // SchedulerMock records clear; block event log records cleanup separately.
+  // A cross-log ordering assertion is intentionally not claimed here.
+}
+
+TEST_F(BlockPluginManagerTest, RejectsSecondConfiguration) {
+  ASSERT_TRUE(manager_->configure(load_blocks_config("test_03_valid.yaml")));
+  clear_events();
+  EXPECT_FALSE(manager_->configure(load_blocks_config("test_03_valid.yaml")));
+  EXPECT_TRUE(events().empty());
+  EXPECT_EQ(scheduler_->entries().size(), 1U);
+  EXPECT_TRUE(manager_->cleanup());
+}
+TEST_F(BlockPluginManagerTest, CanConfigureAfterCleanup) {
+  ASSERT_TRUE(manager_->configure(load_blocks_config("test_03_valid.yaml")));
+  ASSERT_TRUE(manager_->cleanup());
+  clear_events();
+  ASSERT_TRUE(manager_->configure(load_blocks_config("test_03_valid.yaml")));
+  EXPECT_EQ(scheduler_->entries().size(), 1U);
+  EXPECT_EQ(events().size(), 4U);
+  EXPECT_TRUE(manager_->cleanup());
+}
+TEST_F(BlockPluginManagerTest, ContinuesStoppingAfterFailure) {
+  ASSERT_TRUE(manager_->configure(YAML::Load(R"(
+- name: early
+  type: bpe_test/TestBasicBlock
+  config: {id: early, value: 1}
+- name: failure
+  type: bpe_test/TestFailingBlock
+  config: {id: failure, fail_on: stop}
+- name: late
+  type: bpe_test/TestBasicBlock
+  config: {id: late, value: 2}
+)")));
+  ASSERT_TRUE(manager_->start());
+  clear_events();
+  EXPECT_FALSE(manager_->stop());
+  EXPECT_EQ(events(), (std::vector<std::string>{"late.stop", "failure.stop", "early.stop"}));
+  EXPECT_TRUE(manager_->cleanup());
+}
+TEST_F(BlockPluginManagerTest, ContinuesCleaningAfterFailure) {
+  ASSERT_TRUE(manager_->configure(YAML::Load(R"(
+- name: early
+  type: bpe_test/TestBasicBlock
+  config: {id: early, value: 1}
+- name: failure
+  type: bpe_test/TestFailingBlock
+  config: {id: failure, fail_on: cleanup}
+- name: late
+  type: bpe_test/TestBasicBlock
+  config: {id: late, value: 2}
+)")));
+  clear_events();
+  EXPECT_FALSE(manager_->cleanup());
+  EXPECT_EQ(events(), (std::vector<std::string>{"late.cleanup", "failure.cleanup", "early.cleanup"}));
+}
+TEST_F(BlockPluginManagerTest, CleansUpAfterStartFailure) {
+  ASSERT_TRUE(manager_->configure(load_blocks_config("test_03_start_failure.yaml")));
+  EXPECT_FALSE(manager_->start());
+  clear_events();
+  EXPECT_TRUE(manager_->cleanup());
+  EXPECT_EQ(events(), (std::vector<std::string>{"failing.cleanup", "basic.cleanup"}));
+}
+TEST_F(BlockPluginManagerTest, InjectsEventServiceBeforeConfigure) {
+  ASSERT_TRUE(manager_->configure(YAML::Load("[{name: event, type: bpe_test/TestEventServiceMockBlock}]")));
+  EXPECT_EQ(events(), (std::vector<std::string>{"event.inject", "event.configure:injected"}));
+  EXPECT_TRUE(manager_->cleanup());
+}
+
+} // namespace
+} // namespace bpe::test

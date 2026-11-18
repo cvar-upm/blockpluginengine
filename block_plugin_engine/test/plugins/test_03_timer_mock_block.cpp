@@ -4,7 +4,7 @@
 
 #include "block_plugin_engine/iblock_plugin.hpp"
 #include "block_plugin_engine/itimer_block.hpp"
-#include "test_event_log.hpp"
+#include "tools/event_log.hpp"
 
 namespace bpe::test {
 

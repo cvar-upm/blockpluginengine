@@ -1,6 +1,6 @@
 
 add_library(bpe_test_support SHARED
-  test_event_log.cpp
+  tools/event_log.cpp
 )
 
 target_include_directories(bpe_test_support
@@ -9,9 +9,10 @@ target_include_directories(bpe_test_support
 )
 
 add_library(bpe_test_plugins SHARED
-  plugins/test_basic_block.cpp
-  plugins/test_timer_block.cpp
-  plugins/test_failing_block.cpp
+  plugins/test_03_basic_mock_block.cpp
+  plugins/test_03_timer_mock_block.cpp
+  plugins/test_03_failing_mock_block.cpp
+  plugins/test_03_event_service_mock_block.cpp
 )
 
 target_include_directories(bpe_test_plugins
@@ -25,42 +26,44 @@ ament_target_dependencies(bpe_test_plugins
 )
 
 target_link_libraries(bpe_test_plugins
+  block_plugin_engine_core
   bpe_test_support
   yaml-cpp
 )
 
 pluginlib_export_plugin_description_file(
   block_plugin_engine
-  test_plugins.xml
+  test_03_plugins.xml
 )
 
-ament_add_gtest(test_block_plugin_manager
-  test_block_plugin_manager.cpp
+ament_add_gtest(test_03_block_plugin_manager
+  test_03_block_plugin_manager.cpp
+  mocks/scheduler_mock.cpp
   ${PROJECT_SOURCE_DIR}/src/block_plugin_manager.cpp
 )
 
-target_include_directories(test_block_plugin_manager
+target_include_directories(test_03_block_plugin_manager
   PRIVATE
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-ament_target_dependencies(test_block_plugin_manager
+ament_target_dependencies(test_03_block_plugin_manager
   rclcpp
   pluginlib
 )
 
-target_link_libraries(test_block_plugin_manager
+target_link_libraries(test_03_block_plugin_manager
   block_plugin_engine_core
   bpe_test_support
   yaml-cpp
 )
 
-target_compile_definitions(test_block_plugin_manager
+target_compile_definitions(test_03_block_plugin_manager
   PRIVATE
     BPE_TEST_CONFIG_DIR="${CMAKE_CURRENT_SOURCE_DIR}/config"
-    BPE_TEST_PLUGIN_XML="${CMAKE_CURRENT_SOURCE_DIR}/test_plugins.xml"
+    BPE_TEST_PLUGIN_XML="${CMAKE_CURRENT_SOURCE_DIR}/test_03_plugins.xml"
 )
 
 install(
