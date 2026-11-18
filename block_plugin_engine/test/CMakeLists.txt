@@ -111,21 +111,21 @@ install(
   DESTINATION lib/${PROJECT_NAME}
 )
 
-ament_add_gtest(test_typed_blackboard
-  test_typed_blackboard.cpp
+ament_add_gtest(test_01_ros_typed_blackboard
+  test_01_ros_typed_blackboard.cpp
 )
 
-ament_target_dependencies(test_typed_blackboard
+ament_target_dependencies(test_01_ros_typed_blackboard
   geometry_msgs
   rclcpp
 )
 
-target_include_directories(test_typed_blackboard
+target_include_directories(test_01_ros_typed_blackboard
   PRIVATE
     ${PROJECT_SOURCE_DIR}/include
 )
 
-target_link_libraries(test_typed_blackboard
+target_link_libraries(test_01_ros_typed_blackboard
   block_plugin_engine_core
 )
 
