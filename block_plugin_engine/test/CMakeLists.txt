@@ -52,6 +52,7 @@ ament_target_dependencies(test_block_plugin_manager
 )
 
 target_link_libraries(test_block_plugin_manager
+  block_plugin_engine_core
   bpe_test_support
   yaml-cpp
 )
