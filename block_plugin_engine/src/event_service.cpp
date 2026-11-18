@@ -16,6 +16,8 @@ EventService& EventService::instance() {
 
 std::shared_ptr<EventService::Channel> EventService::channel(const std::string& tag) {
   if (tag.empty()) return {};
+  // TODO: Channel lookup/creation is confined to single-threaded configuration.
+  // Review removal of this lock together with the mutex declaration.
   std::lock_guard lock(mutex_);
   auto& weak = channels_[tag];
   if (auto current = weak.lock()) return current;

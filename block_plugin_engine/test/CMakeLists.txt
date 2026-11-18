@@ -132,3 +132,11 @@ target_link_libraries(test_01_ros_typed_blackboard
 ament_add_gtest(test_bpe_multi_scheduler test_bpe_multi_scheduler.cpp)
 target_include_directories(test_bpe_multi_scheduler PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src)
 target_link_libraries(test_bpe_multi_scheduler bpe_multi_scheduler yaml-cpp)
+
+ament_add_gtest(test_02_event_service
+  test_02_event_service.cpp
+)
+
+target_link_libraries(test_02_event_service
+  block_plugin_engine_core
+)

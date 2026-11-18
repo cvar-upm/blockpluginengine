@@ -48,6 +48,8 @@ public:
   std::shared_ptr<Channel> channel(const std::string& tag);
 
 private:
+  // TODO: Channel registration happens during single-threaded configuration.
+  // Reassess whether this mutex is needed once that invariant is enforced.
   std::mutex mutex_;
   std::unordered_map<std::string, std::weak_ptr<Channel>> channels_;
 };
