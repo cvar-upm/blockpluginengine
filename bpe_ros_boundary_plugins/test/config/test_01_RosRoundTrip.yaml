@@ -1,4 +1,5 @@
 scheduler:
+  type: block_plugin_engine/HybridFairScheduler
   realtime: {enabled: false}
   pipelines:
     - {name: int_pipeline, policy: event, period: 5ms,

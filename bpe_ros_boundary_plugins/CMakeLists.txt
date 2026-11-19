@@ -9,7 +9,6 @@ find_package(ament_cmake REQUIRED)
 find_package(block_plugin_engine REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(yaml-cpp REQUIRED)
 
 add_library(bpe_ros_boundary_plugins SHARED
   src/ros_input_block.cpp
@@ -46,7 +45,7 @@ install(
 
 
 if(BUILD_TESTING)
-  find_package(ament_cmake_gtest REQUIRED)
+  find_package(ament_cmake_pytest REQUIRED)
   find_package(std_msgs REQUIRED)
   find_package(geometry_msgs REQUIRED)
 
@@ -58,20 +57,18 @@ if(BUILD_TESTING)
     block_plugin_engine pluginlib rclcpp std_msgs geometry_msgs)
   install(TARGETS bpe_boundary_test_plugins LIBRARY DESTINATION lib)
 
-  ament_add_gtest(test_01_ros_boundary_round_trip
-    test/test_01_ros_boundary_round_trip.cpp)
-  ament_target_dependencies(test_01_ros_boundary_round_trip
-    block_plugin_engine pluginlib rclcpp std_msgs geometry_msgs)
-  target_link_libraries(test_01_ros_boundary_round_trip yaml-cpp)
-  target_compile_definitions(test_01_ros_boundary_round_trip PRIVATE
-    BPE_BOUNDARY_TEST_CONFIG_DIR="${CMAKE_CURRENT_SOURCE_DIR}/test/config")
+  # Exercise the real installed BlockPluginEngine executable, rather than
+  # reconstructing its plugin loading/lifecycle in a test fixture.
+  ament_add_pytest_test(test_01_ros_boundary_round_trip
+    test/test_01_ros_boundary_round_trip.py
+    TIMEOUT 45
+  )
 
-  # pluginlib needs the package manifests and DSOs installed by colcon build.
-  # Keep the existing overlay paths intact when run directly through CTest.
   get_filename_component(BPE_ENGINE_TEST_PREFIX
     "${block_plugin_engine_DIR}/../../.." ABSOLUTE)
   set_tests_properties(test_01_ros_boundary_round_trip PROPERTIES ENVIRONMENT
-    "AMENT_PREFIX_PATH=${CMAKE_INSTALL_PREFIX}:${BPE_ENGINE_TEST_PREFIX}:$ENV{AMENT_PREFIX_PATH};LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib:${BPE_ENGINE_TEST_PREFIX}/lib:$ENV{LD_LIBRARY_PATH}")
+    "AMENT_PREFIX_PATH=${CMAKE_INSTALL_PREFIX}:${BPE_ENGINE_TEST_PREFIX}:$ENV{AMENT_PREFIX_PATH};LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib:${BPE_ENGINE_TEST_PREFIX}/lib:$ENV{LD_LIBRARY_PATH};BPE_BOUNDARY_TEST_CONFIG=${CMAKE_CURRENT_SOURCE_DIR}/test/config/test_01_RosRoundTrip.yaml;BPE_BOUNDARY_TEST_EXECUTABLE=${BPE_ENGINE_TEST_PREFIX}/lib/block_plugin_engine/block_plugin_engine")
+
 endif()
 
 ament_package()
