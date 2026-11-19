@@ -51,7 +51,14 @@ public:
     wait_until(deadline, running);
   }
 
-  void notify_stop() { cv_.notify_all(); }
+  void notify_stop() {
+    // Synchronize with wait_until() to prevent a lost wake-up: the worker
+    // must not observe running == true and then sleep after this notification.
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+    }
+    cv_.notify_all();
+  }
 
 private:
   static std::int64_t to_ns(const timespec& t) {
