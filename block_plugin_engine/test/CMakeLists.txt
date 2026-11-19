@@ -1,6 +1,7 @@
 
 add_library(bpe_test_support SHARED
   tools/event_log.cpp
+  tools/simulated_clock.cpp
 )
 
 target_include_directories(bpe_test_support
@@ -13,6 +14,7 @@ add_library(bpe_test_plugins SHARED
   plugins/test_03_timer_mock_block.cpp
   plugins/test_03_failing_mock_block.cpp
   plugins/test_03_signal_user_mock_block.cpp
+  plugins/test_06_signal_producer_block.cpp
 )
 
 target_include_directories(bpe_test_plugins
@@ -31,10 +33,9 @@ target_link_libraries(bpe_test_plugins
   yaml-cpp
 )
 
-pluginlib_export_plugin_description_file(
-  block_plugin_engine
-  test_03_plugins.xml
-)
+# Test block plugins are loaded from explicit XML paths by BlockPluginManager.
+# Do not register a second pluginlib ament-index manifest for schedulers.
+
 
 ament_add_gtest(test_03_block_plugin_manager
   test_03_block_plugin_manager.cpp
@@ -151,3 +152,40 @@ target_link_libraries(test_05_bpe_hybrid_fair_scheduler
   bpe_test_support
   yaml-cpp
 )
+
+# Pluginlib-registered specializations with one shared virtual clock.
+# They exist only in BUILD_TESTING, never in the production plugin manifest.
+add_library(bpe_test_simulated_schedulers SHARED
+  plugins/test_06_simulated_schedulers.cpp
+)
+target_compile_features(bpe_test_simulated_schedulers PUBLIC cxx_std_20)
+target_include_directories(bpe_test_simulated_schedulers PRIVATE
+  ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}
+)
+ament_target_dependencies(bpe_test_simulated_schedulers pluginlib)
+target_link_libraries(bpe_test_simulated_schedulers
+  bpe_test_support block_plugin_engine_core yaml-cpp Threads::Threads
+)
+
+ament_add_gtest(test_06_scheduler_integration
+  test_06_scheduler_integration.cpp
+  ${PROJECT_SOURCE_DIR}/src/scheduler_plugin_host.cpp
+  ${PROJECT_SOURCE_DIR}/src/block_plugin_manager.cpp
+)
+target_compile_features(test_06_scheduler_integration PUBLIC cxx_std_20)
+target_include_directories(test_06_scheduler_integration PRIVATE
+  ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}
+)
+ament_target_dependencies(test_06_scheduler_integration rclcpp pluginlib)
+target_link_libraries(test_06_scheduler_integration
+  block_plugin_engine_core bpe_test_support yaml-cpp Threads::Threads
+)
+target_compile_definitions(test_06_scheduler_integration PRIVATE
+  BPE_TEST_PLUGIN_XML="${CMAKE_CURRENT_SOURCE_DIR}/test_03_plugins.xml"
+  BPE_TEST_CONFIG_DIR="${CMAKE_CURRENT_SOURCE_DIR}/config"
+)
+
+add_dependencies(test_06_scheduler_integration
+  bpe_test_simulated_schedulers bpe_test_plugins
+)
+install(TARGETS bpe_test_simulated_schedulers LIBRARY DESTINATION lib)

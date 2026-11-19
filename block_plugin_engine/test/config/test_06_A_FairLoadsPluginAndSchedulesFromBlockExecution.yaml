@@ -1,0 +1,8 @@
+scheduler:
+  type: bpe_test/SimulatedFairScheduler
+  realtime: {enabled: false}
+blocks:
+  - {name: a, type: bpe_test/TestTimerBlock, config: {id: a, label: scheduled},
+     execution: {policy: timer, period: 10ms}}
+  - {name: idle, type: bpe_test/TestTimerBlock,
+     config: {id: idle, label: unscheduled}}

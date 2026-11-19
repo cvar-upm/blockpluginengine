@@ -1,6 +1,8 @@
 #include "detail/scheduler_plugin_host.hpp"
 
 #include <pluginlib/exceptions.hpp>
+#include <rclcpp/logger.hpp>
+#include <rclcpp/logging.hpp>
 
 namespace bpe {
 namespace {
@@ -38,9 +40,13 @@ SchedulerResult SchedulerPluginHost::configure(const SchedulerConfig& config) {
       scheduler_ = std::move(selected);
     }
     return result;
-  } catch (const YAML::Exception&) {
+  } catch (const YAML::Exception& error) {
+    RCLCPP_ERROR(rclcpp::get_logger("bpe.scheduler_plugin_host"),
+                 "Invalid scheduler YAML: %s", error.what());
     return SchedulerResult::INVALID_CONFIG;
-  } catch (const pluginlib::PluginlibException&) {
+  } catch (const pluginlib::PluginlibException& error) {
+    RCLCPP_ERROR(rclcpp::get_logger("bpe.scheduler_plugin_host"),
+                 "Could not load scheduler plugin: %s", error.what());
     return SchedulerResult::INVALID_CONFIG;
   }
 }

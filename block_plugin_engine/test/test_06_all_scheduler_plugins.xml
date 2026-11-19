@@ -1,0 +1,36 @@
+<library path="bpe_fair_scheduler">
+  <class name="block_plugin_engine/FairScheduler"
+         type="bpe::BPE_FairScheduler"
+         base_class_type="bpe::IBlockScheduler">
+    <description>Nominal-deadline fair scheduler</description>
+  </class>
+</library>
+
+<library path="bpe_multi_scheduler">
+  <class name="block_plugin_engine/MultiScheduler"
+         type="bpe::BPE_MultiScheduler"
+         base_class_type="bpe::IBlockScheduler">
+    <description>Composition of independently configured scheduler plugins</description>
+  </class>
+</library>
+
+<library path="bpe_hybrid_fair_scheduler">
+  <class name="block_plugin_engine/HybridFairScheduler"
+         type="bpe::BPE_HybridFairScheduler"
+         base_class_type="bpe::IBlockScheduler">
+    <description>Fair timer and event pipeline scheduler</description>
+  </class>
+</library>
+
+<library path="bpe_test_simulated_schedulers">
+  <class name="bpe_test/SimulatedFairScheduler"
+         type="bpe::test::SimulatedFairPlugin"
+         base_class_type="bpe::IBlockScheduler">
+    <description>Virtual-clock FairScheduler for integration tests.</description>
+  </class>
+  <class name="bpe_test/SimulatedHybridFairScheduler"
+         type="bpe::test::SimulatedHybridPlugin"
+         base_class_type="bpe::IBlockScheduler">
+    <description>Virtual-clock HybridFairScheduler for integration tests.</description>
+  </class>
+</library>

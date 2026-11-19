@@ -1,0 +1,14 @@
+scheduler:
+  type: bpe_test/SimulatedFairScheduler
+  realtime: {enabled: false}
+blocks:
+  - {name: first, type: bpe_test/TestTimerBlock,
+     config: {id: first, label: valid},
+     execution: {policy: timer, period: 10ms}}
+  - {name: invalid, type: bpe_test/TestTimerBlock,
+     config: {id: invalid, label: bad},
+     execution: {policy: wrong, period: invalid}}
+retry_blocks:
+  - {name: recovered, type: bpe_test/TestTimerBlock,
+     config: {id: recovered, label: valid},
+     execution: {policy: timer, period: 10ms}}

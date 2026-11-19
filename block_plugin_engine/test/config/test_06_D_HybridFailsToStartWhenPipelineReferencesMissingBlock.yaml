@@ -1,0 +1,8 @@
+scheduler:
+  type: bpe_test/SimulatedHybridFairScheduler
+  realtime: {enabled: false}
+  pipelines:
+    - {name: invalid, policy: timer, period: 10ms, blocks: [present, absent]}
+blocks:
+  - {name: present, type: bpe_test/TestTimerBlock,
+     config: {id: present, label: valid}}

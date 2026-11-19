@@ -1,0 +1,19 @@
+scheduler:
+  type: block_plugin_engine/MultiScheduler
+  start_delay: 100ms
+  threads:
+    - {type: bpe_test/SimulatedFairScheduler, realtime: {enabled: false}}
+    - type: bpe_test/SimulatedHybridFairScheduler
+      realtime: {enabled: false}
+      pipelines:
+        - {name: receiving, policy: event, period: 20ms,
+           signal: cross_thread, blocks: [consumer]}
+blocks:
+  - name: producer
+    type: bpe_test/TestSignalProducerBlock
+    config: {signal: cross_thread}
+    execution: {thread: 0, policy: timer, period: 10ms}
+  - name: consumer
+    type: bpe_test/TestTimerBlock
+    config: {id: consumer, label: signaled}
+    execution: {thread: 1, policy: ignored, period: invalid}

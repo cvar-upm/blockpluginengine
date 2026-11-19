@@ -122,7 +122,14 @@ target_link_libraries(block_plugin_engine
 )
 
 # Export the built-in scheduler as a selectable plugin.
-pluginlib_export_plugin_description_file(block_plugin_engine scheduler_plugins.xml)
+# Export exactly one scheduler manifest. In test builds the same manifest
+# also describes the simulated specializations, so nested plugin loaders in
+# MultiScheduler discover them via the ordinary ament index.
+if(BUILD_TESTING)
+  pluginlib_export_plugin_description_file(block_plugin_engine test/test_06_all_scheduler_plugins.xml)
+else()
+  pluginlib_export_plugin_description_file(block_plugin_engine scheduler_plugins.xml)
+endif()
 
 #
 # Install only the public API headers.

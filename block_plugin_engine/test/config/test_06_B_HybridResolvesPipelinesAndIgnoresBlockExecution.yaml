@@ -1,0 +1,15 @@
+scheduler:
+  type: bpe_test/SimulatedHybridFairScheduler
+  realtime: {enabled: false}
+  pipelines:
+    - {name: periodic, policy: timer, period: 20ms, blocks: [a, b]}
+    - {name: async, policy: event, period: 30ms,
+       signal: ready, blocks: [c]}
+blocks:
+  - {name: a, type: bpe_test/TestTimerBlock,
+     config: {id: a, label: first},
+     execution: {policy: nonsense, period: garbage}}
+  - {name: b, type: bpe_test/TestTimerBlock,
+     config: {id: b, label: second}}
+  - {name: c, type: bpe_test/TestTimerBlock,
+     config: {id: c, label: event}}

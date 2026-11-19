@@ -27,6 +27,17 @@ public:
     return duration{ticks_};
   }
 
+  void reset(duration initial = duration{0}) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    // The caller must have stopped and destroyed all simulated schedulers.
+    ticks_ = initial.count();
+    deadline_fd_ = -1;
+    deadline_ns_ = -1;
+    deadline_armed_ = false;
+    frozen_ = false;
+    worker_frozen_ = false;
+  }
+
   void advance_to(duration value) {
     {
       std::lock_guard<std::mutex> lock(mutex_);

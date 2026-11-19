@@ -1,0 +1,9 @@
+scheduler:
+  type: bpe_test/SimulatedHybridFairScheduler
+  realtime: {enabled: false}
+  pipelines:
+    - {name: triggered, policy: event, period: 20ms,
+       signal: ready, blocks: [receiver]}
+blocks:
+  - {name: receiver, type: bpe_test/TestTimerBlock,
+     config: {id: receiver, label: input}}

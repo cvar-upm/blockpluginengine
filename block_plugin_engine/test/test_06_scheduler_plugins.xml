@@ -1,0 +1,12 @@
+<library path="bpe_test_simulated_schedulers">
+  <class name="bpe_test/SimulatedFairScheduler"
+         type="bpe::test::SimulatedFairPlugin"
+         base_class_type="bpe::IBlockScheduler">
+    <description>Virtual-clock FairScheduler for integration tests.</description>
+  </class>
+  <class name="bpe_test/SimulatedHybridFairScheduler"
+         type="bpe::test::SimulatedHybridPlugin"
+         base_class_type="bpe::IBlockScheduler">
+    <description>Virtual-clock HybridFairScheduler for integration tests.</description>
+  </class>
+</library>

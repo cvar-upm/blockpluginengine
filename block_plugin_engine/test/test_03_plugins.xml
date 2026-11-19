@@ -25,4 +25,9 @@
     type="bpe::test::TestSignalUserMockBlock" base_class_type="bpe::IBlockPlugin">
     <description>Pull-based event signal provider injection mock.</description>
   </class>
+  <class name="bpe_test/TestSignalProducerBlock"
+         type="bpe::test::TestSignalProducerBlock"
+         base_class_type="bpe::IBlockPlugin">
+    <description>Timed producer emitting an injected event signal.</description>
+  </class>
 </library>
