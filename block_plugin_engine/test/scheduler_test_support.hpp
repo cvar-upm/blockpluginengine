@@ -14,7 +14,6 @@
 
 #include <yaml-cpp/yaml.h>
 
-#include "block_plugin_engine/execution_config.hpp"
 #include "block_plugin_engine/iblock_scheduler.hpp"
 #include "block_plugin_engine/itimer_block.hpp"
 
@@ -256,10 +255,10 @@ inline SchedulerConfig scheduler_config(
   return config;
 }
 
-inline ExecutionConfig timer_config(std::chrono::nanoseconds period) {
-  ExecutionConfig config;
-  config.policy = ExecutionPolicy::TIMER;
-  config.period = period;
+inline YAML::Node timer_config(std::chrono::nanoseconds period) {
+  YAML::Node config;
+  config["policy"] = "timer";
+  config["period"] = std::to_string(period.count()) + "ns";
   return config;
 }
 

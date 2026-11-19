@@ -138,7 +138,7 @@ Example:
 
 ## 5. Periodic execution
 
-A block is scheduled only when it has an `execution` section:
+With `FairScheduler`, a block is scheduled only when it has an `execution` section:
 
 ```yaml
 execution:
@@ -151,8 +151,10 @@ Current rules:
 - the only supported policy is `timer`;
 - `period` is required and must be greater than zero;
 - accepted period suffixes are `ns`, `us`, `ms`, and `s`;
-- a block with `execution` must implement `bpe::ITimerBlock`;
+- only blocks implementing `bpe::ITimerBlock` can be scheduled;
 - a block implementing `ITimerBlock` is not automatically scheduled unless `execution` is present.
+
+For `HybridFairScheduler`, only the pipelines in the scheduler configuration schedule blocks; per-block `execution` is ignored.
 
 This separation is useful for boundary semantics. A ROS input block is callback-driven and has no `execution` section; a ROS output block is periodic and does.
 

@@ -123,27 +123,9 @@ SchedulerResult BPE_HybridFairScheduler::configure(const SchedulerConfig& config
   return SchedulerResult::SUCCESS;
 }
 
-SchedulerResult BPE_HybridFairScheduler::add(
-    const std::string& name, ITimerBlock& block, const ExecutionConfig& config) {
-  // Legacy single-block timer entries remain supported. EVENT declarations
-  // are scheduler-owned pipelines, not block.execution declarations.
-  if (running_) return SchedulerResult::INVALID_STATE;
-  if (name.empty() || config.policy != ExecutionPolicy::TIMER || config.thread != 0 ||
-      config.period.count() <= 0 || config.offset.count() < 0 ||
-      config.offset.count() > std::numeric_limits<std::int64_t>::max() - config.period.count() ||
-      std::any_of(pipelines_.begin(), pipelines_.end(), [&](const Pipeline& p) { return p.name == name; }))
-    return SchedulerResult::INVALID_CONFIG;
-  Pipeline pipeline;
-  pipeline.name = name;
-  pipeline.blocks.push_back({name, &block, dynamic_cast<ITimerBlockWithInfo*>(&block)});
-  pipeline.period = config.period.count();
-  pipeline.offset = config.offset.count();
-  pipeline.registration = pipelines_.size();
-  pipelines_.push_back(std::move(pipeline));
-  return SchedulerResult::SUCCESS;
-}
-
-SchedulerResult BPE_HybridFairScheduler::bind_block(const std::string& name, ITimerBlock& block) {
+SchedulerResult BPE_HybridFairScheduler::register_block(
+    const std::string& name, ITimerBlock& block, const YAML::Node&) {
+  // Pipelines are scheduler-owned. Individual execution settings are intentionally ignored.
   if (running_) return SchedulerResult::INVALID_STATE;
   for (auto& pipeline : pipelines_) for (auto& entry : pipeline.blocks) {
     if (entry.name == name) {
@@ -170,13 +152,6 @@ SchedulerResult BPE_HybridFairScheduler::remove(const std::string& name) {
       block.with_info = nullptr;
       found = true;
     }
-  }
-  auto it = std::remove_if(pipelines_.begin(), pipelines_.end(), [&](const Pipeline& p) {
-    return !p.event && p.blocks.size() == 1 && p.name == name;
-  });
-  if (it != pipelines_.end()) {
-    pipelines_.erase(it, pipelines_.end());
-    found = true;
   }
   return found ? SchedulerResult::SUCCESS : SchedulerResult::NOT_FOUND;
 }

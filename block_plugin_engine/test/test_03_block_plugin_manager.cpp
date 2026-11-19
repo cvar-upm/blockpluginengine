@@ -7,7 +7,6 @@
 #include <gtest/gtest.h>
 #include <rclcpp/logger.hpp>
 
-#include "block_plugin_engine/execution_config.hpp"
 #include "block_plugin_engine/iblock_scheduler.hpp"
 #include "block_plugin_engine/itimer_block.hpp"
 #include "detail/block_plugin_manager.hpp"
@@ -46,8 +45,8 @@ TEST_F(BlockPluginManagerTest, LoadsAndRunsValidConfiguration) {
 
   ASSERT_EQ(scheduler_->entries().size(), 1U);
   EXPECT_EQ(scheduler_->entries()[0].name, "timer");
-  EXPECT_EQ(scheduler_->entries()[0].config.policy, ExecutionPolicy::TIMER);
-  EXPECT_EQ(scheduler_->entries()[0].config.period, std::chrono::milliseconds{10});
+  EXPECT_EQ(scheduler_->entries()[0].config["policy"].as<std::string>(), "timer");
+  EXPECT_EQ(scheduler_->entries()[0].config["period"].as<std::string>(), "10ms");
 
   EXPECT_EQ(events(),
             (std::vector<std::string>{
@@ -91,16 +90,15 @@ TEST_F(BlockPluginManagerTest, RejectsDuplicateNamesBeforeLoadingPlugins) {
   EXPECT_TRUE(events().empty());
 }
 
-TEST_F(BlockPluginManagerTest, RejectsExecutionForNonTimerBlock) {
-  EXPECT_FALSE(manager_->configure(load_blocks_config("test_03_invalid_execution.yaml")));
+TEST_F(BlockPluginManagerTest, IgnoresExecutionOnNonTimerBlock) {
+  EXPECT_TRUE(manager_->configure(load_blocks_config("test_03_invalid_execution.yaml")));
 
   EXPECT_EQ(events(),
             (std::vector<std::string>{
                 "basic.configure:42",
-                "basic.cleanup",
             }));
-
   EXPECT_TRUE(scheduler_->entries().empty());
+  EXPECT_TRUE(manager_->cleanup());
 }
 
 TEST_F(BlockPluginManagerTest, RollsBackPreviousBlocksOnConfigureFailure) {
@@ -144,21 +142,7 @@ TEST_P(BlockConfigValidationTest, RejectsMalformedBlockConfiguration) {
 INSTANTIATE_TEST_SUITE_P(InvalidBlocks, BlockConfigValidationTest,
   ::testing::Values(
     "{}", "null", "42", "[3]", "[{}]", "[{name: a}]", "[{type: bpe_test/TestBasicBlock}]",
-    "[{name: '', type: bpe_test/TestBasicBlock}]", "[{name: x, type: ''}]",
-    "[{name: x, type: bpe_test/TestTimerBlock, execution: 10}]",
-    "[{name: x, type: bpe_test/TestTimerBlock, execution: {}}]",
-    "[{name: x, type: bpe_test/TestTimerBlock, execution: {policy: unknown, period: 10ms}}]",
-    "[{name: x, type: bpe_test/TestTimerBlock, execution: {policy: timer}}]",
-    "[{name: x, type: bpe_test/TestTimerBlock, execution: {policy: timer, period: 0ms}}]",
-    "[{name: x, type: bpe_test/TestTimerBlock, execution: {policy: timer, period: -1ms}}]",
-    "[{name: x, type: bpe_test/TestTimerBlock, execution: {policy: timer, period: 10h}}]",
-    "[{name: x, type: bpe_test/TestTimerBlock, execution: {policy: timer, period: abcms}}]",
-    "[{name: x, type: bpe_test/TestTimerBlock, execution: {policy: timer, period: 10ms, offset: -1ms}}]",
-    "[{name: x, type: bpe_test/TestTimerBlock, execution: {policy: timer, period: 10ms, thread: -1}}]",
-    "[{name: x, type: bpe_test/TestTimerBlock, execution: {policy: event, period: 10ms}}]",
-    "[{name: x, type: bpe_test/TestTimerBlock, execution: {policy: event, period: 10ms, event_tag: tag}}]",
-    "[{name: x, type: bpe_test/TestTimerBlock, execution: {policy: event, period: 10ms, order: 0}}]",
-    "[{name: x, type: bpe_test/TestTimerBlock, execution: {policy: event, period: 10ms, event_tag: tag, order: -1}}]"
+    "[{name: '', type: bpe_test/TestBasicBlock}]", "[{name: x, type: ''}]"
   ));
 
 TEST_F(BlockPluginManagerTest, InjectsPullSignalProviderBeforeConfigure) {
@@ -191,13 +175,28 @@ TEST_F(BlockPluginManagerTest, RegistersTimerExecutionConfiguration) {
   ASSERT_EQ(scheduler_->entries().size(), 1U);
   const auto& timer = scheduler_->entries()[0];
   EXPECT_EQ(timer.name, "timer");
-  EXPECT_EQ(timer.config.policy, ExecutionPolicy::TIMER);
-  EXPECT_EQ(timer.config.period, std::chrono::milliseconds(20));
-  EXPECT_EQ(timer.config.offset, std::chrono::milliseconds(2));
-  EXPECT_EQ(timer.config.thread, 3U);
+  EXPECT_EQ(timer.config["policy"].as<std::string>(), "timer");
+  EXPECT_EQ(timer.config["period"].as<std::string>(), "20ms");
+  EXPECT_EQ(timer.config["offset"].as<std::string>(), "2ms");
+  EXPECT_EQ(timer.config["thread"].as<unsigned>(), 3U);
   EXPECT_TRUE(manager_->cleanup());
 }
 
+
+TEST_F(BlockPluginManagerTest, ForwardsExecutionWithoutParsingIt) {
+  auto blocks = YAML::Load(R"(
+- name: timer
+  type: bpe_test/TestTimerBlock
+  config: {id: timer, label: raw_yaml}
+  execution: {policy: invalid-for-fair-scheduler, period: nonsense}
+)");
+  ASSERT_TRUE(manager_->configure(blocks));
+  ASSERT_EQ(scheduler_->entries().size(), 1U);
+  EXPECT_EQ(scheduler_->entries()[0].config["policy"].as<std::string>(),
+            "invalid-for-fair-scheduler");
+  EXPECT_EQ(scheduler_->entries()[0].config["period"].as<std::string>(), "nonsense");
+  EXPECT_TRUE(manager_->cleanup());
+}
 TEST_F(BlockPluginManagerTest, DoesNotScheduleBlocksWithoutExecution) {
   ASSERT_TRUE(manager_->configure(YAML::Load(R"(
 - name: plain
@@ -208,7 +207,7 @@ TEST_F(BlockPluginManagerTest, DoesNotScheduleBlocksWithoutExecution) {
   config: {id: idle, label: unscheduled}
 )")));
   EXPECT_TRUE(scheduler_->entries().empty());
-  EXPECT_TRUE(scheduler_->calls().empty());
+  EXPECT_EQ(scheduler_->calls(), (std::vector<std::string>{"register:idle_timer"}));
   EXPECT_TRUE(manager_->cleanup());
 }
 
@@ -223,7 +222,7 @@ TEST_F(BlockPluginManagerTest, RollsBackWhenSchedulerRejectsAdd) {
   config: {id: timer, label: rejected}
   execution: {policy: timer, period: 10ms}
 )")));
-  EXPECT_EQ(scheduler_->calls(), (std::vector<std::string>{"add:timer", "clear"}));
+  EXPECT_EQ(scheduler_->calls(), (std::vector<std::string>{"register:timer", "clear"}));
   EXPECT_TRUE(scheduler_->entries().empty());
   EXPECT_EQ(events(), (std::vector<std::string>{
     "plain.configure:9", "timer.configure:rejected", "timer.cleanup", "plain.cleanup"}));
@@ -233,7 +232,7 @@ TEST_F(BlockPluginManagerTest, CleanupClearsSchedulerBeforeBlockCleanup) {
   ASSERT_TRUE(manager_->configure(load_blocks_config("test_03_valid.yaml")));
   clear_events();
   EXPECT_TRUE(manager_->cleanup());
-  EXPECT_EQ(scheduler_->calls(), (std::vector<std::string>{"add:timer", "clear"}));
+  EXPECT_EQ(scheduler_->calls(), (std::vector<std::string>{"register:timer", "register:idle_timer", "clear"}));
   EXPECT_TRUE(scheduler_->entries().empty());
   EXPECT_EQ(events(), (std::vector<std::string>{
       "idle_timer.cleanup", "timer.cleanup", "basic_b.cleanup", "basic_a.cleanup"}));

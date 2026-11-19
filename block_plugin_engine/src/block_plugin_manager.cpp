@@ -17,84 +17,6 @@
 #include "block_plugin_engine/event_signal.hpp"
 
 namespace bpe {
-namespace {
-
-std::chrono::nanoseconds parse_duration(const YAML::Node& node,
-                                        const std::string& field,
-                                        bool allow_zero) {
-  if (!node || !node.IsScalar()) {
-    throw std::runtime_error(field + " must be a scalar");
-  }
-
-  const std::string value = node.as<std::string>();
-
-  struct Unit {
-    const char* suffix;
-    std::int64_t multiplier;
-  };
-
-  static constexpr Unit units[] = {
-      {"ns", 1},
-      {"us", 1000},
-      {"ms", 1000 * 1000},
-      {"s", 1000 * 1000 * 1000},
-  };
-
-  for (const auto& unit : units) {
-    const std::string suffix{unit.suffix};
-    if (value.size() <= suffix.size() ||
-        value.compare(value.size() - suffix.size(), suffix.size(), suffix) != 0) {
-      continue;
-    }
-
-    const auto number = value.substr(0, value.size() - suffix.size());
-    std::size_t parsed = 0;
-    const auto amount = std::stoll(number, &parsed);
-    if (parsed != number.size() || (amount < 0 || (!allow_zero && amount == 0))) {
-      throw std::runtime_error(field + " must be nonnegative (period must be positive)");
-    }
-
-    return std::chrono::nanoseconds{amount * unit.multiplier};
-  }
-
-  throw std::runtime_error(field + " must use ns, us, ms or s");
-}
-
-ExecutionConfig parse_execution_config(const YAML::Node& node) {
-  if (!node.IsMap()) {
-    throw std::runtime_error("execution must be a map");
-  }
-
-  if (!node["policy"]) {
-    throw std::runtime_error("execution.policy is required");
-  }
-
-  const auto policy = node["policy"].as<std::string>();
-  if (policy != "timer") {
-    throw std::runtime_error("execution policy must be timer; event pipelines belong in scheduler configuration");
-  }
-
-  if (!node["period"]) {
-    throw std::runtime_error("execution.period is required");
-  }
-
-  ExecutionConfig config;
-  config.policy = policy == "timer" ? ExecutionPolicy::TIMER : ExecutionPolicy::EVENT;
-  config.period = parse_duration(node["period"], "execution.period", false);
-  if (node["offset"]) {
-    config.offset = parse_duration(node["offset"], "execution.offset", true);
-  }
-  if (node["thread"]) {
-    const auto index = node["thread"].as<std::int64_t>();
-    if (index < 0) {
-      throw std::runtime_error("execution.thread must be nonnegative");
-    }
-    config.thread = static_cast<std::size_t>(index);
-  }
-  return config;
-}
-
-} // namespace
 
 BlockPluginManager::BlockPluginManager(
     const std::shared_ptr<IBlockScheduler>& scheduler,
@@ -228,7 +150,7 @@ bool BlockPluginManager::load_configuration(const YAML::Node& blocks,
       }
 
       if (node["execution"]) {
-        config.execution = parse_execution_config(node["execution"]);
+        config.execution = node["execution"];
       }
 
       configs.push_back(std::move(config));
@@ -284,33 +206,19 @@ bool BlockPluginManager::configure_instance(const BlockInstanceConfig& config) {
   RCLCPP_DEBUG(logger_, "Configured Block '%s'", config.name.c_str());
   blocks_.push_back({config.name, plugin});
 
-  // A block may be scheduled solely by a pipeline in the scheduler YAML,
-  // without an individual 'execution' stanza in its block configuration.
+  // The scheduler alone interprets the execution node. For pipeline schedulers
+  // it is ignored; for periodic schedulers it defines individual registration.
   if (auto* timer = dynamic_cast<ITimerBlock*>(plugin.get())) {
-    if (scheduler_->bind_block(config.name, *timer) != SchedulerResult::SUCCESS) {
-      RCLCPP_ERROR(logger_, "Could not bind Block '%s' to scheduler pipelines", config.name.c_str());
-      return false;
-    }
-  }
-
-  if (config.execution) {
-    auto* timer = dynamic_cast<ITimerBlock*>(plugin.get());
-    if (timer == nullptr) {
-      RCLCPP_ERROR(logger_,
-                   "Block '%s' defines execution settings but does not implement ITimerBlock",
-                   config.name.c_str());
-      return false;
-    }
-
-    RCLCPP_DEBUG(logger_, "Registering Block '%s' in scheduler", config.name.c_str());
-    const SchedulerResult scheduler_result =
-        scheduler_->add(config.name, *timer, *config.execution);
-
-    if (scheduler_result != SchedulerResult::SUCCESS) {
+    const auto result = scheduler_->register_block(config.name, *timer, config.execution);
+    if (result != SchedulerResult::SUCCESS) {
       RCLCPP_ERROR(logger_, "Could not register Block '%s' in the scheduler", config.name.c_str());
       return false;
     }
-    RCLCPP_DEBUG(logger_, "Registered Block '%s' in scheduler", config.name.c_str());
+  } else if (config.execution) {
+    // With the ITimerBlock-based API a non-executable block cannot be scheduled.
+    // It is still valid for this block to carry an unused execution node.
+    RCLCPP_DEBUG(logger_, "Ignoring execution configuration for non-ITimerBlock '%s'",
+                 config.name.c_str());
   }
 
   return true;

@@ -264,7 +264,7 @@ int main(int argc, char** argv) {
   }
 
   const auto add_result =
-    scheduler.add(
+    scheduler.register_block(
       "timing_block",
       block,
       bpe::test_support::timer_config(options.period));

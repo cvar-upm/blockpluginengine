@@ -40,12 +40,11 @@ TEST(BPEMultiSchedulerTest, SharedOriginAndIndependentBlocks) {
   BPE_MultiScheduler scheduler;
   ASSERT_EQ(scheduler.configure(config()), SchedulerResult::SUCCESS);
   Probe first, second;
-  ExecutionConfig c{};
-  c.period = 20ms;
-  ASSERT_EQ(scheduler.add("first", first, c), SchedulerResult::SUCCESS);
-  c.thread = 1;
-  c.offset = 5ms;
-  ASSERT_EQ(scheduler.add("second", second, c), SchedulerResult::SUCCESS);
+  auto c = YAML::Load("{policy: timer, period: 20ms}");
+  ASSERT_EQ(scheduler.register_block("first", first, c), SchedulerResult::SUCCESS);
+  c["thread"] = 1;
+  c["offset"] = "5ms";
+  ASSERT_EQ(scheduler.register_block("second", second, c), SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.start(), SchedulerResult::SUCCESS);
   auto deadline = std::chrono::steady_clock::now() + 2s;
   while ((!first.has_sample() || !second.has_sample()) && std::chrono::steady_clock::now() < deadline) {
@@ -66,13 +65,14 @@ TEST(BPEMultiSchedulerTest, RejectsInvalidConfigurationsAndIndices) {
   EXPECT_EQ(scheduler.configure(config("-2ms")), SchedulerResult::INVALID_CONFIG);
   ASSERT_EQ(scheduler.configure(config()), SchedulerResult::SUCCESS);
   Probe block;
-  ExecutionConfig c{};
-  c.period = 20ms;
-  c.thread = 2;
-  EXPECT_EQ(scheduler.add("invalid", block, c), SchedulerResult::INVALID_CONFIG);
-  c.thread = 1;
-  EXPECT_EQ(scheduler.add("valid", block, c), SchedulerResult::SUCCESS);
-  EXPECT_EQ(scheduler.add("valid", block, c), SchedulerResult::INVALID_CONFIG);
+  auto c = YAML::Load("{policy: timer, period: 20ms}");
+  c["thread"] = 2;
+  EXPECT_EQ(scheduler.register_block("invalid", block, c), SchedulerResult::INVALID_CONFIG);
+  c["thread"] = "wrong";
+  EXPECT_EQ(scheduler.register_block("invalid_thread", block, c), SchedulerResult::INVALID_CONFIG);
+  c["thread"] = 1;
+  EXPECT_EQ(scheduler.register_block("valid", block, c), SchedulerResult::SUCCESS);
+  EXPECT_EQ(scheduler.register_block("valid", block, c), SchedulerResult::INVALID_CONFIG);
   EXPECT_EQ(scheduler.remove("valid"), SchedulerResult::SUCCESS);
   EXPECT_EQ(scheduler.remove("valid"), SchedulerResult::NOT_FOUND);
 }
@@ -81,9 +81,8 @@ TEST(BPEMultiSchedulerTest, RejectsElapsedOriginAndRollsBack) {
   BPE_MultiScheduler scheduler;
   ASSERT_EQ(scheduler.configure(config("0ms")), SchedulerResult::SUCCESS);
   Probe block;
-  ExecutionConfig c{};
-  c.period = 20ms;
-  ASSERT_EQ(scheduler.add("block", block, c), SchedulerResult::SUCCESS);
+  auto c = YAML::Load("{policy: timer, period: 20ms}");
+  ASSERT_EQ(scheduler.register_block("block", block, c), SchedulerResult::SUCCESS);
   EXPECT_EQ(scheduler.start(std::chrono::nanoseconds{1}), SchedulerResult::INVALID_CONFIG);
   EXPECT_EQ(scheduler.stop(), SchedulerResult::SUCCESS);
   EXPECT_EQ(scheduler.clear(), SchedulerResult::SUCCESS);

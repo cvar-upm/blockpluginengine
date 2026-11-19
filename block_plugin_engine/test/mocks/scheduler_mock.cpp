@@ -23,10 +23,11 @@ SchedulerResult SchedulerMock::configure(const SchedulerConfig&) {
   calls_.push_back("configure");
   return SchedulerResult::SUCCESS;
 }
-SchedulerResult SchedulerMock::add(const std::string& name, ITimerBlock& block,
-                                   const ExecutionConfig& config) {
-  calls_.push_back("add:" + name);
-  if (add_result_ == SchedulerResult::SUCCESS) entries_.push_back({name, &block, config});
+SchedulerResult SchedulerMock::register_block(const std::string& name, ITimerBlock& block,
+                                   const YAML::Node& config) {
+  calls_.push_back("register:" + name);
+  if (add_result_ == SchedulerResult::SUCCESS && config && !config.IsNull())
+    entries_.push_back({name, &block, YAML::Clone(config)});
   return add_result_;
 }
 SchedulerResult SchedulerMock::remove(const std::string& name) {

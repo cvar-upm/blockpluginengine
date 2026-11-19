@@ -15,14 +15,14 @@ public:
   struct Entry {
     std::string name;
     ITimerBlock* block;
-    ExecutionConfig config;
+    YAML::Node config;
   };
 
   SchedulerResult configure(const SchedulerConfig&) override;
   IEventSignalProvider* event_signal_provider() override { return this; }
   std::shared_ptr<IEventSignal> get_signal(std::string_view name) override;
   void allow_signal(std::string name);
-  SchedulerResult add(const std::string&, ITimerBlock&, const ExecutionConfig&) override;
+  SchedulerResult register_block(const std::string&, ITimerBlock&, const YAML::Node&) override;
   SchedulerResult remove(const std::string&) override;
   SchedulerResult start() override;
   SchedulerResult start(std::chrono::nanoseconds) override;

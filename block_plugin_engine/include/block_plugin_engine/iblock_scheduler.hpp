@@ -4,7 +4,6 @@
 #include <chrono>
 #include <time.h>
 
-#include "block_plugin_engine/execution_config.hpp"
 #include "block_plugin_engine/event_signal.hpp"
 #include "block_plugin_engine/scheduler_config.hpp"
 
@@ -20,14 +19,11 @@ public:
 
   virtual SchedulerResult configure(const SchedulerConfig& config) = 0;
 
-  virtual SchedulerResult
-  add(const std::string& instance_name, ITimerBlock& block, const ExecutionConfig& config) = 0;
-
-  // Resolve blocks referenced by scheduler-owned pipelines. Default is a no-op
-  // for schedulers that plan individual blocks with add().
-  virtual SchedulerResult bind_block(const std::string&, ITimerBlock&) {
-    return SchedulerResult::SUCCESS;
-  }
+  // Register a block using scheduler-specific execution semantics.
+  // Missing YAML configuration is valid: the scheduler decides whether to schedule it.
+  virtual SchedulerResult register_block(
+      const std::string& instance_name, ITimerBlock& block,
+      const YAML::Node& execution) = 0;
   // Optional capability: schedulers without event pipelines return nullptr.
   virtual IEventSignalProvider* event_signal_provider() { return nullptr; }
 

@@ -42,9 +42,9 @@ public:
 
   SchedulerResult configure(const SchedulerConfig& config) override;
 
-  SchedulerResult add(const std::string& instance_name,
-                      ITimerBlock& block,
-                      const ExecutionConfig& config) override;
+  SchedulerResult register_block(const std::string& instance_name,
+                                 ITimerBlock& block,
+                                 const YAML::Node& execution) override;
 
   SchedulerResult remove(const std::string& instance_name) override;
   using IBlockScheduler::start;

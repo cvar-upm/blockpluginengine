@@ -86,26 +86,32 @@ SchedulerResult BPE_MultiScheduler::configure(const SchedulerConfig& config) {
   return SchedulerResult::SUCCESS;
 }
 
-SchedulerResult BPE_MultiScheduler::add(const std::string& name, ITimerBlock& block,
-                                      const ExecutionConfig& config) {
+SchedulerResult BPE_MultiScheduler::register_block(
+    const std::string& name, ITimerBlock& block, const YAML::Node& execution) {
   if (running_ || schedulers_.empty()) return SchedulerResult::INVALID_STATE;
-  if (config.thread >= schedulers_.size() ||
-      std::any_of(entries_.begin(), entries_.end(), [&](const Entry& e){return e.name == name;}))
+  if (std::any_of(entries_.begin(), entries_.end(),
+                  [&](const Entry& e) { return e.name == name; }))
     return SchedulerResult::INVALID_CONFIG;
-  ExecutionConfig internal = config;
-  internal.thread = 0;
-  const auto result = schedulers_[config.thread]->add(name, block, internal);
-  if (result == SchedulerResult::SUCCESS) entries_.push_back({name, config.thread});
-  return result;
-}
 
-SchedulerResult BPE_MultiScheduler::bind_block(const std::string& name, ITimerBlock& block) {
-  if (running_ || schedulers_.empty()) return SchedulerResult::INVALID_STATE;
-  for (const auto& scheduler : schedulers_) {
-    const auto result = scheduler->bind_block(name, block);
-    if (result != SchedulerResult::SUCCESS) return result;
-  }
-  return SchedulerResult::SUCCESS;
+  // Only the target thread is interpreted here. All other fields belong to
+  // the selected scheduler (and may be ignored by a pipeline scheduler).
+  std::size_t thread = 0;
+  try {
+    if (execution && !execution.IsNull() && execution.IsMap() && execution["thread"]) {
+      const auto index = execution["thread"].as<std::int64_t>();
+      if (index < 0) return SchedulerResult::INVALID_CONFIG;
+      thread = static_cast<std::size_t>(index);
+    }
+  } catch (const YAML::Exception&) { return SchedulerResult::INVALID_CONFIG; }
+  if (thread >= schedulers_.size()) return SchedulerResult::INVALID_CONFIG;
+
+  // A child scheduler receives its local configuration, not MultiScheduler's
+  // routing selector. YAML::Clone prevents mutating the caller's configuration.
+  YAML::Node local = execution && !execution.IsNull() ? YAML::Clone(execution) : YAML::Node{};
+  if (local.IsMap()) local.remove("thread");
+  const auto result = schedulers_[thread]->register_block(name, block, local);
+  if (result == SchedulerResult::SUCCESS) entries_.push_back({name, thread});
+  return result;
 }
 
 std::shared_ptr<IEventSignal> BPE_MultiScheduler::get_signal(std::string_view name) {

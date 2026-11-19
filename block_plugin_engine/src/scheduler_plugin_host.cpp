@@ -45,12 +45,10 @@ SchedulerResult SchedulerPluginHost::configure(const SchedulerConfig& config) {
   }
 }
 
-SchedulerResult SchedulerPluginHost::add(const std::string& name, ITimerBlock& block,
-                                        const ExecutionConfig& config) {
-  return scheduler_ ? scheduler_->add(name, block, config) : SchedulerResult::INVALID_STATE;
-}
-SchedulerResult SchedulerPluginHost::bind_block(const std::string& name, ITimerBlock& block) {
-  return scheduler_ ? scheduler_->bind_block(name, block) : SchedulerResult::INVALID_STATE;
+SchedulerResult SchedulerPluginHost::register_block(
+    const std::string& name, ITimerBlock& block, const YAML::Node& execution) {
+  return scheduler_ ? scheduler_->register_block(name, block, execution)
+                    : SchedulerResult::INVALID_STATE;
 }
 IEventSignalProvider* SchedulerPluginHost::event_signal_provider() {
   return scheduler_ ? scheduler_->event_signal_provider() : nullptr;

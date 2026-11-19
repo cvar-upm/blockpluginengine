@@ -38,14 +38,16 @@ blocks:
 ```
 
 Blocks referenced by a pipeline must implement `ITimerBlock`. The manager
-loads them normally and resolves each reference via `IBlockScheduler::bind_block`.
+loads them normally and resolves each reference via `IBlockScheduler::register_block`.
 A missing or incompatible reference causes `start()` to fail before the
 scheduler worker is launched. Pipeline names and signal names must each be
 unique inside one scheduler. Multiple producers may obtain the same signal.
 
-The former per-block `execution: {policy: event, event_tag: ..., order: ...}`
-format is **removed**. Per-block `execution: {policy: timer, period: ...}`
-remains available for compatibility as a single-block timer pipeline.
+Per-block `execution` is ignored by this scheduler, even when present.
+Only the scheduler-owned `pipelines` determine activation. Other schedulers
+(e.g. `FairScheduler`) still interpret each block's `execution` section.
+`BlockPluginManager` passes the raw YAML node to `register_block()` and does
+not parse the execution policy.
 
 ## Pull-based producer interface
 

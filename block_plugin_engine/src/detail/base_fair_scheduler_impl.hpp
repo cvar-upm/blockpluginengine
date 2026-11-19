@@ -97,35 +97,38 @@ SchedulerResult BaseFairScheduler<Clock, RealtimePolicy>::configure(const Schedu
 }
 
 template<typename Clock, typename RealtimePolicy>
-SchedulerResult BaseFairScheduler<Clock, RealtimePolicy>::add(const std::string& instance_name,
-                                         ITimerBlock& block,
-                                         const ExecutionConfig& config) {
-  SchedulerResult result = SchedulerResult::SUCCESS;
+SchedulerResult BaseFairScheduler<Clock, RealtimePolicy>::register_block(
+    const std::string& instance_name, ITimerBlock& block, const YAML::Node& execution) {
+  if (running_.load(std::memory_order_acquire)) return SchedulerResult::INVALID_STATE;
+  // A timer-capable block without execution may remain unscheduled.
+  if (!execution || execution.IsNull()) return SchedulerResult::SUCCESS;
 
-  if (running_.load(std::memory_order_acquire)) {
-    result = SchedulerResult::INVALID_STATE;
-  } else if (config.policy != ExecutionPolicy::TIMER || config.period.count() <= 0 ||
-             config.offset.count() < 0 || config.thread != 0) {
-    result = SchedulerResult::INVALID_CONFIG;
-  } else if (config_.spin_before_deadline.count() < 0 ||
-             config_.spin_before_deadline >= config.period) {
-    result = SchedulerResult::INVALID_CONFIG;
-  } else {
-    const auto duplicated = std::find_if(
-        blocks_.begin(), blocks_.end(), [&instance_name](const ScheduledBlock& scheduled) {
-          return scheduled.name == instance_name;
-        });
-
-    if (duplicated != blocks_.end()) {
-      result = SchedulerResult::INVALID_CONFIG;
-    } else {
-      blocks_.push_back(
-          ScheduledBlock{instance_name, &block, dynamic_cast<ITimerBlockWithInfo*>(&block),
-                         0, to_nanoseconds(config.period), to_nanoseconds(config.offset), timespec{}});
-    }
+  std::chrono::nanoseconds period{}, offset{};
+  try {
+    if (!execution.IsMap() || !execution["policy"] || !execution["period"] ||
+        execution["policy"].as<std::string>() != "timer" ||
+        !parse_duration(execution["period"], period) || period.count() <= 0)
+      return SchedulerResult::INVALID_CONFIG;
+    if (execution["offset"] && !parse_duration(execution["offset"], offset))
+      return SchedulerResult::INVALID_CONFIG;
+    if (execution["thread"] && execution["thread"].as<std::int64_t>() != 0)
+      return SchedulerResult::INVALID_CONFIG;
+  } catch (const YAML::Exception&) {
+    return SchedulerResult::INVALID_CONFIG;
   }
+  if (offset.count() < 0 || config_.spin_before_deadline.count() < 0 ||
+      config_.spin_before_deadline >= period) return SchedulerResult::INVALID_CONFIG;
 
-  return result;
+  const auto duplicated = std::find_if(
+      blocks_.begin(), blocks_.end(), [&instance_name](const ScheduledBlock& scheduled) {
+        return scheduled.name == instance_name;
+      });
+  if (duplicated != blocks_.end()) return SchedulerResult::INVALID_CONFIG;
+
+  blocks_.push_back(ScheduledBlock{
+      instance_name, &block, dynamic_cast<ITimerBlockWithInfo*>(&block),
+      0, period.count(), offset.count(), timespec{}});
+  return SchedulerResult::SUCCESS;
 }
 
 template<typename Clock, typename RealtimePolicy>

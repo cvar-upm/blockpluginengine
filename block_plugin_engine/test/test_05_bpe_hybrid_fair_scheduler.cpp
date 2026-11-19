@@ -53,7 +53,7 @@ TEST(HybridFairScheduler, SharedSignalAndMissingBlockValidation) {
   ASSERT_TRUE(producer2);
   EXPECT_EQ(producer1.get(), producer2.get());
   EXPECT_FALSE(scheduler.get_signal("unknown"));
-  ASSERT_EQ(scheduler.bind_block("event_a", a), SchedulerResult::SUCCESS);
+  ASSERT_EQ(scheduler.register_block("event_a", a, YAML::Node{}), SchedulerResult::SUCCESS);
   EXPECT_EQ(scheduler.start(), SchedulerResult::INVALID_CONFIG); // other blocks unresolved
   ASSERT_EQ(scheduler.clear(), SchedulerResult::SUCCESS);
   EXPECT_FALSE(producer1->signal()); // stale emitters are disabled
@@ -68,8 +68,8 @@ realtime: {enabled: false}
 pipelines:
   - {name: periodic, policy: timer, period: 30ms, blocks: [a, b]}
 )")), SchedulerResult::SUCCESS);
-  ASSERT_EQ(scheduler.bind_block("a", a), SchedulerResult::SUCCESS);
-  ASSERT_EQ(scheduler.bind_block("b", b), SchedulerResult::SUCCESS);
+  ASSERT_EQ(scheduler.register_block("a", a, YAML::Load("{policy: wrong, period: bogus}")), SchedulerResult::SUCCESS);
+  ASSERT_EQ(scheduler.register_block("b", b, YAML::Node{}), SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.start(), SchedulerResult::SUCCESS);
   ASSERT_TRUE(wait_for_events(4, 2s));
   ASSERT_EQ(scheduler.stop(), SchedulerResult::SUCCESS);
@@ -90,8 +90,8 @@ realtime: {enabled: false}
 pipelines:
   - {name: on_data, policy: event, period: 150ms, signal: data_ready, blocks: [a, b]}
 )")), SchedulerResult::SUCCESS);
-  ASSERT_EQ(scheduler.bind_block("a", a), SchedulerResult::SUCCESS);
-  ASSERT_EQ(scheduler.bind_block("b", b), SchedulerResult::SUCCESS);
+  ASSERT_EQ(scheduler.register_block("a", a, YAML::Node{}), SchedulerResult::SUCCESS);
+  ASSERT_EQ(scheduler.register_block("b", b, YAML::Node{}), SchedulerResult::SUCCESS);
   auto first_producer = scheduler.get_signal("data_ready");
   auto second_producer = scheduler.get_signal("data_ready");
   ASSERT_TRUE(first_producer);
@@ -118,7 +118,7 @@ realtime: {enabled: false}
 pipelines:
   - {name: on_data, policy: event, period: 100ms, signal: ready, blocks: [a]}
 )")), SchedulerResult::SUCCESS);
-  ASSERT_EQ(scheduler.bind_block("a", a), SchedulerResult::SUCCESS);
+  ASSERT_EQ(scheduler.register_block("a", a, YAML::Node{}), SchedulerResult::SUCCESS);
   auto signal = scheduler.get_signal("ready");
   ASSERT_TRUE(signal);
   ASSERT_EQ(scheduler.start(), SchedulerResult::SUCCESS);

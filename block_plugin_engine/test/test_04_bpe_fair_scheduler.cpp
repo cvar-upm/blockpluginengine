@@ -23,11 +23,11 @@ SchedulerConfig no_rt() {
 timing: {spin_before_deadline: 0ns})");
 }
 
-ExecutionConfig periodic(std::chrono::nanoseconds period, std::chrono::nanoseconds offset = 0ns) {
-  ExecutionConfig config;
-  config.policy = ExecutionPolicy::TIMER;
-  config.period = period;
-  config.offset = offset;
+YAML::Node periodic(std::chrono::nanoseconds period, std::chrono::nanoseconds offset = 0ns) {
+  YAML::Node config;
+  config["policy"] = "timer";
+  config["period"] = std::to_string(period.count()) + "ns";
+  config["offset"] = std::to_string(offset.count()) + "ns";
   return config;
 }
 
@@ -40,13 +40,19 @@ TEST(SimulatedFairSchedulerTest, RejectsInvalidConfigurationAndSchedule) {
   EXPECT_EQ(scheduler.configure(YAML::Load("timing: {spin_before_deadline: nonsense}")),
             SchedulerResult::INVALID_CONFIG);
   ASSERT_EQ(scheduler.configure(no_rt()), SchedulerResult::SUCCESS);
-  EXPECT_EQ(scheduler.add("zero", block, periodic(0ns)), SchedulerResult::INVALID_CONFIG);
-  EXPECT_EQ(scheduler.add("negative", block, periodic(10ms, -1ms)), SchedulerResult::INVALID_CONFIG);
+  EXPECT_EQ(scheduler.register_block("invalid", block,
+      YAML::Load("{policy: nonsense, period: 10ms}")), SchedulerResult::INVALID_CONFIG);
+  EXPECT_EQ(scheduler.register_block("not_a_map", block, YAML::Load("raw")),
+            SchedulerResult::INVALID_CONFIG);
+  EXPECT_EQ(scheduler.register_block("missing", block, YAML::Node{}),
+            SchedulerResult::SUCCESS);
+  EXPECT_EQ(scheduler.register_block("zero", block, periodic(0ns)), SchedulerResult::INVALID_CONFIG);
+  EXPECT_EQ(scheduler.register_block("negative", block, periodic(10ms, -1ms)), SchedulerResult::INVALID_CONFIG);
   auto wrong_thread = periodic(10ms);
-  wrong_thread.thread = 1;
-  EXPECT_EQ(scheduler.add("thread", block, wrong_thread), SchedulerResult::INVALID_CONFIG);
-  ASSERT_EQ(scheduler.add("first", block, periodic(10ms)), SchedulerResult::SUCCESS);
-  EXPECT_EQ(scheduler.add("first", block, periodic(10ms)), SchedulerResult::INVALID_CONFIG);
+  wrong_thread["thread"] = 1;
+  EXPECT_EQ(scheduler.register_block("thread", block, wrong_thread), SchedulerResult::INVALID_CONFIG);
+  ASSERT_EQ(scheduler.register_block("first", block, periodic(10ms)), SchedulerResult::SUCCESS);
+  EXPECT_EQ(scheduler.register_block("first", block, periodic(10ms)), SchedulerResult::INVALID_CONFIG);
   EXPECT_EQ(scheduler.remove("missing"), SchedulerResult::NOT_FOUND);
   EXPECT_EQ(scheduler.remove("first"), SchedulerResult::SUCCESS);
   EXPECT_EQ(scheduler.clear(), SchedulerResult::SUCCESS);
@@ -57,7 +63,7 @@ TEST(SimulatedFairSchedulerTest, ExactNominalPhaseAndIndices) {
   SimulatedFairScheduler scheduler(clock);
   TimerMockBlock block;
   ASSERT_EQ(scheduler.configure(no_rt()), SchedulerResult::SUCCESS);
-  ASSERT_EQ(scheduler.add("periodic", block, periodic(10ms)), SchedulerResult::SUCCESS);
+  ASSERT_EQ(scheduler.register_block("periodic", block, periodic(10ms)), SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.start(0ns), SchedulerResult::SUCCESS);
   for (int i = 1; i <= 5; ++i) {
     clock->advance_to(i * 10ms);
@@ -87,9 +93,9 @@ TEST(SimulatedFairSchedulerTest, OrderedDeadlinesAndStableTies) {
   b.set_on_execute([&] { record(2); });
   c.set_on_execute([&] { record(3); });
   ASSERT_EQ(scheduler.configure(no_rt()), SchedulerResult::SUCCESS);
-  ASSERT_EQ(scheduler.add("a", a, periodic(10ms)), SchedulerResult::SUCCESS);
-  ASSERT_EQ(scheduler.add("b", b, periodic(20ms)), SchedulerResult::SUCCESS);
-  ASSERT_EQ(scheduler.add("c", c, periodic(20ms)), SchedulerResult::SUCCESS);
+  ASSERT_EQ(scheduler.register_block("a", a, periodic(10ms)), SchedulerResult::SUCCESS);
+  ASSERT_EQ(scheduler.register_block("b", b, periodic(20ms)), SchedulerResult::SUCCESS);
+  ASSERT_EQ(scheduler.register_block("c", c, periodic(20ms)), SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.start(0ns), SchedulerResult::SUCCESS);
   clock->advance_to(20ms);
   ASSERT_TRUE(a.wait_for_count(2));
@@ -104,8 +110,8 @@ TEST(SimulatedFairSchedulerTest, OffsetsChangeNominalPhase) {
   SimulatedFairScheduler scheduler(clock);
   TimerMockBlock a, b;
   ASSERT_EQ(scheduler.configure(no_rt()), SchedulerResult::SUCCESS);
-  ASSERT_EQ(scheduler.add("a", a, periodic(10ms)), SchedulerResult::SUCCESS);
-  ASSERT_EQ(scheduler.add("b", b, periodic(10ms, 5ms)), SchedulerResult::SUCCESS);
+  ASSERT_EQ(scheduler.register_block("a", a, periodic(10ms)), SchedulerResult::SUCCESS);
+  ASSERT_EQ(scheduler.register_block("b", b, periodic(10ms, 5ms)), SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.start(0ns), SchedulerResult::SUCCESS);
   clock->advance_to(25ms);
   ASSERT_TRUE(a.wait_for_count(2));
@@ -121,7 +127,7 @@ TEST(SimulatedFairSchedulerTest, LateActivationDoesNotSkipNominalDeadlines) {
   SimulatedFairScheduler scheduler(clock);
   TimerMockBlock block;
   ASSERT_EQ(scheduler.configure(no_rt()), SchedulerResult::SUCCESS);
-  ASSERT_EQ(scheduler.add("late", block, periodic(10ms)), SchedulerResult::SUCCESS);
+  ASSERT_EQ(scheduler.register_block("late", block, periodic(10ms)), SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.start(0ns), SchedulerResult::SUCCESS);
   clock->advance_to(35ms);
   ASSERT_TRUE(block.wait_for_count(3));
@@ -143,7 +149,7 @@ TEST(SimulatedFairSchedulerTest, ExecutionAdvancesSimulatedClockAndCausesOverrun
     if (executions.fetch_add(1) == 0) clock->advance(25ms);
   });
   ASSERT_EQ(scheduler.configure(no_rt()), SchedulerResult::SUCCESS);
-  ASSERT_EQ(scheduler.add("overrun", block, periodic(10ms)), SchedulerResult::SUCCESS);
+  ASSERT_EQ(scheduler.register_block("overrun", block, periodic(10ms)), SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.start(0ns), SchedulerResult::SUCCESS);
   clock->advance_to(10ms);
   ASSERT_TRUE(block.wait_for_count(3));
@@ -161,9 +167,9 @@ TEST(SimulatedFairSchedulerTest, ScheduleImmutableWhileRunningAndStopUnblocksWai
   SimulatedFairScheduler scheduler(clock);
   TimerMockBlock a, b;
   ASSERT_EQ(scheduler.configure(no_rt()), SchedulerResult::SUCCESS);
-  ASSERT_EQ(scheduler.add("a", a, periodic(10ms)), SchedulerResult::SUCCESS);
+  ASSERT_EQ(scheduler.register_block("a", a, periodic(10ms)), SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.start(0ns), SchedulerResult::SUCCESS);
-  EXPECT_EQ(scheduler.add("b", b, periodic(10ms)), SchedulerResult::INVALID_STATE);
+  EXPECT_EQ(scheduler.register_block("b", b, periodic(10ms)), SchedulerResult::INVALID_STATE);
   EXPECT_EQ(scheduler.remove("a"), SchedulerResult::INVALID_STATE);
   EXPECT_EQ(scheduler.clear(), SchedulerResult::INVALID_STATE);
   // No virtual time advances. stop() must wake and join the waiting worker.
@@ -194,8 +200,8 @@ TEST(SimulatedFairSchedulerTest, OverdueBlocksAreServicedFairly) {
   first.set_on_execute([&] { std::lock_guard<std::mutex> lock(mutex); order.push_back(1); });
   second.set_on_execute([&] { std::lock_guard<std::mutex> lock(mutex); order.push_back(2); });
   ASSERT_EQ(scheduler.configure(no_rt()), SchedulerResult::SUCCESS);
-  ASSERT_EQ(scheduler.add("first", first, periodic(10ms)), SchedulerResult::SUCCESS);
-  ASSERT_EQ(scheduler.add("second", second, periodic(10ms)), SchedulerResult::SUCCESS);
+  ASSERT_EQ(scheduler.register_block("first", first, periodic(10ms)), SchedulerResult::SUCCESS);
+  ASSERT_EQ(scheduler.register_block("second", second, periodic(10ms)), SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.start(0ns), SchedulerResult::SUCCESS);
   clock->advance_to(40ms);
   ASSERT_TRUE(first.wait_for_count(4));
@@ -209,7 +215,7 @@ TEST(SimulatedFairSchedulerTest, SupportsBlocksWithoutExecutionInfo) {
   SimulatedFairScheduler scheduler(clock);
   PlainTimerMockBlock block;
   ASSERT_EQ(scheduler.configure(no_rt()), SchedulerResult::SUCCESS);
-  ASSERT_EQ(scheduler.add("plain", block, periodic(10ms)), SchedulerResult::SUCCESS);
+  ASSERT_EQ(scheduler.register_block("plain", block, periodic(10ms)), SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.start(0ns), SchedulerResult::SUCCESS);
   clock->advance_to(20ms);
   ASSERT_TRUE(block.wait_for_count(2));
@@ -222,7 +228,7 @@ TEST(SimulatedFairSchedulerTest, RestartResetsNominalActivationIndex) {
   SimulatedFairScheduler scheduler(clock);
   TimerMockBlock block;
   ASSERT_EQ(scheduler.configure(no_rt()), SchedulerResult::SUCCESS);
-  ASSERT_EQ(scheduler.add("block", block, periodic(10ms)), SchedulerResult::SUCCESS);
+  ASSERT_EQ(scheduler.register_block("block", block, periodic(10ms)), SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.start(0ns), SchedulerResult::SUCCESS);
   clock->advance_to(10ms);
   ASSERT_TRUE(block.wait_for_count(1));
@@ -250,7 +256,7 @@ TEST(SimulatedFairSchedulerTest, RequestsRealtimePriorityAndHandlesFailure) {
         (required ? "true" : "false") + ", priority: 42}\n"
         "timing: {spin_before_deadline: 0ns}")), SchedulerResult::SUCCESS);
     TimerMockBlock block;
-    ASSERT_EQ(scheduler.add("block", block, periodic(10ms)), SchedulerResult::SUCCESS);
+    ASSERT_EQ(scheduler.register_block("block", block, periodic(10ms)), SchedulerResult::SUCCESS);
     EXPECT_EQ(scheduler.start(0ns), required ? SchedulerResult::SYSTEM_ERROR
                                                : SchedulerResult::SUCCESS);
     EXPECT_EQ(state->calls.load(), 1);
@@ -263,7 +269,7 @@ TEST(ProductionFairSchedulerTest, StartsExecutesAndRestarts) {
   BPE_FairScheduler scheduler;
   TimerMockBlock block;
   ASSERT_EQ(scheduler.configure(no_rt()), SchedulerResult::SUCCESS);
-  ASSERT_EQ(scheduler.add("real", block, periodic(2ms)), SchedulerResult::SUCCESS);
+  ASSERT_EQ(scheduler.register_block("real", block, periodic(2ms)), SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.start(), SchedulerResult::SUCCESS);
   const bool reached = block.wait_for_count(2);
   ASSERT_EQ(scheduler.stop(), SchedulerResult::SUCCESS);
@@ -279,8 +285,8 @@ TEST(ProductionFairSchedulerTest, ExecutesSeveralBlocks) {
   BPE_FairScheduler scheduler;
   TimerMockBlock a, b;
   ASSERT_EQ(scheduler.configure(no_rt()), SchedulerResult::SUCCESS);
-  ASSERT_EQ(scheduler.add("a", a, periodic(2ms)), SchedulerResult::SUCCESS);
-  ASSERT_EQ(scheduler.add("b", b, periodic(3ms)), SchedulerResult::SUCCESS);
+  ASSERT_EQ(scheduler.register_block("a", a, periodic(2ms)), SchedulerResult::SUCCESS);
+  ASSERT_EQ(scheduler.register_block("b", b, periodic(3ms)), SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.start(), SchedulerResult::SUCCESS);
   const bool first = a.wait_for_count(1);
   const bool second = b.wait_for_count(1);
@@ -309,7 +315,7 @@ TEST(ProductionFairSchedulerTest, RealtimePriorityRequiresExplicitRtEnvironment)
   ASSERT_EQ(scheduler.configure(YAML::Load(
       "realtime: {enabled: true, required: true, priority: 42}\n"
       "timing: {spin_before_deadline: 0ns}")), SchedulerResult::SUCCESS);
-  ASSERT_EQ(scheduler.add("rt", block, periodic(2ms)), SchedulerResult::SUCCESS);
+  ASSERT_EQ(scheduler.register_block("rt", block, periodic(2ms)), SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.start(), SchedulerResult::SUCCESS);
   const bool reached = block.wait_for_count(1);
   ASSERT_EQ(scheduler.stop(), SchedulerResult::SUCCESS);
