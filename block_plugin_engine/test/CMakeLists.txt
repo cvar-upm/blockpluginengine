@@ -75,17 +75,17 @@ install(
   RUNTIME DESTINATION bin
 )
 
-ament_add_gtest(test_bpe_fair_scheduler
-  test_bpe_fair_scheduler.cpp
+ament_add_gtest(test_04_bpe_fair_scheduler
+  test_04_bpe_fair_scheduler.cpp
 )
 
-target_include_directories(test_bpe_fair_scheduler
+target_include_directories(test_04_bpe_fair_scheduler
   PRIVATE
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/src
 )
 
-target_link_libraries(test_bpe_fair_scheduler
+target_link_libraries(test_04_bpe_fair_scheduler
   bpe_fair_scheduler
   yaml-cpp
 )
