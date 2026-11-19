@@ -1,47 +1,22 @@
 #include <chrono>
-#include <condition_variable>
-#include <mutex>
 #include <string>
-#include <vector>
-#include <utility>
 
 #include <gtest/gtest.h>
 #include <yaml-cpp/yaml.h>
 
 #include "detail/bpe_hybrid_fair_scheduler.hpp"
+#include "mocks/recording_timer_block.hpp"
+#include "tools/event_log.hpp"
 
 namespace {
 using namespace std::chrono_literals;
 using bpe::BPE_HybridFairScheduler;
-using bpe::ExecutionResult;
-using bpe::ITimerBlock;
 using bpe::SchedulerResult;
 
-struct Trace {
-  std::mutex mutex;
-  std::condition_variable cv;
-  std::vector<std::string> calls;
-
-  void record(const std::string& name) {
-    { std::lock_guard lock(mutex); calls.push_back(name); }
-    cv.notify_all();
-  }
-  bool wait_for(std::size_t count) {
-    std::unique_lock lock(mutex);
-    return cv.wait_for(lock, 2s, [&] { return calls.size() >= count; });
-  }
-  std::vector<std::string> snapshot() {
-    std::lock_guard lock(mutex);
-    return calls;
-  }
-};
-
-struct Recorder final : ITimerBlock {
-  Recorder(Trace& trace, std::string name) : trace(trace), name(std::move(name)) {}
-  ExecutionResult execute() override { trace.record(name); return ExecutionResult::SUCCESS; }
-  Trace& trace;
-  std::string name;
-};
+using bpe::test::RecordingTimerBlock;
+using bpe::test::clear_events;
+using bpe::test::events;
+using bpe::test::wait_for_events;
 
 const char* config = R"(
 realtime: {enabled: false}
@@ -69,8 +44,8 @@ TEST(HybridFairScheduler, RejectsMalformedPipelines) {
 
 TEST(HybridFairScheduler, SharedSignalAndMissingBlockValidation) {
   BPE_HybridFairScheduler scheduler;
-  Trace trace;
-  Recorder a(trace, "A");
+  clear_events();
+  RecordingTimerBlock a("A");
   ASSERT_EQ(scheduler.configure(YAML::Load(config)), SchedulerResult::SUCCESS);
   auto producer1 = scheduler.get_signal("data_ready");
   auto producer2 = scheduler.get_signal("data_ready");
@@ -86,8 +61,8 @@ TEST(HybridFairScheduler, SharedSignalAndMissingBlockValidation) {
 
 TEST(HybridFairScheduler, TimerPipelineExecutesItsBlocksInOrder) {
   BPE_HybridFairScheduler scheduler;
-  Trace trace;
-  Recorder a(trace, "A"), b(trace, "B");
+  clear_events();
+  RecordingTimerBlock a("A"), b("B");
   ASSERT_EQ(scheduler.configure(YAML::Load(R"(
 realtime: {enabled: false}
 pipelines:
@@ -96,9 +71,9 @@ pipelines:
   ASSERT_EQ(scheduler.bind_block("a", a), SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.bind_block("b", b), SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.start(), SchedulerResult::SUCCESS);
-  ASSERT_TRUE(trace.wait_for(4));
+  ASSERT_TRUE(wait_for_events(4, 2s));
   ASSERT_EQ(scheduler.stop(), SchedulerResult::SUCCESS);
-  const auto result = trace.snapshot();
+  const auto result = events();
   ASSERT_GE(result.size(), 4u);
   for (std::size_t i = 0; i + 1 < result.size(); i += 2) {
     EXPECT_EQ(result[i], "A");
@@ -108,8 +83,8 @@ pipelines:
 
 TEST(HybridFairScheduler, EventPipelineCoalescesMultipleProducers) {
   BPE_HybridFairScheduler scheduler;
-  Trace trace;
-  Recorder a(trace, "A"), b(trace, "B");
+  clear_events();
+  RecordingTimerBlock a("A"), b("B");
   ASSERT_EQ(scheduler.configure(YAML::Load(R"(
 realtime: {enabled: false}
 pipelines:
@@ -124,20 +99,20 @@ pipelines:
   ASSERT_EQ(scheduler.start(), SchedulerResult::SUCCESS);
   ASSERT_TRUE(first_producer->signal());
   ASSERT_TRUE(second_producer->signal());
-  ASSERT_TRUE(trace.wait_for(2));
-  const auto result = trace.snapshot();
+  ASSERT_TRUE(wait_for_events(2, 2s));
+  const auto result = events();
   ASSERT_GE(result.size(), 2u);
   EXPECT_EQ(result[0], "A");
   EXPECT_EQ(result[1], "B");
   ASSERT_EQ(scheduler.stop(), SchedulerResult::SUCCESS);
   // At most one execution per signal burst, even with several producers.
-  EXPECT_EQ(trace.snapshot().size(), 2u);
+  EXPECT_EQ(events().size(), 2u);
 }
 
 TEST(HybridFairScheduler, EventSignalsDoNotProduceCatchUpExecutions) {
   BPE_HybridFairScheduler scheduler;
-  Trace trace;
-  Recorder a(trace, "A");
+  clear_events();
+  RecordingTimerBlock a("A");
   ASSERT_EQ(scheduler.configure(YAML::Load(R"(
 realtime: {enabled: false}
 pipelines:
@@ -148,9 +123,9 @@ pipelines:
   ASSERT_TRUE(signal);
   ASSERT_EQ(scheduler.start(), SchedulerResult::SUCCESS);
   for (int i = 0; i < 20; ++i) ASSERT_TRUE(signal->signal());
-  ASSERT_TRUE(trace.wait_for(1));
+  ASSERT_TRUE(wait_for_events(1, 2s));
   // No buffered sequence of 20 executions should be replayed.
   ASSERT_EQ(scheduler.stop(), SchedulerResult::SUCCESS);
-  EXPECT_EQ(trace.snapshot().size(), 1u);
+  EXPECT_EQ(events().size(), 1u);
 }
 } // namespace

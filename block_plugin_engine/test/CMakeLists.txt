@@ -148,5 +148,6 @@ target_include_directories(test_05_bpe_hybrid_fair_scheduler PRIVATE
 )
 target_link_libraries(test_05_bpe_hybrid_fair_scheduler
   bpe_hybrid_fair_scheduler
+  bpe_test_support
   yaml-cpp
 )
