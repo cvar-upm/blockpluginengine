@@ -12,6 +12,7 @@
 
 #include "block_plugin_engine/block_config.hpp"
 #include "block_plugin_engine/iblock_plugin.hpp"
+#include "block_plugin_engine/event_signal.hpp"
 #include "block_plugin_engine/iros_boundary_block.hpp"
 #include "detail/serialized_blackboard.hpp"
 
@@ -19,11 +20,16 @@ namespace bpe_ros_boundary_plugins {
 
 class RosInputBlock final
   : public bpe::IBlockPlugin,
-    public bpe::IRosBoundaryBlock {
+    public bpe::IRosBoundaryBlock,
+    public bpe::IEventSignalUser {
 public:
   void set_ros_interface(
       const rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr& topics) override {
     topics_ = topics;
+  }
+
+  void set_event_signal_provider(bpe::IEventSignalProvider& provider) override {
+    signal_provider_ = &provider;
   }
 
   bpe::BlockResult configure(const bpe::BlockConfig& config) override {
@@ -37,6 +43,14 @@ public:
         topic_ = config["topic"].as<std::string>();
         ros_type_ = config["ros_type"].as<std::string>();
         blackboard_output_ = config["blackboard_output"].as<std::string>();
+
+        if (config["signal"]) {
+          const auto name = config["signal"].as<std::string>();
+          if (name.empty() || !signal_provider_ ||
+              !(signal_ = signal_provider_->get_signal(name))) {
+            return bpe::BlockResult::FAILURE;
+          }
+        }
 
         if (config["qos_depth"]) {
           qos_depth_ = config["qos_depth"].as<std::size_t>();
@@ -82,18 +96,24 @@ public:
   bpe::BlockResult cleanup() override {
     active_.store(false, std::memory_order_release);
     subscription_.reset();
+    signal_.reset();
     return bpe::BlockResult::SUCCESS;
   }
 
 private:
   void on_message(std::shared_ptr<rclcpp::SerializedMessage> message) {
-    if (active_.load(std::memory_order_acquire)) {
+    if (!active_.load(std::memory_order_acquire)) return;
+    {
+      // Commit and deserialize the Blackboard grant before notifying a pipeline.
       auto output = producer_.write_access();
       output.serialized() = *message;
     }
+    if (signal_) signal_->signal();
   }
 
   detail::SerializedProducer producer_;
+  bpe::IEventSignalProvider* signal_provider_{nullptr};
+  std::shared_ptr<bpe::IEventSignal> signal_;
 
   rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr topics_;
   rclcpp::GenericSubscription::SharedPtr subscription_;

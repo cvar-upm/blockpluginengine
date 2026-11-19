@@ -1,0 +1,40 @@
+scheduler:
+  realtime: {enabled: false}
+  pipelines:
+    - {name: int_pipeline, policy: event, period: 5ms,
+       signal: int_ready, blocks: [transform, out_int, out_twist]}
+    - {name: twist_pipeline, policy: event, period: 5ms,
+       signal: twist_ready, blocks: [transform, out_int, out_twist]}
+
+blocks:
+  - name: in_int
+    type: bpe_ros_boundary_plugins/RosInputBlock
+    config:
+      topic: /bpe_boundary_test/input_int
+      ros_type: std_msgs/msg/Int32
+      blackboard_output: test_01_raw_int
+      signal: int_ready
+  - name: in_twist
+    type: bpe_ros_boundary_plugins/RosInputBlock
+    config:
+      topic: /bpe_boundary_test/input_twist
+      ros_type: geometry_msgs/msg/Twist
+      blackboard_output: test_01_raw_twist
+      signal: twist_ready
+  - name: transform
+    type: bpe_ros_boundary_plugins_test/MultiTransformBlock
+    config:
+      inputs: [test_01_raw_int, test_01_raw_twist]
+      outputs: [test_01_processed_int, test_01_processed_twist]
+  - name: out_int
+    type: bpe_ros_boundary_plugins/RosOutputBlock
+    config:
+      topic: /bpe_boundary_test/output_int
+      ros_type: std_msgs/msg/Int32
+      blackboard_input: test_01_processed_int
+  - name: out_twist
+    type: bpe_ros_boundary_plugins/RosOutputBlock
+    config:
+      topic: /bpe_boundary_test/output_twist
+      ros_type: geometry_msgs/msg/Twist
+      blackboard_input: test_01_processed_twist
