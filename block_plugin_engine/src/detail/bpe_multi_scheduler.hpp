@@ -3,6 +3,7 @@
 #include <chrono>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <pluginlib/class_loader.hpp>
@@ -12,7 +13,7 @@ namespace bpe {
 
 // Static composition of independently configured scheduler plugins.
 // All components receive the same absolute CLOCK_MONOTONIC origin.
-class BPE_MultiScheduler final : public IBlockScheduler {
+class BPE_MultiScheduler final : public IBlockScheduler, public IEventSignalProvider {
 public:
   BPE_MultiScheduler();
   ~BPE_MultiScheduler() override;
@@ -20,6 +21,9 @@ public:
   SchedulerResult configure(const SchedulerConfig& config) override;
   SchedulerResult add(const std::string& name, ITimerBlock& block,
                       const ExecutionConfig& config) override;
+  SchedulerResult bind_block(const std::string& name, ITimerBlock& block) override;
+  IEventSignalProvider* event_signal_provider() override { return this; }
+  std::shared_ptr<IEventSignal> get_signal(std::string_view name) override;
   SchedulerResult remove(const std::string& name) override;
   using IBlockScheduler::start;
   SchedulerResult start(std::chrono::nanoseconds origin) override;

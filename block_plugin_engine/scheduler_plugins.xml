@@ -18,6 +18,6 @@
   <class name="block_plugin_engine/HybridFairScheduler"
          type="bpe::BPE_HybridFairScheduler"
          base_class_type="bpe::IBlockScheduler">
-    <description>Fair timer and event window scheduler</description>
+    <description>Fair timer and event pipeline scheduler</description>
   </class>
 </library>

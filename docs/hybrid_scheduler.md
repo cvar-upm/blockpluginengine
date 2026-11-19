@@ -1,67 +1,108 @@
-# HybridFairScheduler (initial implementation)
+# HybridFairScheduler — scheduler-owned pipelines
 
 Plugin: `block_plugin_engine/HybridFairScheduler` (`bpe::BPE_HybridFairScheduler`).
-Independent of `BPE_FairScheduler`, implements `bpe::IBlockScheduler`.
 
-- TIMER blocks continue to use the nominal period/offset and `execute()` (or
-  `ITimerBlockWithInfo::execute(info)`).
-- EVENT blocks are grouped by `event_tag`. Each group has one expected period,
-  one offset, and a pipeline of consumers sorted by unique explicit `order`.
-  Each event window permits at most one invocation of the complete pipeline.
-- Event producers obtain a move-only `EventService::Publisher` from the
-  injected `EventService`, and call `signal()`. Only one live publisher per
-  tag is permitted. Do not write directly to the eventfd.
-- Events do not transport data. Plugins read the latest Blackboard contents.
-- The worker has one `timerfd`, one `epoll` instance and one stop `eventfd`.
-  Event fd readiness marks an opportunity available; nominal times break ties.
-  An empty window is skipped (its planning index advances). All event
-  consumers execute consecutively in configured order.
-- The nominal period is never changed by phase correction. A bounded correction
-  (1/8 of the phase error, capped at T/8 or a smaller configured bound) shifts
-  only subsequent window boundaries.
+The scheduling unit is a **pipeline**, not a block. Each pipeline has a
+fixed ordered sequence of `ITimerBlock` instances, a nominal period, an
+optional offset, and a stable registration-order tie-breaker. A one-block
+pipeline is the ordinary single-block case. The scheduler executes the
+complete pipeline without interleaving another pipeline in the same worker.
 
-Example block instances (inside the existing `blocks:` configuration):
+## Configuration
+
+Pipelines are configured **inside the scheduler's YAML**, independently of
+`blocks:` and without declaring a producer:
 
 ```yaml
-- name: input_processor
-  type: my_package/InputProcessor
-  execution:
-    policy: event
-    event_tag: sensor_ready
-    period: 20ms
-    order: 0
-- name: state_estimator
-  type: my_package/StateEstimator
-  execution:
-    policy: event
-    event_tag: sensor_ready
-    period: 20ms
-    order: 1
-- name: periodic_monitor
-  type: my_package/Monitor
-  execution:
-    policy: timer
-    period: 10ms
+scheduler:
+  type: block_plugin_engine/HybridFairScheduler
+  realtime: {enabled: false} # use an appropriate SCHED_FIFO configuration in deployment
+  pipelines:
+    - name: estimation
+      policy: timer
+      period: 20ms
+      blocks: [sensor_read, filter, estimate]
+    - name: perception
+      policy: event
+      period: 40ms
+      signal: camera_ready
+      blocks: [preprocess, detect, publish]
+
+blocks:
+  - {name: sensor_read, type: my_pkg/SensorRead}
+  - {name: filter, type: my_pkg/Filter}
+  - {name: estimate, type: my_pkg/Estimate}
+  - {name: preprocess, type: my_pkg/Preprocess}
+  - {name: detect, type: my_pkg/Detect}
+  - {name: publish, type: my_pkg/Publish}
 ```
 
-To inject the event service into a producer, its plugin implements
-`bpe::IEventServiceUser::set_event_service(EventService&)` and owns a publisher
-returned by `service.publisher("sensor_ready")` (the handle releases the unique
-publisher claim through RAII). Configuration must precede use.
+Blocks referenced by a pipeline must implement `ITimerBlock`. The manager
+loads them normally and resolves each reference via `IBlockScheduler::bind_block`.
+A missing or incompatible reference causes `start()` to fail before the
+scheduler worker is launched. Pipeline names and signal names must each be
+unique inside one scheduler. Multiple producers may obtain the same signal.
 
-## Current limitations (important before integration)
+The former per-block `execution: {policy: event, event_tag: ..., order: ...}`
+format is **removed**. Per-block `execution: {policy: timer, period: ...}`
+remains available for compatibility as a single-block timer pipeline.
 
-- A Linux `eventfd` accumulates counts, not per-signal timestamps. Only the
-  timestamp of the latest call to `signal()` is kept. If the scheduler is busy
-  across several windows, the exact distribution of multiple signals across
-  those windows **cannot** be reconstructed. Notifications are coalesced and
-  may result in a missed earlier window. Correct retrospective attribution
-  would require an additional bounded per-window bookkeeping mechanism.
-- As in the current FairScheduler code, timer opportunities are advanced
-  one-by-one. A dedicated global *whole-cycle skip* algorithm is not present
-  in the supplied implementation and has **not** been invented here.
-- `stop()` waits for the currently running callback or pipeline to finish.
-- The optional RT priority follows the same basic `SCHED_FIFO` policy as
-  FairScheduler; the event/timer wake path is `epoll`/`timerfd`, not its
-  spin-before-deadline loop. Temporal precision has not been evaluated.
-- No tests were created, modified or run in this iteration.
+## Pull-based producer interface
+
+A block that emits notifications optionally implements `IEventSignalUser`:
+
+```cpp
+#include "block_plugin_engine/event_signal.hpp"
+
+class CameraInput : public bpe::IBlockPlugin, public bpe::IEventSignalUser {
+public:
+  void set_event_signal_provider(bpe::IEventSignalProvider& provider) override {
+    provider_ = &provider;
+  }
+
+  bpe::BlockResult configure(const bpe::BlockConfig&) override {
+    signal_ = provider_ ? provider_->get_signal("camera_ready") : nullptr;
+    return signal_ ? bpe::BlockResult::SUCCESS : bpe::BlockResult::FAILURE;
+  }
+
+  void on_image() {
+    // Commit the newest image to the blackboard first.
+    (void)signal_->signal();
+  }
+
+private:
+  bpe::IEventSignalProvider* provider_{nullptr};
+  std::shared_ptr<bpe::IEventSignal> signal_;
+};
+```
+
+Look up signals in `configure()`, not in the real-time execution path. A
+producer can obtain several signals and any number of producers can share
+one signal. `signal()` carries **no data**; consumers read the latest
+blackboard value. A handle becomes inactive when its scheduler is cleared.
+
+The `SchedulerPluginHost` forwards the provider and `MultiScheduler` looks
+up signals across its child schedulers. Names must be unambiguous across
+children of `MultiScheduler`; duplicate matches return no handle.
+
+## Execution and nominal fairness
+
+All pipelines use nominal priority `origin + offset + (k+1) * period`,
+with smaller values scheduled first. Equal nominal priorities are ordered
+by stable configuration order. An EVENT is eligible only after a signal
+and not before its minimum permissible start-to-start interval.
+
+After an EVENT execution, its `k` advances past nominal opportunities
+already missed and to the smallest value behind the competing priority.
+Notifications accumulated before or during an execution are coalesced and
+discarded; they are not a backlog. An EVENT never runs more frequently than
+its nominal design period. A TIMER advances one nominal period per execution,
+retaining the existing catch-up policy for late periodic work.
+
+A single worker uses `epoll` over its timerfd, its stop eventfd and each
+pipeline's eventfd. No global EventService or timestamped notification
+windows are involved. Only whole pipelines are non-preemptive; a long
+pipeline may delay other pipelines and must be accounted for in temporal
+analysis. Reusing a block across schedulers requires the block to provide
+its own reentrancy/concurrency guarantees; the framework does not enforce
+exclusive membership.

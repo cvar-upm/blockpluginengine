@@ -12,7 +12,7 @@ add_library(bpe_test_plugins SHARED
   plugins/test_03_basic_mock_block.cpp
   plugins/test_03_timer_mock_block.cpp
   plugins/test_03_failing_mock_block.cpp
-  plugins/test_03_event_service_mock_block.cpp
+  plugins/test_03_signal_user_mock_block.cpp
 )
 
 target_include_directories(bpe_test_plugins
@@ -136,10 +136,17 @@ ament_add_gtest(test_bpe_multi_scheduler test_bpe_multi_scheduler.cpp)
 target_include_directories(test_bpe_multi_scheduler PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src)
 target_link_libraries(test_bpe_multi_scheduler bpe_multi_scheduler yaml-cpp)
 
-ament_add_gtest(test_02_event_service
-  test_02_event_service.cpp
-)
 
-target_link_libraries(test_02_event_service
-  block_plugin_engine_core
+# Hybrid scheduler functional coverage. The worker runs with SCHED_OTHER;
+# no hard real-time deadline/latency assertions are made here.
+ament_add_gtest(test_05_bpe_hybrid_fair_scheduler
+  test_05_bpe_hybrid_fair_scheduler.cpp
+)
+target_include_directories(test_05_bpe_hybrid_fair_scheduler PRIVATE
+  ${PROJECT_SOURCE_DIR}/include
+  ${PROJECT_SOURCE_DIR}/src
+)
+target_link_libraries(test_05_bpe_hybrid_fair_scheduler
+  bpe_hybrid_fair_scheduler
+  yaml-cpp
 )

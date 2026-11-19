@@ -5,6 +5,7 @@
 #include <time.h>
 
 #include "block_plugin_engine/execution_config.hpp"
+#include "block_plugin_engine/event_signal.hpp"
 #include "block_plugin_engine/scheduler_config.hpp"
 
 namespace bpe {
@@ -21,6 +22,14 @@ public:
 
   virtual SchedulerResult
   add(const std::string& instance_name, ITimerBlock& block, const ExecutionConfig& config) = 0;
+
+  // Resolve blocks referenced by scheduler-owned pipelines. Default is a no-op
+  // for schedulers that plan individual blocks with add().
+  virtual SchedulerResult bind_block(const std::string&, ITimerBlock&) {
+    return SchedulerResult::SUCCESS;
+  }
+  // Optional capability: schedulers without event pipelines return nullptr.
+  virtual IEventSignalProvider* event_signal_provider() { return nullptr; }
 
   virtual SchedulerResult remove(const std::string& instance_name) = 0;
   // Monotonic absolute origin shared by composable schedulers.

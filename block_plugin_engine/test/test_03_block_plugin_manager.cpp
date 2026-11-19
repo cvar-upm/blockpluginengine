@@ -161,6 +161,18 @@ INSTANTIATE_TEST_SUITE_P(InvalidBlocks, BlockConfigValidationTest,
     "[{name: x, type: bpe_test/TestTimerBlock, execution: {policy: event, period: 10ms, event_tag: tag, order: -1}}]"
   ));
 
+TEST_F(BlockPluginManagerTest, InjectsPullSignalProviderBeforeConfigure) {
+  scheduler_->allow_signal("ready");
+  ASSERT_TRUE(manager_->configure(YAML::Load(
+      "[{name: emitter, type: bpe_test/TestSignalUserMockBlock}]")));
+  EXPECT_EQ(events(), (std::vector<std::string>{
+      "signal.inject", "signal.configure:resolved"}));
+  ASSERT_TRUE(manager_->start());
+  EXPECT_EQ(events().back(), "signal.start:sent");
+  EXPECT_TRUE(manager_->stop());
+  EXPECT_TRUE(manager_->cleanup());
+}
+
 TEST_F(BlockPluginManagerTest, RejectsUnknownPluginType) {
   const auto blocks = YAML::Load("[{name: missing, type: bpe_test/NoSuchBlock}]");
   EXPECT_FALSE(manager_->configure(blocks));
@@ -168,33 +180,21 @@ TEST_F(BlockPluginManagerTest, RejectsUnknownPluginType) {
   EXPECT_TRUE(events().empty());
 }
 
-TEST_F(BlockPluginManagerTest, RegistersCompleteExecutionConfiguration) {
+TEST_F(BlockPluginManagerTest, RegistersTimerExecutionConfiguration) {
   auto blocks = YAML::Load(R"(
 - name: timer
   type: bpe_test/TestTimerBlock
   config: {id: timer, label: periodic}
   execution: {policy: timer, period: 20ms, offset: 2ms, thread: 3}
-- name: event
-  type: bpe_test/TestTimerBlock
-  config: {id: event, label: event_driven}
-  execution: {policy: event, period: 100ms, offset: 4ms, thread: 1, event_tag: trigger, order: 7}
 )");
   ASSERT_TRUE(manager_->configure(blocks));
-  ASSERT_EQ(scheduler_->entries().size(), 2U);
+  ASSERT_EQ(scheduler_->entries().size(), 1U);
   const auto& timer = scheduler_->entries()[0];
   EXPECT_EQ(timer.name, "timer");
   EXPECT_EQ(timer.config.policy, ExecutionPolicy::TIMER);
   EXPECT_EQ(timer.config.period, std::chrono::milliseconds(20));
   EXPECT_EQ(timer.config.offset, std::chrono::milliseconds(2));
   EXPECT_EQ(timer.config.thread, 3U);
-  const auto& event = scheduler_->entries()[1];
-  EXPECT_EQ(event.name, "event");
-  EXPECT_EQ(event.config.policy, ExecutionPolicy::EVENT);
-  EXPECT_EQ(event.config.period, std::chrono::milliseconds(100));
-  EXPECT_EQ(event.config.offset, std::chrono::milliseconds(4));
-  EXPECT_EQ(event.config.thread, 1U);
-  EXPECT_EQ(event.config.event_tag, "trigger");
-  EXPECT_EQ(event.config.pipeline_order, 7U);
   EXPECT_TRUE(manager_->cleanup());
 }
 
@@ -298,11 +298,6 @@ TEST_F(BlockPluginManagerTest, CleansUpAfterStartFailure) {
   clear_events();
   EXPECT_TRUE(manager_->cleanup());
   EXPECT_EQ(events(), (std::vector<std::string>{"failing.cleanup", "basic.cleanup"}));
-}
-TEST_F(BlockPluginManagerTest, InjectsEventServiceBeforeConfigure) {
-  ASSERT_TRUE(manager_->configure(YAML::Load("[{name: event, type: bpe_test/TestEventServiceMockBlock}]")));
-  EXPECT_EQ(events(), (std::vector<std::string>{"event.inject", "event.configure:injected"}));
-  EXPECT_TRUE(manager_->cleanup());
 }
 
 } // namespace

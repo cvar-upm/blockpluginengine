@@ -21,8 +21,8 @@
     <description>BlockPluginEngine Block used to test lifecycle failures.</description>
   </class>
 
-  <class name="bpe_test/TestEventServiceMockBlock"
-    type="bpe::test::TestEventServiceMockBlock" base_class_type="bpe::IBlockPlugin">
-    <description>EventService injection mock block.</description>
+  <class name="bpe_test/TestSignalUserMockBlock"
+    type="bpe::test::TestSignalUserMockBlock" base_class_type="bpe::IBlockPlugin">
+    <description>Pull-based event signal provider injection mock.</description>
   </class>
 </library>

@@ -2,12 +2,15 @@
 
 #include <algorithm>
 #include <cerrno>
-#include <chrono>
+#include <charconv>
 #include <cstdint>
 #include <limits>
-#include <iterator>
 #include <pthread.h>
 #include <sched.h>
+#include <string_view>
+#include <utility>
+#include <ctime>
+#include <exception>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
 #include <sys/timerfd.h>
@@ -20,9 +23,35 @@ constexpr std::uint64_t kTimerToken = 1;
 constexpr std::uint64_t kStopToken = 2;
 constexpr std::uint64_t kEventTokenBase = 3;
 
-timespec as_timespec(std::int64_t time) {
-  return {static_cast<time_t>(time / kSecond), static_cast<long>(time % kSecond)};
+timespec as_timespec(std::int64_t value) {
+  return {static_cast<time_t>(value / kSecond), static_cast<long>(value % kSecond)};
 }
+
+bool parse_duration(const YAML::Node& node, bool positive, std::int64_t& out) {
+  if (!node || !node.IsScalar()) return false;
+  const std::string value = node.as<std::string>();
+  const std::string_view v{value};
+  for (const auto& [unit, factor] : {
+         std::pair<std::string_view, std::int64_t>{"ns", 1},
+         {"us", 1'000}, {"ms", 1'000'000}, {"s", kSecond}}) {
+    if (v.size() <= unit.size() || v.substr(v.size() - unit.size()) != unit) continue;
+    const auto number = v.substr(0, v.size() - unit.size());
+    std::int64_t amount{};
+    const auto result = std::from_chars(number.data(), number.data() + number.size(), amount);
+    if (result.ec != std::errc{} || result.ptr != number.data() + number.size() ||
+        amount < 0 || (positive && amount == 0) ||
+        amount > std::numeric_limits<std::int64_t>::max() / factor) return false;
+    out = amount * factor;
+    return true;
+  }
+  return false;
+}
+}
+
+BPE_HybridFairScheduler::Signal::~Signal() { if (fd >= 0) ::close(fd); }
+
+bool BPE_HybridFairScheduler::Signal::signal() noexcept {
+  return active.load(std::memory_order_acquire) && ::eventfd_write(fd, 1) == 0;
 }
 
 std::int64_t BPE_HybridFairScheduler::now_ns() {
@@ -31,97 +60,138 @@ std::int64_t BPE_HybridFairScheduler::now_ns() {
   return static_cast<std::int64_t>(ts.tv_sec) * kSecond + ts.tv_nsec;
 }
 
-BPE_HybridFairScheduler::~BPE_HybridFairScheduler() { stop(); }
+BPE_HybridFairScheduler::~BPE_HybridFairScheduler() { stop(); clear(); }
 
 SchedulerResult BPE_HybridFairScheduler::configure(const SchedulerConfig& config) {
-  if (running_) return SchedulerResult::INVALID_STATE;
+  if (running_ || !pipelines_.empty()) return SchedulerResult::INVALID_STATE;
   try {
     if (config && !config.IsMap()) return SchedulerResult::INVALID_CONFIG;
+    bool rt_enabled = true;
+    bool rt_required = false;
+    int rt_priority = 50;
     if (config["realtime"]) {
       const auto rt = config["realtime"];
       if (!rt.IsMap()) return SchedulerResult::INVALID_CONFIG;
-      if (rt["enabled"]) realtime_enabled_ = rt["enabled"].as<bool>();
-      if (rt["required"]) realtime_required_ = rt["required"].as<bool>();
-      if (rt["priority"]) realtime_priority_ = rt["priority"].as<int>();
+      if (rt["enabled"]) rt_enabled = rt["enabled"].as<bool>();
+      if (rt["required"]) rt_required = rt["required"].as<bool>();
+      if (rt["priority"]) rt_priority = rt["priority"].as<int>();
     }
-    if (config["phase_step_limit_ns"]) {
-      phase_step_limit_ns_ = config["phase_step_limit_ns"].as<std::int64_t>();
-      if (phase_step_limit_ns_ < 0) return SchedulerResult::INVALID_CONFIG;
+    std::vector<Pipeline> parsed;
+    const auto list = config["pipelines"];
+    if (list && !list.IsSequence()) return SchedulerResult::INVALID_CONFIG;
+    for (const auto& node : list) {
+      if (!node.IsMap() || !node["name"] || !node["policy"] ||
+          !node["period"] || !node["blocks"] || !node["blocks"].IsSequence() ||
+          node["blocks"].size() == 0) return SchedulerResult::INVALID_CONFIG;
+      Pipeline pipeline;
+      pipeline.name = node["name"].as<std::string>();
+      const auto policy = node["policy"].as<std::string>();
+      if (pipeline.name.empty() || (policy != "timer" && policy != "event") ||
+          std::any_of(parsed.begin(), parsed.end(), [&](const Pipeline& p) {
+            return p.name == pipeline.name;
+          }) || !parse_duration(node["period"], true, pipeline.period))
+        return SchedulerResult::INVALID_CONFIG;
+      pipeline.event = policy == "event";
+      if (node["offset"] && !parse_duration(node["offset"], false, pipeline.offset))
+        return SchedulerResult::INVALID_CONFIG;
+      if (pipeline.offset > std::numeric_limits<std::int64_t>::max() - pipeline.period)
+        return SchedulerResult::INVALID_CONFIG;
+      if (pipeline.event) {
+        if (!node["signal"]) return SchedulerResult::INVALID_CONFIG;
+        pipeline.signal_name = node["signal"].as<std::string>();
+        if (pipeline.signal_name.empty() || std::any_of(parsed.begin(), parsed.end(),
+            [&](const Pipeline& p) { return p.signal_name == pipeline.signal_name; }))
+          return SchedulerResult::INVALID_CONFIG;
+        const int fd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+        if (fd < 0) return SchedulerResult::SYSTEM_ERROR;
+        pipeline.channel = std::make_shared<Signal>(fd);
+      } else if (node["signal"]) return SchedulerResult::INVALID_CONFIG;
+      for (const auto& name_node : node["blocks"]) {
+        const auto name = name_node.as<std::string>();
+        if (name.empty()) return SchedulerResult::INVALID_CONFIG;
+        pipeline.blocks.push_back({name, nullptr, nullptr});
+      }
+      pipeline.registration = parsed.size();
+      parsed.push_back(std::move(pipeline));
     }
+    realtime_enabled_ = rt_enabled;
+    realtime_required_ = rt_required;
+    realtime_priority_ = rt_priority;
+    pipelines_ = std::move(parsed);
   } catch (const YAML::Exception&) { return SchedulerResult::INVALID_CONFIG; }
+    catch (const std::exception&) { return SchedulerResult::INVALID_CONFIG; }
   return SchedulerResult::SUCCESS;
 }
 
 SchedulerResult BPE_HybridFairScheduler::add(
     const std::string& name, ITimerBlock& block, const ExecutionConfig& config) {
+  // Legacy single-block timer entries remain supported. EVENT declarations
+  // are scheduler-owned pipelines, not block.execution declarations.
   if (running_) return SchedulerResult::INVALID_STATE;
-  if (name.empty() || config.period.count() <= 0 || config.offset.count() < 0 ||
-      config.thread != 0 || config.period.count() > std::numeric_limits<std::int64_t>::max() - config.offset.count())
+  if (name.empty() || config.policy != ExecutionPolicy::TIMER || config.thread != 0 ||
+      config.period.count() <= 0 || config.offset.count() < 0 ||
+      config.offset.count() > std::numeric_limits<std::int64_t>::max() - config.period.count() ||
+      std::any_of(pipelines_.begin(), pipelines_.end(), [&](const Pipeline& p) { return p.name == name; }))
     return SchedulerResult::INVALID_CONFIG;
-  for (const auto& timer : timers_) if (timer.name == name) return SchedulerResult::INVALID_CONFIG;
-  for (const auto& event : events_)
-    for (const auto& consumer : event.consumers)
-      if (consumer.name == name) return SchedulerResult::INVALID_CONFIG;
-
-  if (config.policy == ExecutionPolicy::TIMER) {
-    if (!config.event_tag.empty()) return SchedulerResult::INVALID_CONFIG;
-    timers_.push_back({name, &block, dynamic_cast<ITimerBlockWithInfo*>(&block),
-                       config.period.count(), config.offset.count(), 0, 0, registration_count_++});
-    return SchedulerResult::SUCCESS;
-  }
-  if (config.policy != ExecutionPolicy::EVENT || config.event_tag.empty())
-    return SchedulerResult::INVALID_CONFIG;
-  auto it = std::find_if(events_.begin(), events_.end(), [&](const Event& e) {
-    return e.tag == config.event_tag;
-  });
-  if (it == events_.end()) {
-    auto channel = EventService::instance().channel(config.event_tag);
-    if (!channel) return SchedulerResult::SYSTEM_ERROR;
-    Event event{};
-    event.tag = config.event_tag;
-    event.channel = std::move(channel);
-    event.period = config.period.count();
-    event.offset = config.offset.count();
-    event.registration = registration_count_++;
-    events_.push_back(std::move(event));
-    it = std::prev(events_.end());
-  } else if (it->period != config.period.count() || it->offset != config.offset.count()) {
-    return SchedulerResult::INVALID_CONFIG;
-  }
-  for (const auto& consumer : it->consumers)
-    if (consumer.order == config.pipeline_order) return SchedulerResult::INVALID_CONFIG;
-  it->consumers.push_back({name, &block, config.pipeline_order});
-  std::sort(it->consumers.begin(), it->consumers.end(),
-            [](const Consumer& a, const Consumer& b) { return a.order < b.order; });
+  Pipeline pipeline;
+  pipeline.name = name;
+  pipeline.blocks.push_back({name, &block, dynamic_cast<ITimerBlockWithInfo*>(&block)});
+  pipeline.period = config.period.count();
+  pipeline.offset = config.offset.count();
+  pipeline.registration = pipelines_.size();
+  pipelines_.push_back(std::move(pipeline));
   return SchedulerResult::SUCCESS;
+}
+
+SchedulerResult BPE_HybridFairScheduler::bind_block(const std::string& name, ITimerBlock& block) {
+  if (running_) return SchedulerResult::INVALID_STATE;
+  for (auto& pipeline : pipelines_) for (auto& entry : pipeline.blocks) {
+    if (entry.name == name) {
+      entry.block = &block;
+      entry.with_info = dynamic_cast<ITimerBlockWithInfo*>(&block);
+    }
+  }
+  return SchedulerResult::SUCCESS;
+}
+
+std::shared_ptr<IEventSignal> BPE_HybridFairScheduler::get_signal(std::string_view name) {
+  for (const auto& pipeline : pipelines_)
+    if (pipeline.event && pipeline.signal_name == name && pipeline.channel)
+      return pipeline.channel;
+  return {};
 }
 
 SchedulerResult BPE_HybridFairScheduler::remove(const std::string& name) {
   if (running_) return SchedulerResult::INVALID_STATE;
-  const auto timer = std::find_if(timers_.begin(), timers_.end(), [&](const Timer& t) {
-    return t.name == name;
-  });
-  if (timer != timers_.end()) { timers_.erase(timer); return SchedulerResult::SUCCESS; }
-  for (auto it = events_.begin(); it != events_.end(); ++it) {
-    auto& consumers = it->consumers;
-    auto consumer = std::find_if(consumers.begin(), consumers.end(), [&](const Consumer& c) {
-      return c.name == name;
-    });
-    if (consumer != consumers.end()) {
-      consumers.erase(consumer);
-      if (consumers.empty()) events_.erase(it);
-      return SchedulerResult::SUCCESS;
+  bool found = false;
+  for (auto& pipeline : pipelines_) for (auto& block : pipeline.blocks) {
+    if (block.name == name && block.block) {
+      block.block = nullptr;
+      block.with_info = nullptr;
+      found = true;
     }
   }
-  return SchedulerResult::NOT_FOUND;
+  auto it = std::remove_if(pipelines_.begin(), pipelines_.end(), [&](const Pipeline& p) {
+    return !p.event && p.blocks.size() == 1 && p.name == name;
+  });
+  if (it != pipelines_.end()) {
+    pipelines_.erase(it, pipelines_.end());
+    found = true;
+  }
+  return found ? SchedulerResult::SUCCESS : SchedulerResult::NOT_FOUND;
 }
 
 SchedulerResult BPE_HybridFairScheduler::clear() {
   if (running_) return SchedulerResult::INVALID_STATE;
-  timers_.clear();
-  events_.clear();
-  registration_count_ = 0;
+  for (auto& pipeline : pipelines_) if (pipeline.channel)
+    pipeline.channel->active.store(false, std::memory_order_release);
+  pipelines_.clear();
   return SchedulerResult::SUCCESS;
+}
+
+void BPE_HybridFairScheduler::drain(int fd) {
+  eventfd_t count{};
+  while (::eventfd_read(fd, &count) == 0) {}
 }
 
 bool BPE_HybridFairScheduler::setup_fds() {
@@ -136,8 +206,9 @@ bool BPE_HybridFairScheduler::setup_fds() {
     return ::epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, fd, &ev) == 0;
   };
   if (!add_fd(timer_fd_, kTimerToken) || !add_fd(stop_fd_, kStopToken)) return false;
-  for (std::size_t i = 0; i < events_.size(); ++i)
-    if (!add_fd(events_[i].channel->fd, kEventTokenBase + i)) return false;
+  for (std::size_t i = 0; i < pipelines_.size(); ++i)
+    if (pipelines_[i].event &&
+        !add_fd(pipelines_[i].channel->fd, kEventTokenBase + i)) return false;
   return true;
 }
 
@@ -155,22 +226,20 @@ SchedulerResult BPE_HybridFairScheduler::start(std::chrono::nanoseconds origin) 
       (realtime_priority_ < sched_get_priority_min(SCHED_FIFO) ||
        realtime_priority_ > sched_get_priority_max(SCHED_FIFO)))
     return SchedulerResult::INVALID_CONFIG;
-  origin_ = origin.count();
-  for (auto& timer : timers_) {
-    timer.k = 0;
-    timer.deadline = origin_ + timer.offset + timer.period;
+  for (const auto& pipeline : pipelines_) {
+    if (std::any_of(pipeline.blocks.begin(), pipeline.blocks.end(),
+        [](const Block& block) { return block.block == nullptr; }))
+      return SchedulerResult::INVALID_CONFIG;
+    if (origin.count() > std::numeric_limits<std::int64_t>::max() -
+        pipeline.offset - pipeline.period) return SchedulerResult::INVALID_CONFIG;
   }
-  for (auto& event : events_) {
-    event.k = 0;
-    event.nominal = origin_ + event.offset + event.period;
-    event.begin = origin_ + event.offset;
-    event.end = event.nominal;
-    event.pending = false;
-    event.phase_initialized = false;
-    event.coalesced = 0;
-    event.missed = 0;
-    event.deferred_stamp = 0;
-    event.deferred_count = 0;
+  origin_ = origin.count();
+  for (auto& pipeline : pipelines_) {
+    pipeline.k = 0;
+    pipeline.nominal = origin_ + pipeline.offset + pipeline.period;
+    pipeline.next_allowed = origin_ + pipeline.offset;
+    pipeline.pending = false;
+    if (pipeline.event) drain(pipeline.channel->fd);
   }
   if (!setup_fds()) { close_fds(); return SchedulerResult::SYSTEM_ERROR; }
   ready_ = false;
@@ -190,7 +259,7 @@ SchedulerResult BPE_HybridFairScheduler::start(std::chrono::nanoseconds origin) 
 SchedulerResult BPE_HybridFairScheduler::stop() {
   running_.store(false, std::memory_order_release);
   start_gate_.store(true, std::memory_order_release);
-  if (stop_fd_ >= 0) ::eventfd_write(stop_fd_, 1);
+  if (stop_fd_ >= 0) (void)::eventfd_write(stop_fd_, 1);
   if (worker_.joinable()) worker_.join();
   close_fds();
   return SchedulerResult::SUCCESS;
@@ -203,86 +272,70 @@ bool BPE_HybridFairScheduler::setup_realtime() {
   return ::pthread_setschedparam(pthread_self(), SCHED_FIFO, &param) == 0;
 }
 
-void BPE_HybridFairScheduler::handle_signal(Event& event) {
-  eventfd_t count{};
-  if (::eventfd_read(event.channel->fd, &count) != 0) return;
-  const auto stamp = event.channel->last_signal_ns.load(std::memory_order_acquire);
-  // Consume all notifications, including duplicates. Never reassign an old
-  // notification to a subsequent window.
-  if (stamp >= event.begin && stamp < event.end && !event.pending) {
-    event.pending = true;
-    if (count > 1) event.coalesced += count - 1;
-  } else if (stamp >= event.end) {
-    // Preserve the latest signal received for a later nominal window.
-    event.deferred_stamp = stamp;
-    event.deferred_count += count;
-  } else {
-    event.coalesced += count;
-  }
-}
-
 void BPE_HybridFairScheduler::observe_events(int timeout_ms) {
   epoll_event ready[32]{};
-  int count = ::epoll_wait(epoll_fd_, ready, 32, timeout_ms);
+  const int count = ::epoll_wait(epoll_fd_, ready, 32, timeout_ms);
   if (count < 0 && errno == EINTR) return;
-  for (int j = 0; j < count; ++j) {
-    const auto id = ready[j].data.u64;
-    if (id == kTimerToken) {
+  if (count <= 0) return;
+  for (int i = 0; i < count; ++i) {
+    const auto token = ready[i].data.u64;
+    if (token == kTimerToken) {
       std::uint64_t expirations{};
       (void)::read(timer_fd_, &expirations, sizeof(expirations));
-    } else if (id >= kEventTokenBase && id - kEventTokenBase < events_.size()) {
-      handle_signal(events_[id - kEventTokenBase]);
+    } else if (token == kStopToken) {
+      drain(stop_fd_);
+    } else if (token >= kEventTokenBase && token - kEventTokenBase < pipelines_.size()) {
+      auto& pipeline = pipelines_[token - kEventTokenBase];
+      drain(pipeline.channel->fd);
+      // Events inside the minimum interval are deliberately discarded, not queued.
+      if (now_ns() >= pipeline.next_allowed) pipeline.pending = true;
     }
   }
 }
 
-void BPE_HybridFairScheduler::advance_event(Event& event, std::int64_t now, bool executed) {
-  // Nominal priority always advances by the configured period. Only the
-  // prediction window is phase-corrected; its bounds remain contiguous.
-  std::int64_t correction = 0;
-  if (executed) {
-    const auto stamp = event.channel->last_signal_ns.load(std::memory_order_acquire);
-    if (stamp >= event.begin && stamp < event.end) {
-      const auto error = stamp - (event.begin + event.period / 2);
-      const auto limit = phase_step_limit_ns_ > 0 ?
-          std::min(phase_step_limit_ns_, event.period / 8) : event.period / 8;
-      correction = std::clamp(error / 8, -limit, limit);
-      event.phase_initialized = true;
-    }
-  } else {
-    ++event.missed;
+void BPE_HybridFairScheduler::execute_pipeline(Pipeline& pipeline, std::int64_t now) {
+  // Once selected, a pipeline completes even if stop() is requested.
+  for (const auto& block : pipeline.blocks) {
+    if (block.with_info) {
+      block.with_info->execute({pipeline.k, std::chrono::nanoseconds(pipeline.nominal),
+          std::chrono::nanoseconds(std::max<std::int64_t>(0, now - pipeline.nominal))});
+    } else block.block->execute();
   }
-  ++event.k;
-  event.nominal += event.period;
-  event.begin = event.end;
-  event.end += event.period + correction;
-  // After a late callback, retain monotonic windows without changing nominal priority.
-  (void)now;
-  event.pending = false;
-  if (event.deferred_count && event.deferred_stamp >= event.begin &&
-      event.deferred_stamp < event.end) {
-    event.pending = true;
-    event.coalesced += event.deferred_count - 1;
-    event.deferred_count = 0;
-    event.deferred_stamp = 0;
-  } else if (event.deferred_count && event.deferred_stamp < event.begin) {
-    event.coalesced += event.deferred_count;
-    event.deferred_count = 0;
-    event.deferred_stamp = 0;
+}
+
+void BPE_HybridFairScheduler::advance_event(Pipeline& pipeline, std::int64_t now) {
+  // Only one pipeline execution per minimum real-time period. Skipped
+  // nominal opportunities never produce catch-up executions.
+  const auto period = pipeline.period;
+  pipeline.next_allowed = now > std::numeric_limits<std::int64_t>::max() - period
+      ? std::numeric_limits<std::int64_t>::max() : now + period;
+  std::int64_t reference = std::numeric_limits<std::int64_t>::max();
+  for (const auto& other : pipelines_) {
+    if (&other != &pipeline) reference = std::min(reference, other.nominal);
   }
+  // Advance k to the first nominal priority strictly behind the closest
+  // competing pipeline; ties are resolved in favor of the competitor.
+  // Even if there is no other eligible pipeline, missed nominal periods
+  // are discarded. The actual execution time is the lower-bound reference.
+  std::int64_t target = std::max(pipeline.nominal, now);
+  if (reference != std::numeric_limits<std::int64_t>::max())
+    target = std::max(target, reference);
+  const auto steps = (target - pipeline.nominal) / period + 1;
+  pipeline.k += static_cast<std::uint64_t>(steps);
+  pipeline.nominal += steps * period;
 }
 
 void BPE_HybridFairScheduler::program_next_deadline(std::int64_t now) {
   std::int64_t earliest = std::numeric_limits<std::int64_t>::max();
-  for (const auto& timer : timers_) earliest = std::min(earliest, timer.deadline);
-  for (const auto& event : events_) {
-    earliest = std::min(earliest, event.end);
-    if (event.begin > now) earliest = std::min(earliest, event.begin);
+  for (const auto& pipeline : pipelines_) {
+    if (pipeline.event) {
+      if (pipeline.pending && pipeline.next_allowed > now)
+        earliest = std::min(earliest, pipeline.next_allowed);
+    } else earliest = std::min(earliest, pipeline.nominal);
   }
   itimerspec spec{};
-  if (earliest != std::numeric_limits<std::int64_t>::max()) {
+  if (earliest != std::numeric_limits<std::int64_t>::max())
     spec.it_value = as_timespec(std::max(earliest, std::int64_t{1}));
-  }
   (void)::timerfd_settime(timer_fd_, TFD_TIMER_ABSTIME, &spec, nullptr);
 }
 
@@ -293,54 +346,29 @@ void BPE_HybridFairScheduler::worker_loop() {
   while (!start_gate_.load(std::memory_order_acquire) && running_) std::this_thread::yield();
 
   while (running_) {
-    // Drain the wait set first: epoll order never determines block order.
     observe_events(0);
     const auto now = now_ns();
-    Timer* timer_choice = nullptr;
-    Event* event_choice = nullptr;
-    std::int64_t best = std::numeric_limits<std::int64_t>::max();
-    std::size_t best_registration = std::numeric_limits<std::size_t>::max();
-    for (auto& timer : timers_) {
-      if (timer.deadline <= now && (timer.deadline < best ||
-          (timer.deadline == best && timer.registration < best_registration))) {
-        best = timer.deadline;
-        best_registration = timer.registration;
-        timer_choice = &timer;
-        event_choice = nullptr;
-      }
+    Pipeline* choice = nullptr;
+    for (auto& pipeline : pipelines_) {
+      const bool eligible = pipeline.event
+          ? pipeline.pending && now >= pipeline.next_allowed
+          : now >= pipeline.nominal;
+      if (eligible && (!choice || pipeline.nominal < choice->nominal ||
+          (pipeline.nominal == choice->nominal && pipeline.registration < choice->registration)))
+        choice = &pipeline;
     }
-    for (auto& event : events_) {
-      // Pending events may execute before their nominal deadline; expiration
-      // of an empty window simply consumes its nominal opportunity.
-      if ((event.pending || event.end <= now) && event.begin <= now &&
-          (event.nominal < best ||
-           (event.nominal == best && event.registration < best_registration))) {
-        best = event.nominal;
-        best_registration = event.registration;
-        event_choice = &event;
-        timer_choice = nullptr;
+    if (choice) {
+      if (choice->event) {
+        choice->pending = false;
+        execute_pipeline(*choice, now);
+        // Coalesce notifications received during the pipeline's execution.
+        drain(choice->channel->fd);
+        advance_event(*choice, now);
+      } else {
+        execute_pipeline(*choice, now);
+        ++choice->k;
+        choice->nominal += choice->period;
       }
-    }
-    if (timer_choice) {
-      Timer& timer = *timer_choice;
-      if (timer.with_info) {
-        timer.with_info->execute({timer.k, std::chrono::nanoseconds(timer.deadline),
-             std::chrono::nanoseconds(std::max<std::int64_t>(0, now - timer.deadline))});
-      } else timer.block->execute();
-      ++timer.k;
-      timer.deadline += timer.period;
-      continue;
-    }
-    if (event_choice) {
-      Event& event = *event_choice;
-      const bool executed = event.pending;
-      if (executed) {
-        for (const auto& consumer : event.consumers) {
-          if (!running_) break;
-          consumer.block->execute();
-        }
-      }
-      advance_event(event, now_ns(), executed);
       continue;
     }
     program_next_deadline(now);

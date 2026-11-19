@@ -49,6 +49,12 @@ SchedulerResult SchedulerPluginHost::add(const std::string& name, ITimerBlock& b
                                         const ExecutionConfig& config) {
   return scheduler_ ? scheduler_->add(name, block, config) : SchedulerResult::INVALID_STATE;
 }
+SchedulerResult SchedulerPluginHost::bind_block(const std::string& name, ITimerBlock& block) {
+  return scheduler_ ? scheduler_->bind_block(name, block) : SchedulerResult::INVALID_STATE;
+}
+IEventSignalProvider* SchedulerPluginHost::event_signal_provider() {
+  return scheduler_ ? scheduler_->event_signal_provider() : nullptr;
+}
 SchedulerResult SchedulerPluginHost::remove(const std::string& name) {
   return scheduler_ ? scheduler_->remove(name) : SchedulerResult::INVALID_STATE;
 }

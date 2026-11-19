@@ -1,8 +1,23 @@
 #include "mocks/scheduler_mock.hpp"
 
 #include <algorithm>
+#include <utility>
 
 namespace bpe::test {
+namespace {
+struct TestSignal : IEventSignal {
+  bool signal() noexcept override { return true; }
+};
+}
+
+void SchedulerMock::allow_signal(std::string name) {
+  signal_name_ = std::move(name);
+  test_signal_ = std::make_shared<TestSignal>();
+}
+std::shared_ptr<IEventSignal> SchedulerMock::get_signal(std::string_view name) {
+  return name == signal_name_ ? test_signal_ : nullptr;
+}
+
 
 SchedulerResult SchedulerMock::configure(const SchedulerConfig&) {
   calls_.push_back("configure");

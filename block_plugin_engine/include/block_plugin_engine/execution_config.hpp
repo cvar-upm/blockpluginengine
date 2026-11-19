@@ -13,8 +13,6 @@ struct ExecutionConfig {
   std::chrono::nanoseconds period{0};
   std::chrono::nanoseconds offset{0};
   std::size_t thread{0};
-  std::string event_tag;
-  std::size_t pipeline_order{0};
 };
 
 } // namespace bpe

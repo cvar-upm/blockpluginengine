@@ -99,6 +99,28 @@ SchedulerResult BPE_MultiScheduler::add(const std::string& name, ITimerBlock& bl
   return result;
 }
 
+SchedulerResult BPE_MultiScheduler::bind_block(const std::string& name, ITimerBlock& block) {
+  if (running_ || schedulers_.empty()) return SchedulerResult::INVALID_STATE;
+  for (const auto& scheduler : schedulers_) {
+    const auto result = scheduler->bind_block(name, block);
+    if (result != SchedulerResult::SUCCESS) return result;
+  }
+  return SchedulerResult::SUCCESS;
+}
+
+std::shared_ptr<IEventSignal> BPE_MultiScheduler::get_signal(std::string_view name) {
+  std::shared_ptr<IEventSignal> result;
+  for (const auto& scheduler : schedulers_) {
+    auto* provider = scheduler->event_signal_provider();
+    if (!provider) continue;
+    auto candidate = provider->get_signal(name);
+    // Ambiguity is a configuration error: use globally distinct signal names.
+    if (candidate && result) return {};
+    if (candidate) result = std::move(candidate);
+  }
+  return result;
+}
+
 SchedulerResult BPE_MultiScheduler::remove(const std::string& name) {
   if (running_) return SchedulerResult::INVALID_STATE;
   const auto it = std::find_if(entries_.begin(), entries_.end(),

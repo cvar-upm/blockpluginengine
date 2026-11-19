@@ -23,7 +23,6 @@ find_package(Threads REQUIRED)
 
 add_library(block_plugin_engine_core SHARED
   src/blackboard.cpp
-  src/event_service.cpp
   src/ros_type_registry.cpp
 )
 

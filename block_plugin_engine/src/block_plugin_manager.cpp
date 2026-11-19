@@ -14,7 +14,7 @@
 #include "block_plugin_engine/iblock_scheduler.hpp"
 #include "block_plugin_engine/iros_boundary_block.hpp"
 #include "block_plugin_engine/itimer_block.hpp"
-#include "block_plugin_engine/event_service.hpp"
+#include "block_plugin_engine/event_signal.hpp"
 
 namespace bpe {
 namespace {
@@ -70,8 +70,8 @@ ExecutionConfig parse_execution_config(const YAML::Node& node) {
   }
 
   const auto policy = node["policy"].as<std::string>();
-  if (policy != "timer" && policy != "event") {
-    throw std::runtime_error("unsupported execution.policy: " + policy);
+  if (policy != "timer") {
+    throw std::runtime_error("execution policy must be timer; event pipelines belong in scheduler configuration");
   }
 
   if (!node["period"]) {
@@ -83,15 +83,6 @@ ExecutionConfig parse_execution_config(const YAML::Node& node) {
   config.period = parse_duration(node["period"], "execution.period", false);
   if (node["offset"]) {
     config.offset = parse_duration(node["offset"], "execution.offset", true);
-  }
-  if (config.policy == ExecutionPolicy::EVENT) {
-    if (!node["event_tag"] || node["event_tag"].as<std::string>().empty() || !node["order"]) {
-      throw std::runtime_error("event policy requires event_tag and order");
-    }
-    config.event_tag = node["event_tag"].as<std::string>();
-    const auto order = node["order"].as<std::int64_t>();
-    if (order < 0) throw std::runtime_error("execution.order must be nonnegative");
-    config.pipeline_order = static_cast<std::size_t>(order);
   }
   if (node["thread"]) {
     const auto index = node["thread"].as<std::int64_t>();
@@ -275,8 +266,13 @@ bool BlockPluginManager::configure_instance(const BlockInstanceConfig& config) {
     ros->set_ros_interface(ros_topics_);
   }
 
-  if (auto* events = dynamic_cast<IEventServiceUser*>(plugin.get())) {
-    events->set_event_service(EventService::instance());
+  if (auto* events = dynamic_cast<IEventSignalUser*>(plugin.get())) {
+    auto* provider = scheduler_->event_signal_provider();
+    if (!provider) {
+      RCLCPP_ERROR(logger_, "Block '%s' needs event signals but scheduler has no provider", config.name.c_str());
+      return false;
+    }
+    events->set_event_signal_provider(*provider);
   }
 
   RCLCPP_DEBUG(logger_, "Configuring Block '%s'", config.name.c_str());
@@ -287,6 +283,15 @@ bool BlockPluginManager::configure_instance(const BlockInstanceConfig& config) {
 
   RCLCPP_DEBUG(logger_, "Configured Block '%s'", config.name.c_str());
   blocks_.push_back({config.name, plugin});
+
+  // A block may be scheduled solely by a pipeline in the scheduler YAML,
+  // without an individual 'execution' stanza in its block configuration.
+  if (auto* timer = dynamic_cast<ITimerBlock*>(plugin.get())) {
+    if (scheduler_->bind_block(config.name, *timer) != SchedulerResult::SUCCESS) {
+      RCLCPP_ERROR(logger_, "Could not bind Block '%s' to scheduler pipelines", config.name.c_str());
+      return false;
+    }
+  }
 
   if (config.execution) {
     auto* timer = dynamic_cast<ITimerBlock*>(plugin.get());
