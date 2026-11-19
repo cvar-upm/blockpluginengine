@@ -11,13 +11,22 @@
 
 #include "block_plugin_engine/iblock_scheduler.hpp"
 #include "block_plugin_engine/itimer_block_with_info.hpp"
+#include "detail/hybrid_deadline_clock.hpp"
+#include <stdexcept>
+#include <utility>
 
 namespace bpe {
 
 // Scheduler-owned, non-preemptive pipelines; no EventService/global registry.
-class BPE_HybridFairScheduler final : public IBlockScheduler, public IEventSignalProvider {
+template<typename Clock>
+class BaseHybridFairScheduler final : public IBlockScheduler, public IEventSignalProvider {
 public:
-  ~BPE_HybridFairScheduler() override;
+  BaseHybridFairScheduler() : clock_(std::make_shared<Clock>()) {}
+  explicit BaseHybridFairScheduler(std::shared_ptr<Clock> clock)
+      : clock_(std::move(clock)) {
+    if (!clock_) throw std::invalid_argument("hybrid scheduler clock must not be null");
+  }
+  ~BaseHybridFairScheduler() override;
   SchedulerResult configure(const SchedulerConfig&) override;
   SchedulerResult register_block(const std::string&, ITimerBlock&,
                                  const YAML::Node&) override;
@@ -65,9 +74,9 @@ private:
   void advance_event(Pipeline&, std::int64_t now);
   void program_next_deadline(std::int64_t now);
   bool setup_realtime();
-  static std::int64_t now_ns();
   static void drain(int fd);
 
+  std::shared_ptr<Clock> clock_;
   std::vector<Pipeline> pipelines_;
   bool realtime_enabled_{true};
   bool realtime_required_{false};
@@ -83,4 +92,8 @@ private:
   std::atomic<bool> start_gate_{false};
 };
 
+using BPE_HybridFairScheduler = BaseHybridFairScheduler<MonotonicHybridClock>;
+
 } // namespace bpe
+
+#include "detail/bpe_hybrid_fair_scheduler_impl.hpp"
