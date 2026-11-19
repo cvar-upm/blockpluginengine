@@ -185,6 +185,14 @@ target_compile_definitions(test_06_scheduler_integration PRIVATE
   BPE_TEST_CONFIG_DIR="${CMAKE_CURRENT_SOURCE_DIR}/config"
 )
 
+# The test is run from build/ without sourcing install/setup.bash.
+# pluginlib needs the installed package index and shared libraries.
+# Preserve the ROS and overlay paths already provided by the environment.
+set_tests_properties(test_06_scheduler_integration PROPERTIES
+  ENVIRONMENT
+    "AMENT_PREFIX_PATH=${CMAKE_INSTALL_PREFIX}:$ENV{AMENT_PREFIX_PATH};LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib:$ENV{LD_LIBRARY_PATH}"
+)
+
 add_dependencies(test_06_scheduler_integration
   bpe_test_simulated_schedulers bpe_test_plugins
 )
