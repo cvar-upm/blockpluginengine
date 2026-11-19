@@ -1,0 +1,6 @@
+# Minimal real application configuration: no scheduled blocks are needed to
+# validate CompositionRoot, pluginlib scheduler loading and ROS lifecycle.
+scheduler:
+  type: block_plugin_engine/FairScheduler
+  realtime: {enabled: false}
+blocks: []

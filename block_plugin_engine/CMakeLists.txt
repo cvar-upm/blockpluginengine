@@ -173,6 +173,7 @@ ament_export_dependencies(
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
   find_package(geometry_msgs REQUIRED)
+  find_package(lifecycle_msgs REQUIRED)
   add_subdirectory(test)
 endif()
 

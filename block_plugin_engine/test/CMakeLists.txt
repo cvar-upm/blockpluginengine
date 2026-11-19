@@ -167,6 +167,53 @@ target_link_libraries(bpe_test_simulated_schedulers
   bpe_test_support block_plugin_engine_core yaml-cpp Threads::Threads
 )
 
+
+# Test 07: real composition root and ROS 2 lifecycle transitions.
+# Compile the internal implementation units into this test, as the executable
+# already does. No production library/API is introduced just for testing.
+ament_add_gtest(test_07_bpe_lifecycle
+  test_07_bpe_lifecycle.cpp
+  ${PROJECT_SOURCE_DIR}/src/bpe_composition_root.cpp
+  ${PROJECT_SOURCE_DIR}/src/bpe_lifecycle_node.cpp
+  ${PROJECT_SOURCE_DIR}/src/scheduler_plugin_host.cpp
+  ${PROJECT_SOURCE_DIR}/src/block_plugin_manager.cpp
+)
+target_compile_features(test_07_bpe_lifecycle PUBLIC cxx_std_20)
+target_include_directories(test_07_bpe_lifecycle PRIVATE
+  ${PROJECT_SOURCE_DIR}/include
+  ${PROJECT_SOURCE_DIR}/src
+)
+ament_target_dependencies(test_07_bpe_lifecycle
+  rclcpp rclcpp_lifecycle pluginlib lifecycle_msgs
+)
+target_link_libraries(test_07_bpe_lifecycle
+  block_plugin_engine_core yaml-cpp Threads::Threads
+)
+target_compile_definitions(test_07_bpe_lifecycle PRIVATE
+  BPE_TEST_CONFIG_DIR="${CMAKE_CURRENT_SOURCE_DIR}/config"
+)
+
+# The normal ctest invocation may not have sourced install/setup.bash.
+# Both tests exercise real pluginlib discovery through the ament index.
+set(_bpe_test07_environment
+  "AMENT_PREFIX_PATH=${CMAKE_INSTALL_PREFIX}:$ENV{AMENT_PREFIX_PATH};LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib:$ENV{LD_LIBRARY_PATH}"
+)
+set_tests_properties(test_07_bpe_lifecycle PROPERTIES
+  ENVIRONMENT "${_bpe_test07_environment}"
+)
+
+# Process-level coverage of main.cpp: autostart, SIGTERM, shutdown and exit.
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+add_test(NAME test_07_bpe_process_shutdown
+  COMMAND ${Python3_EXECUTABLE}
+    "${CMAKE_CURRENT_SOURCE_DIR}/tools/test_07_process_shutdown.py"
+    --executable $<TARGET_FILE:block_plugin_engine>
+    --config "${CMAKE_CURRENT_SOURCE_DIR}/config/test_07_A_ValidLifecycle.yaml"
+)
+set_tests_properties(test_07_bpe_process_shutdown PROPERTIES
+  TIMEOUT 25
+  ENVIRONMENT "${_bpe_test07_environment}"
+)
 ament_add_gtest(test_06_scheduler_integration
   test_06_scheduler_integration.cpp
   ${PROJECT_SOURCE_DIR}/src/scheduler_plugin_host.cpp
