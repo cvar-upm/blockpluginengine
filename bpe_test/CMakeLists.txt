@@ -58,6 +58,23 @@ if(BUILD_TESTING)
   ament_target_dependencies(test_04_blackboard_concurrency block_plugin_engine)
   target_link_libraries(test_04_blackboard_concurrency Threads::Threads)
 
+  # Four real scheduler workers: TIMER writer, EVENT reader, two TIMER readers.
+  ament_add_gtest(test_05_multischeduler_blackboard_concurrency
+    test/test_05_multischeduler_blackboard_concurrency.cpp
+    TIMEOUT 75
+  )
+  target_compile_features(test_05_multischeduler_blackboard_concurrency PRIVATE cxx_std_20)
+  ament_target_dependencies(test_05_multischeduler_blackboard_concurrency
+    block_plugin_engine pluginlib
+  )
+  target_link_libraries(test_05_multischeduler_blackboard_concurrency
+    yaml-cpp Threads::Threads
+  )
+  get_filename_component(BPE_TEST_SCHEDULER_PREFIX
+    "${block_plugin_engine_DIR}/../../.." ABSOLUTE)
+  set_tests_properties(test_05_multischeduler_blackboard_concurrency PROPERTIES ENVIRONMENT
+    "AMENT_PREFIX_PATH=${BPE_TEST_SCHEDULER_PREFIX}:$ENV{AMENT_PREFIX_PATH};LD_LIBRARY_PATH=${BPE_TEST_SCHEDULER_PREFIX}/lib:$ENV{LD_LIBRARY_PATH}")
+
   # Exercise the five end-to-end integration scenarios against the real BPE
   # executable, without reconstructing its lifecycle/plugin loaders.
   find_package(ament_cmake_pytest REQUIRED)
