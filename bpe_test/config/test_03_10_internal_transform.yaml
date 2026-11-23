@@ -7,7 +7,7 @@ scheduler:
 
 blocks:
   - name: twist_transform
-    type: bpe_system_test/TwistTransformBlock
+    type: bpe_test/TwistTransformBlock
     execution:
       policy: timer
       period: 10ms

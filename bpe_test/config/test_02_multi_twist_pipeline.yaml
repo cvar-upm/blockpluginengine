@@ -6,7 +6,7 @@ scheduler:
 
 blocks:
   - name: twist_producer_a
-    type: bpe_system_test/TwistProducerBlock
+    type: bpe_test/TwistProducerBlock
     execution:
       policy: timer
       period: 10ms
@@ -14,7 +14,7 @@ blocks:
       blackboard_output: multi_raw_twist_a
 
   - name: twist_producer_b
-    type: bpe_system_test/TwistProducerBlock
+    type: bpe_test/TwistProducerBlock
     execution:
       policy: timer
       period: 10ms
@@ -22,7 +22,7 @@ blocks:
       blackboard_output: multi_raw_twist_b
 
   - name: multi_twist_transform
-    type: bpe_system_test/MultiTwistTransformBlock
+    type: bpe_test/MultiTwistTransformBlock
     execution:
       policy: timer
       period: 10ms
@@ -31,7 +31,7 @@ blocks:
       blackboard_outputs: [multi_processed_twist_a, multi_processed_twist_b]
 
   - name: twist_checker_a
-    type: bpe_system_test/TwistCheckerBlock
+    type: bpe_test/TwistCheckerBlock
     execution:
       policy: timer
       period: 10ms
@@ -39,7 +39,7 @@ blocks:
       blackboard_input: multi_processed_twist_a
 
   - name: twist_checker_b
-    type: bpe_system_test/TwistCheckerBlock
+    type: bpe_test/TwistCheckerBlock
     execution:
       policy: timer
       period: 10ms

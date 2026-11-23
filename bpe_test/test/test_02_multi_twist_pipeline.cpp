@@ -11,13 +11,13 @@
 #include "block_plugin_engine/iblock_plugin.hpp"
 #include "block_plugin_engine/itimer_block.hpp"
 #include "block_plugin_engine/typed_blackboard.hpp"
-#include "bpe_system_test/twist_checker_inspection.hpp"
+#include "bpe_test/twist_checker_inspection.hpp"
 
 #ifndef BPE_TEST_MULTI_CONFIG_PATH
 #error "BPE_TEST_MULTI_CONFIG_PATH must point to the system_test_multi.yaml source file"
 #endif
 
-namespace bpe_system_test::test {
+namespace bpe_test::test {
 namespace {
 
 class MultiTwistPipelineTest : public ::testing::Test {
@@ -97,4 +97,4 @@ TEST_F(MultiTwistPipelineTest, TwoIndependentChannelsAreTransformedAndChecked) {
 }
 
 } // namespace
-} // namespace bpe_system_test::test
+} // namespace bpe_test::test

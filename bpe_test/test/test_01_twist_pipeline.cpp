@@ -8,9 +8,9 @@
 
 #include "block_plugin_engine/iblock_plugin.hpp"
 #include "block_plugin_engine/itimer_block.hpp"
-#include "bpe_system_test/twist_checker_inspection.hpp"
+#include "bpe_test/twist_checker_inspection.hpp"
 
-namespace bpe_system_test::test {
+namespace bpe_test::test {
 namespace {
 
 class TwistPipelineTest : public ::testing::Test {
@@ -26,9 +26,9 @@ protected:
 };
 
 TEST_F(TwistPipelineTest, TypedPluginsExchangeRosMessageThroughBlackboard) {
-  auto producer = load("bpe_system_test/TwistProducerBlock");
-  auto transform = load("bpe_system_test/TwistTransformBlock");
-  auto checker = load("bpe_system_test/TwistCheckerBlock");
+  auto producer = load("bpe_test/TwistProducerBlock");
+  auto transform = load("bpe_test/TwistTransformBlock");
+  auto checker = load("bpe_test/TwistCheckerBlock");
 
   ASSERT_NE(producer, nullptr);
   ASSERT_NE(transform, nullptr);
@@ -90,4 +90,4 @@ blackboard_input: typed_pipeline_processed_twist
 }
 
 } // namespace
-} // namespace bpe_system_test::test
+} // namespace bpe_test::test

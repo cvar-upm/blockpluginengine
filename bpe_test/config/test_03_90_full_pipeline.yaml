@@ -15,7 +15,7 @@ blocks:
       qos_depth: 10
 
   - name: twist_transform
-    type: bpe_system_test/TwistTransformBlock
+    type: bpe_test/TwistTransformBlock
     execution:
       policy: timer
       period: 10ms

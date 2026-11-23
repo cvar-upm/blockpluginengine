@@ -11,10 +11,9 @@
   <test_depend>bpe_ros_boundary_plugins</test_depend>
   <test_depend>rclpy</test_depend>
   <test_depend>lifecycle_msgs</test_depend>
-  <test_depend>block_plugin_engine</test_depend>
-  <test_depend>bpe_system_test</test_depend>
-  <test_depend>pluginlib</test_depend>
-  <test_depend>geometry_msgs</test_depend>
+  <depend>block_plugin_engine</depend>
+  <depend>pluginlib</depend>
+  <depend>geometry_msgs</depend>
   <test_depend>yaml-cpp</test_depend>
   <export><build_type>ament_cmake</build_type></export>
 </package>
