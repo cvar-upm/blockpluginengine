@@ -174,19 +174,28 @@ TEST(BlackboardConcurrency, BPE_CONCURRENCY_CASE) {
             << "us, EVENT=" << event_us << "us, TIMER=" << timed_us
             << "us, writes=" << limit << '\n';
 
+  // Keep each FairScheduler spin margin strictly below its block period.
+  // This preserves the usual 100us default for the baseline, while allowing
+  // the stress scenario to use periods as short as 50us.
+  const auto writer_spin_us = std::min<std::uint64_t>(100, writer_us / 4);
+  const auto timed_spin_us = std::min<std::uint64_t>(100, timed_us / 4);
+
   // Four independent workers: TIMER writer; EVENT reader; two TIMER readers.
   // The EVENT pipeline may coalesce notifications within its nominal period.
   std::ostringstream config_text;
   config_text << "start_delay: 200ms\n"
       << "threads:\n"
-      << "  - {type: block_plugin_engine/FairScheduler, realtime: {enabled: false}}\n"
+      << "  - {type: block_plugin_engine/FairScheduler, realtime: {enabled: false}, "
+      << "timing: {spin_before_deadline: " << writer_spin_us << "us}}\n"
       << "  - type: block_plugin_engine/HybridFairScheduler\n"
       << "    realtime: {enabled: false}\n"
       << "    pipelines:\n"
       << "      - {name: reader_a_pipeline, policy: event, period: "
       << event_us << "us, signal: reader_a_ready, blocks: [reader_a]}\n"
-      << "  - {type: block_plugin_engine/FairScheduler, realtime: {enabled: false}}\n"
-      << "  - {type: block_plugin_engine/FairScheduler, realtime: {enabled: false}}\n";
+      << "  - {type: block_plugin_engine/FairScheduler, realtime: {enabled: false}, "
+      << "timing: {spin_before_deadline: " << timed_spin_us << "us}}\n"
+      << "  - {type: block_plugin_engine/FairScheduler, realtime: {enabled: false}, "
+      << "timing: {spin_before_deadline: " << timed_spin_us << "us}}\n";
   const auto config = YAML::Load(config_text.str());
 
   pluginlib::ClassLoader<bpe::IBlockScheduler> loader(
@@ -203,14 +212,14 @@ TEST(BlackboardConcurrency, BPE_CONCURRENCY_CASE) {
   bpe::TypedConsumer<DeterministicPayload> supervisor;
   supervisor.bind(kLabel);
 
-  EXPECT_EQ(scheduler->register_block("writer", writer,
+  ASSERT_EQ(scheduler->register_block("writer", writer,
       YAML::Load("{thread: 0, policy: timer, period: " + std::to_string(writer_us) + "us}")), bpe::SchedulerResult::SUCCESS);
-  EXPECT_EQ(scheduler->register_block("reader_a", reader_a,
+  ASSERT_EQ(scheduler->register_block("reader_a", reader_a,
       YAML::Load("{thread: 1}")), bpe::SchedulerResult::SUCCESS);
-  EXPECT_EQ(scheduler->register_block("reader_c", reader_c,
+  ASSERT_EQ(scheduler->register_block("reader_c", reader_c,
       YAML::Load("{thread: 2, policy: timer, period: " + std::to_string(timed_us) + "us}")), bpe::SchedulerResult::SUCCESS);
 
-  EXPECT_EQ(scheduler->register_block("reader_d", reader_d,
+  ASSERT_EQ(scheduler->register_block("reader_d", reader_d,
       YAML::Load("{thread: 3, policy: timer, period: " + std::to_string(timed_us) + "us}")), bpe::SchedulerResult::SUCCESS);
 
   ASSERT_EQ(scheduler->start(), bpe::SchedulerResult::SUCCESS);
