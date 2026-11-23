@@ -65,7 +65,14 @@ public:
     wait_until(deadline, running);
   }
 
-  void notify_stop() { cv_.notify_all(); }
+  void notify_stop() {
+    // Synchronize with wait_until(): the worker must not enter the wait
+    // after the stop notification has already been sent.
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+    }
+    cv_.notify_all();
+  }
 
   // HybridScheduler uses the same virtual clock through an eventfd-backed
   // deadline source, retaining the production epoll path.
