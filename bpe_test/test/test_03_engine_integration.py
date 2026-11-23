@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Preserve all five historic bpe_integration_test scenarios using real BPE.
+"""Exercise five lifecycle and integration scenarios using the real BPE executable.
 
 Four configure-only scenarios stop from INACTIVE; the fifth asserts the
 TwistStamped transformation using a live ROS publisher and subscription.

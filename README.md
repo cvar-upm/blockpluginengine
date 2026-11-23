@@ -183,7 +183,7 @@ blocks:
       qos_depth: 10
 
   - name: transform
-    type: bpe_system_test/TwistTransformBlock
+    type: bpe_test/TwistTransformBlock
     execution:
       period: 10ms
     config:
@@ -294,47 +294,27 @@ Contains:
 
 Generic ROS input and output plugins.
 
-### `bpe_system_test`
+### `bpe_test`
 
-Auxiliary plugins used for system-level tests, including the deterministic `TwistStamped` transformation pipeline.
-
-### `bpe_integration_test`
-
-End-to-end integration tests using a real BPE node, lifecycle transitions, dynamically loaded plugins, ROS publishers/subscribers, serialization, blackboard communication, and clean process shutdown.
+Cross-package regression tests using test-only plugins, typed Blackboard pipelines,
+real lifecycle transitions and ROS I/O. The test plugins are registered as
+`bpe_test/*` and are not intended as production examples.
 
 ## Testing
 
-The project uses several test levels:
+The project uses three complementary layers:
 
 ```text
-bpe_blackboard
-    concurrent data structure behaviour
-
-block_plugin_engine
-    plugin manager
-    scheduler
-    typed blackboard integration
-
-bpe_system_test
-    block-level processing pipeline
-
-bpe_integration_test
-    complete ROS 2 end-to-end system
+bpe_blackboard             concurrent primitives and Blackboard semantics
+block_plugin_engine        plugin manager, schedulers and lifecycle
+bpe_ros_boundary_plugins   ROS boundary end-to-end test (Int32 and Twist)
+bpe_test                   typed pipeline and cross-package integration tests
 ```
 
-The integration package contains progressively more complete configurations:
-
-```text
-00_empty.yaml
-10_internal_transform.yaml
-20_ros_input.yaml
-30_ros_output.yaml
-90_full_pipeline.yaml
-```
-
-These configurations are intentionally retained as regression scenarios.
-
-In particular, the ROS-input-only case exercises an important lifetime contract between dynamically loaded subscription plugins and the lifecycle node.
+`bpe_test` retains the five configuration regressions (`00_empty`,
+`10_internal_transform`, `20_ros_input`, `30_ros_output`, `90_full_pipeline`),
+including the ROS-subscription lifetime regression. It also retains the two
+128-sample `TwistStamped` pipeline tests.
 
 See [`docs/testing.md`](docs/testing.md) for the testing strategy and commands.
 

@@ -6,7 +6,7 @@ find_package(block_plugin_engine REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(geometry_msgs REQUIRED)
 
-# Integration-test blocks live in this package, independent of bpe_system_test.
+# Integration-test blocks live in this package, self-contained and dynamically loaded.
 add_library(bpe_test_plugins SHARED
   src/twist_producer_block.cpp
   src/twist_transform_block.cpp
@@ -49,7 +49,7 @@ if(BUILD_TESTING)
   target_include_directories(test_02_multi_twist_pipeline PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
   add_dependencies(test_02_multi_twist_pipeline bpe_test_plugins)
   target_link_libraries(test_02_multi_twist_pipeline yaml-cpp)
-  # Preserve the five legacy integration scenarios against the real BPE
+  # Exercise the five end-to-end integration scenarios against the real BPE
   # executable, without reconstructing its lifecycle/plugin loaders.
   find_package(ament_cmake_pytest REQUIRED)
   find_package(bpe_ros_boundary_plugins REQUIRED)
