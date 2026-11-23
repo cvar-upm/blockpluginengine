@@ -24,8 +24,6 @@ public:
   virtual SchedulerResult register_block(
       const std::string& instance_name, ITimerBlock& block,
       const YAML::Node& execution) = 0;
-  // Optional capability: schedulers without event pipelines return nullptr.
-  virtual IEventSignalProvider* event_signal_provider() { return nullptr; }
 
   virtual SchedulerResult remove(const std::string& instance_name) = 0;
   // Monotonic absolute origin shared by composable schedulers.

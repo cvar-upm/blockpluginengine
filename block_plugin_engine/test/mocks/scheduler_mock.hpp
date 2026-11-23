@@ -9,7 +9,7 @@
 
 namespace bpe::test {
 
-// Reusable direct-injection mock. A pluginlib adapter can be added for SchedulerPluginHost tests.
+// Reusable direct-injection mock with optional event signal capability.
 class SchedulerMock : public IBlockScheduler, public IEventSignalProvider {
 public:
   struct Entry {
@@ -19,7 +19,6 @@ public:
   };
 
   SchedulerResult configure(const SchedulerConfig&) override;
-  IEventSignalProvider* event_signal_provider() override { return this; }
   std::shared_ptr<IEventSignal> get_signal(std::string_view name) override;
   void allow_signal(std::string name);
   SchedulerResult register_block(const std::string&, ITimerBlock&, const YAML::Node&) override;

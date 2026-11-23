@@ -97,7 +97,6 @@ target_link_libraries(bpe_fair_scheduler
 add_executable(block_plugin_engine
   src/main.cpp
   src/bpe_composition_root.cpp
-  src/scheduler_plugin_host.cpp
   src/bpe_lifecycle_node.cpp
   src/block_plugin_manager.cpp
 )

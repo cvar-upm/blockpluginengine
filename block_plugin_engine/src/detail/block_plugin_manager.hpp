@@ -18,11 +18,11 @@ class IBlockScheduler;
 
 class BlockPluginManager {
 public:
-  BlockPluginManager(const std::shared_ptr<IBlockScheduler>&,
-                     const rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr&,
+  BlockPluginManager(const rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr&,
                      rclcpp::Logger,
                      const std::vector<std::string>& plugin_xml_paths = {});
 
+  void set_scheduler(std::shared_ptr<IBlockScheduler> scheduler);
   bool configure(const YAML::Node&);
   bool start();
   bool stop();

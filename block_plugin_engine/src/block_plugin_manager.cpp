@@ -19,17 +19,25 @@
 namespace bpe {
 
 BlockPluginManager::BlockPluginManager(
-    const std::shared_ptr<IBlockScheduler>& scheduler,
     const rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr& ros_topics,
     rclcpp::Logger logger,
     const std::vector<std::string>& plugin_xml_paths)
-  : scheduler_(scheduler),
-    ros_topics_(ros_topics),
+  : ros_topics_(ros_topics),
     logger_(std::move(logger)),
     loader_("block_plugin_engine", "bpe::IBlockPlugin", "plugin", plugin_xml_paths) {}
 
+void BlockPluginManager::set_scheduler(std::shared_ptr<IBlockScheduler> scheduler) {
+  // Scheduler replacement is legal only when no block instances are loaded.
+  if (!blocks_.empty()) throw std::logic_error("Cannot replace scheduler with loaded blocks");
+  scheduler_ = std::move(scheduler);
+}
+
 bool BlockPluginManager::configure(const YAML::Node& blocks_config) {
   RCLCPP_DEBUG(logger_, "BlockPluginManager: configuring plugins");
+  if (!scheduler_) {
+    RCLCPP_ERROR(logger_, "BlockPluginManager has no configured scheduler");
+    return false;
+  }
   if (!blocks_.empty()) {
     RCLCPP_ERROR(logger_, "BlockPluginManager is already configured");
     return false;
@@ -97,7 +105,7 @@ bool BlockPluginManager::cleanup() {
   bool success = true;
 
   RCLCPP_DEBUG(logger_, "Clearing scheduler block references");
-  scheduler_->clear();
+  if (scheduler_) scheduler_->clear();
   RCLCPP_DEBUG(logger_, "Scheduler block references cleared");
 
   for (auto it = blocks_.rbegin(); it != blocks_.rend(); ++it) {
@@ -189,12 +197,12 @@ bool BlockPluginManager::configure_instance(const BlockInstanceConfig& config) {
   }
 
   if (auto* events = dynamic_cast<IEventSignalUser*>(plugin.get())) {
-    auto* provider = scheduler_->event_signal_provider();
-    if (!provider) {
-      RCLCPP_ERROR(logger_, "Block '%s' needs event signals but scheduler has no provider", config.name.c_str());
-      return false;
+    if (auto* provider = dynamic_cast<IEventSignalProvider*>(scheduler_.get())) {
+      events->set_event_signal_provider(*provider);
+    } else {
+      RCLCPP_WARN(logger_, "Block '%s' supports event signals, but scheduler does not",
+                  config.name.c_str());
     }
-    events->set_event_signal_provider(*provider);
   }
 
   RCLCPP_DEBUG(logger_, "Configuring Block '%s'", config.name.c_str());

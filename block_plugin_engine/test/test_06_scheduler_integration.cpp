@@ -9,8 +9,9 @@
 #include <rclcpp/logger.hpp>
 #include <yaml-cpp/yaml.h>
 
+#include <pluginlib/class_loader.hpp>
+#include "block_plugin_engine/iblock_scheduler.hpp"
 #include "detail/block_plugin_manager.hpp"
-#include "detail/scheduler_plugin_host.hpp"
 #include "tools/event_log.hpp"
 #include "tools/simulated_clock.hpp"
 
@@ -41,9 +42,8 @@ protected:
     clear_events();
     integration_clock().reset(monotonic_now());
     origin_ = monotonic_now() + 200ms;
-    scheduler_ = std::make_shared<SchedulerPluginHost>();
     manager_ = std::make_unique<BlockPluginManager>(
-        scheduler_, rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr{},
+        rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr{},
         rclcpp::get_logger("bpe_integration_test"),
         std::vector<std::string>{BPE_TEST_PLUGIN_XML});
   }
@@ -64,12 +64,22 @@ protected:
 
   bool configure_file(const std::string& filename) {
     const auto yaml = load_config(filename);
-    const auto result = scheduler_->configure(yaml["scheduler"]);
+    if (scheduler_) {
+      scheduler_->stop();
+      scheduler_->clear();
+      scheduler_.reset();
+    }
+    const auto config = yaml["scheduler"];
+    const std::string type = config && config["type"]
+        ? config["type"].as<std::string>() : "block_plugin_engine/FairScheduler";
+    scheduler_ = loader_.createSharedInstance(type);
+    const auto result = scheduler_->configure(config);
     if (result != SchedulerResult::SUCCESS) {
       ADD_FAILURE() << "Scheduler configure failed for " << filename
                     << " (SchedulerResult=" << static_cast<int>(result) << ")";
       return false;
     }
+    manager_->set_scheduler(scheduler_);
     return manager_->configure(yaml["blocks"]);
   }
 
@@ -92,7 +102,8 @@ protected:
     }
   }
 
-  std::shared_ptr<SchedulerPluginHost> scheduler_;
+  pluginlib::ClassLoader<IBlockScheduler> loader_{"block_plugin_engine", "bpe::IBlockScheduler"};
+  std::shared_ptr<IBlockScheduler> scheduler_;
   std::unique_ptr<BlockPluginManager> manager_;
   bool started_blocks_{false};
   std::chrono::nanoseconds origin_{0};
@@ -111,7 +122,7 @@ TEST_F(SchedulerIntegration, FairLoadsPluginAndSchedulesFromBlockExecution) {
 
 TEST_F(SchedulerIntegration, HybridResolvesPipelinesAndIgnoresBlockExecution) {
   ASSERT_TRUE(configure_file("test_06_B_HybridResolvesPipelinesAndIgnoresBlockExecution.yaml"));
-  auto* provider = scheduler_->event_signal_provider();
+  auto* provider = dynamic_cast<IEventSignalProvider*>(scheduler_.get());
   ASSERT_NE(provider, nullptr);
   auto signal = provider->get_signal("ready");
   ASSERT_TRUE(signal);
@@ -169,7 +180,9 @@ TEST_F(SchedulerIntegration, HybridFailsToStartWhenPipelineReferencesMissingBloc
 TEST_F(SchedulerIntegration, HybridCleanupInvalidatesSignalsAndAllowsReconfigure) {
   
   ASSERT_TRUE(configure_file("test_06_E_HybridCleanupInvalidatesSignalsAndAllowsReconfigure.yaml"));
-  auto old_signal = scheduler_->event_signal_provider()->get_signal("ready");
+  auto* old_provider = dynamic_cast<IEventSignalProvider*>(scheduler_.get());
+  ASSERT_NE(old_provider, nullptr);
+  auto old_signal = old_provider->get_signal("ready");
   ASSERT_TRUE(old_signal);
   ASSERT_TRUE(start());
   stop();
@@ -177,7 +190,9 @@ TEST_F(SchedulerIntegration, HybridCleanupInvalidatesSignalsAndAllowsReconfigure
   EXPECT_FALSE(old_signal->signal());
 
   ASSERT_TRUE(configure_file("test_06_E_HybridCleanupInvalidatesSignalsAndAllowsReconfigure.yaml"));
-  auto new_signal = scheduler_->event_signal_provider()->get_signal("ready");
+  auto* new_provider = dynamic_cast<IEventSignalProvider*>(scheduler_.get());
+  ASSERT_NE(new_provider, nullptr);
+  auto new_signal = new_provider->get_signal("ready");
   ASSERT_TRUE(new_signal);
   EXPECT_NE(old_signal, new_signal);
   ASSERT_TRUE(start());
@@ -190,7 +205,10 @@ TEST_F(SchedulerIntegration, HybridCleanupInvalidatesSignalsAndAllowsReconfigure
 }
 
 TEST_F(SchedulerIntegration, SchedulerRejectsInvalidFairExecutionAndManagerRollsBack) {
-  ASSERT_EQ(scheduler_->configure(load_config("test_06_F_SchedulerRejectsInvalidFairExecutionAndManagerRollsBack.yaml")["scheduler"]), SchedulerResult::SUCCESS);
+  const auto config = load_config("test_06_F_SchedulerRejectsInvalidFairExecutionAndManagerRollsBack.yaml");
+  scheduler_ = loader_.createSharedInstance("block_plugin_engine/FairScheduler");
+  ASSERT_EQ(scheduler_->configure(config["scheduler"]), SchedulerResult::SUCCESS);
+  manager_->set_scheduler(scheduler_);
   EXPECT_FALSE(manager_->configure(load_config("test_06_F_SchedulerRejectsInvalidFairExecutionAndManagerRollsBack.yaml")["blocks"]));
   EXPECT_TRUE(contains("first.cleanup"));
   EXPECT_TRUE(contains("invalid.cleanup"));

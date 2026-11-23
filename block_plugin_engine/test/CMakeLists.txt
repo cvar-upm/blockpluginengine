@@ -175,7 +175,6 @@ ament_add_gtest(test_07_bpe_lifecycle
   test_07_bpe_lifecycle.cpp
   ${PROJECT_SOURCE_DIR}/src/bpe_composition_root.cpp
   ${PROJECT_SOURCE_DIR}/src/bpe_lifecycle_node.cpp
-  ${PROJECT_SOURCE_DIR}/src/scheduler_plugin_host.cpp
   ${PROJECT_SOURCE_DIR}/src/block_plugin_manager.cpp
 )
 target_compile_features(test_07_bpe_lifecycle PUBLIC cxx_std_20)
@@ -216,7 +215,6 @@ set_tests_properties(test_07_bpe_process_shutdown PROPERTIES
 )
 ament_add_gtest(test_06_scheduler_integration
   test_06_scheduler_integration.cpp
-  ${PROJECT_SOURCE_DIR}/src/scheduler_plugin_host.cpp
   ${PROJECT_SOURCE_DIR}/src/block_plugin_manager.cpp
 )
 target_compile_features(test_06_scheduler_integration PUBLIC cxx_std_20)

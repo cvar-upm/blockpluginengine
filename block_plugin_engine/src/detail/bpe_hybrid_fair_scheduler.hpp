@@ -30,7 +30,6 @@ public:
   SchedulerResult configure(const SchedulerConfig&) override;
   SchedulerResult register_block(const std::string&, ITimerBlock&,
                                  const YAML::Node&) override;
-  IEventSignalProvider* event_signal_provider() override { return this; }
   std::shared_ptr<IEventSignal> get_signal(std::string_view name) override;
   SchedulerResult remove(const std::string&) override;
   using IBlockScheduler::start;

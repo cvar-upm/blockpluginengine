@@ -117,7 +117,7 @@ SchedulerResult BPE_MultiScheduler::register_block(
 std::shared_ptr<IEventSignal> BPE_MultiScheduler::get_signal(std::string_view name) {
   std::shared_ptr<IEventSignal> result;
   for (const auto& scheduler : schedulers_) {
-    auto* provider = scheduler->event_signal_provider();
+    auto* provider = dynamic_cast<IEventSignalProvider*>(scheduler.get());
     if (!provider) continue;
     auto candidate = provider->get_signal(name);
     // Ambiguity is a configuration error: use globally distinct signal names.

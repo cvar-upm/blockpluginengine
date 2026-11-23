@@ -16,6 +16,19 @@
 namespace bpe::test {
 namespace {
 
+// Scheduler deliberately lacks IEventSignalProvider, unlike SchedulerMock.
+class SchedulerWithoutSignals final : public IBlockScheduler {
+public:
+  SchedulerResult configure(const SchedulerConfig&) override { return SchedulerResult::SUCCESS; }
+  SchedulerResult register_block(const std::string&, ITimerBlock&, const YAML::Node&) override {
+    return SchedulerResult::SUCCESS;
+  }
+  SchedulerResult remove(const std::string&) override { return SchedulerResult::SUCCESS; }
+  SchedulerResult start(std::chrono::nanoseconds) override { return SchedulerResult::SUCCESS; }
+  SchedulerResult stop() override { return SchedulerResult::SUCCESS; }
+  SchedulerResult clear() override { return SchedulerResult::SUCCESS; }
+};
+
 class BlockPluginManagerTest : public ::testing::Test {
 protected:
   void SetUp() override {
@@ -24,10 +37,10 @@ protected:
     scheduler_ = std::make_shared<SchedulerMock>();
     ros_topics_.reset();
 
-    manager_ = std::make_unique<BlockPluginManager>(scheduler_,
-                                                    ros_topics_,
+    manager_ = std::make_unique<BlockPluginManager>(ros_topics_,
                                                     rclcpp::get_logger("bpe_test"),
                                                     std::vector<std::string>{BPE_TEST_PLUGIN_XML});
+    manager_->set_scheduler(scheduler_);
   }
 
   std::shared_ptr<SchedulerMock> scheduler_;
@@ -144,6 +157,15 @@ INSTANTIATE_TEST_SUITE_P(InvalidBlocks, BlockConfigValidationTest,
     "{}", "null", "42", "[3]", "[{}]", "[{name: a}]", "[{type: bpe_test/TestBasicBlock}]",
     "[{name: '', type: bpe_test/TestBasicBlock}]", "[{name: x, type: ''}]"
   ));
+
+TEST_F(BlockPluginManagerTest, SignalCapabilityIsOptionalWithoutProvider) {
+  manager_->set_scheduler(std::make_shared<SchedulerWithoutSignals>());
+  ASSERT_TRUE(manager_->configure(YAML::Load(
+      "[{name: optional_emitter, type: bpe_test/TestSignalUserMockBlock, "
+      "config: {optional: true}}]")));
+  EXPECT_EQ(events(), (std::vector<std::string>{"signal.configure:missing"}));
+  EXPECT_TRUE(manager_->cleanup());
+}
 
 TEST_F(BlockPluginManagerTest, InjectsPullSignalProviderBeforeConfigure) {
   scheduler_->allow_signal("ready");
