@@ -2,7 +2,7 @@
 
 Block Plugin Engine (BPE) is a ROS 2 execution framework for dynamically loaded processing blocks.
 
-BPE provides a single ROS 2 lifecycle node, a plugin manager, a periodic scheduler, and a concurrent blackboard used to exchange data between blocks. ROS 2 is primarily treated as an input/output boundary: processing blocks can remain independent from ROS unless they explicitly implement a ROS boundary.
+BPE provides a single ROS 2 lifecycle node, a plugin manager, a selectable scheduler (periodic, event-driven, or multi-threaded) and a concurrent blackboard used to exchange data between blocks. ROS 2 is primarily treated as an input/output boundary: processing blocks can remain independent from ROS unless they explicitly implement a ROS boundary.
 
 The system is designed around a fixed configuration established before execution and an execution path with predictable concurrency and memory behaviour.
 
@@ -18,15 +18,10 @@ BPE currently provides the following architectural properties:
 - Blackboard data access during execution does not use mutex-based blocking.
 - Under its defined single-producer/multiple-consumer topology and slot-capacity contract, blackboard producer and consumer access provides wait-free progress.
 - Consumers read the latest committed value and do not interfere with each other.
-- BPE has two main execution domains:
-  - the main ROS executor thread;
-  - the dedicated scheduler worker thread.
-- The scheduler is designed for periodic real-time-oriented execution:
-  - fixed cyclic schedule;
-  - absolute deadlines using `clock_nanosleep(..., TIMER_ABSTIME)`;
-  - configurable wake-early interval;
-  - final busy-wait until the deadline;
-  - no allocations in the cyclic execution path after startup.
+- ROS callbacks execute in the ROS executor, separately from scheduler worker threads. `MultiScheduler` may use more than one worker.
+- `FairScheduler` schedules periodic blocks using absolute deadlines and optional wake-early spinning.
+- `HybridFairScheduler` schedules ordered TIMER and EVENT pipelines; events coalesce and nominal periods bound their execution rate.
+- `MultiScheduler` delegates to configured child schedulers (which can have their own workers).
 - ROS input and output are implemented as generic boundaries and do not require compile-time knowledge of the ROS message type.
 - Internal plugins use normal typed C++ messages.
 - Serialization is performed only when a ROS output requires it.
@@ -45,13 +40,13 @@ BPECompositionRoot
 └── Scheduler
 ```
 
-`BPECompositionRoot` is the composition root and owner of the runtime components. It constructs the system, connects its dependencies, and enforces the required destruction order.
+`BPECompositionRoot` owns the runtime components, loads the application YAML during lifecycle configuration, instantiates the selected scheduler with `pluginlib`, and passes the `blocks` subtree to `BlockPluginManager`. It also enforces the required destruction order.
 
 `BPE_LifecycleNode` maps the ROS 2 lifecycle to BPE operations.
 
 `BlockPluginManager` loads, configures, starts, stops, and destroys block plugins.
 
-The scheduler executes blocks implementing `ITimerBlock`.
+The selected scheduler executes registered `ITimerBlock` instances, either individually or in configured pipelines.
 
 The blackboard provides concurrent communication between producers and consumers.
 
@@ -62,9 +57,9 @@ The destruction order is deliberately explicit:
 ```text
 BPE_LifecycleNode
         ↓
-BlockPluginManager / pluginlib ClassLoader
+BlockPluginManager / block plugin loader
         ↓
-Scheduler
+Scheduler instance / scheduler plugin loader
 ```
 
 This order is part of the correctness contract.
@@ -104,7 +99,7 @@ bpe::IRosBoundaryBlock
 
 which allows BPE to inject the ROS `NodeTopicsInterface`.
 
-The current boundary convention is:
+For the supplied ROS boundary plugins:
 
 ```text
 IRosBoundaryBlock + !ITimerBlock
@@ -156,50 +151,39 @@ bpe_ros_boundary_plugins/RosInputBlock
 bpe_ros_boundary_plugins/RosOutputBlock
 ```
 
-`RosInputBlock` receives a serialized ROS message, stores the serialized representation in the blackboard, and deserializes the corresponding native representation for typed consumers.
+`RosInputBlock` receives a serialized ROS message and makes its native representation available to typed consumers. It can optionally signal an event pipeline after committing the sample.
 
 `RosOutputBlock` reads the serialized representation from the blackboard and publishes it through a generic ROS publisher.
 
-The associated `RosTypeRegistry` validates type compatibility and provides the type-erased serialization/deserialization operations required by the boundary.
+`RosTypeRegistry` registers native C++ types as well as ROS message types, validates label compatibility and provides serialization/deserialization operations only for ROS-capable labels. The serialized slot value is optional.
 
 ## Configuration
 
 BPE is configured using YAML.
 
-A typical pipeline is:
+A minimal *periodic* example (using the independently installed example package) is:
 
 ```yaml
 scheduler:
-  cycle: 10ms
-  wake_early: 0.5ms
-
+  type: block_plugin_engine/FairScheduler
+  realtime: {enabled: false}
 blocks:
-  - name: ros_input
-    type: bpe_ros_boundary_plugins/RosInputBlock
-    config:
-      topic: /bpe_test/input
-      ros_type: geometry_msgs/msg/TwistStamped
-      blackboard_output: raw_twist
-      qos_depth: 10
-
-  - name: transform
-    type: bpe_test/TwistTransformBlock
-    execution:
-      period: 10ms
-    config:
-      blackboard_input: raw_twist
-      blackboard_output: processed_twist
-
-  - name: ros_output
-    type: bpe_ros_boundary_plugins/RosOutputBlock
-    execution:
-      period: 10ms
-    config:
-      topic: /bpe_test/output
-      ros_type: geometry_msgs/msg/TwistStamped
-      blackboard_input: processed_twist
-      qos_depth: 10
+  - name: sample_generator
+    type: bpe_examples/Generator
+    execution: {policy: timer, period: 20ms}
+    config: {output: sample}
+  - name: average
+    type: bpe_examples/Average
+    execution: {policy: timer, period: 50ms}
+    config: {input: sample, output: report}
+  - name: printer
+    type: bpe_examples/ReportPrinter
+    execution: {policy: timer, period: 200ms}
+    config: {input: report}
 ```
+
+`HybridFairScheduler` instead declares named TIMER/EVENT pipelines under
+`scheduler.pipelines`; see [`docs/hybrid_scheduler.md`](docs/hybrid_scheduler.md).
 
 The complete configuration format and constraints are documented in [`docs/configuration.md`](docs/configuration.md).
 
@@ -294,6 +278,14 @@ Contains:
 
 Generic ROS input and output plugins.
 
+### `bpe_examples`
+
+Four executable, independent examples: a periodic native-C++ pipeline, a
+multi-channel pipeline, a ROS input/transform/output path, and a hybrid
+EVENT/TIMER pipeline. Plugin implementation headers are private to this package;
+no plugin class headers are installed. Each example uses a YAML launch file.
+See [`bpe_examples/README.md`](bpe_examples/README.md).
+
 ### `bpe_test`
 
 Cross-package regression tests using test-only plugins, typed Blackboard pipelines,
@@ -318,8 +310,22 @@ including the ROS-subscription lifetime regression. It also retains the two
 
 See [`docs/testing.md`](docs/testing.md) for the testing strategy and commands.
 
+## Running the examples
+
+```bash
+colcon build --packages-up-to bpe_examples
+source install/setup.bash
+ros2 launch bpe_examples 01_basic_pipeline.launch.yaml
+```
+
+Other launch files: `02_multichannel.launch.yaml`, `03_ros_boundary.launch.yaml`,
+and `04_hybrid.launch.yaml`. All four use the actual `block_plugin_engine`
+executable and YAML-defined runtime configurations. See the
+[`example instructions`](bpe_examples/README.md) for ROS topic commands.
+
 ## Further documentation
 
 - [`docs/architecture.md`](docs/architecture.md) — architecture, guarantees, concurrency model, lifecycle, ownership, and design contracts.
 - [`docs/configuration.md`](docs/configuration.md) — YAML configuration format and plugin configuration.
+- [`docs/hybrid_scheduler.md`](docs/hybrid_scheduler.md) — event signals and scheduler-owned pipelines.
 - [`docs/testing.md`](docs/testing.md) — test architecture, integration scenarios, and regression strategy.

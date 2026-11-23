@@ -5,7 +5,7 @@
 Block Plugin Engine (BPE) executes dynamically loaded C++ processing blocks inside one ROS 2 process. The architecture deliberately separates three concerns:
 
 1. **ROS 2 lifecycle and external I/O**;
-2. **periodic block execution**;
+2. **periodic and event-driven block execution**;
 3. **concurrent in-process data exchange**.
 
 ROS 2 is intended primarily as an I/O boundary. Internal processing blocks can remain independent of publishers, subscriptions, executors, and concrete ROS node classes.
@@ -42,37 +42,41 @@ The wait-free contract applies to the fixed runtime topology. The generic `Black
 
 ### 2.2 Scope of the scheduler real-time guarantee
 
-`BPE_SimpleScheduler` is **real-time-oriented**, not a declaration that the complete process is hard real-time. Its worker loop avoids dynamic scheduler reconfiguration and container growth after start, but the code executed by a plugin's `execute()` remains plugin responsibility. ROS middleware and the operating system also remain outside BPE's deterministic control.
+`FairScheduler` is **real-time-oriented**, not a declaration that the complete process is hard real-time. Its worker loop avoids dynamic scheduler reconfiguration and container growth after start, but the code executed by a plugin's `execute()` remains plugin responsibility. ROS middleware and the operating system also remain outside BPE's deterministic control.
 
 ## 3. Top-level composition
 
-One BPE process is assembled by `BPECompositionRoot`:
+`BPECompositionRoot` owns the lifecycle node, plugin manager, the selected
+scheduler plugin and its `pluginlib::ClassLoader`. Scheduler selection is
+**deferred to lifecycle configuration**, not performed in the root constructor.
 
 ```text
-BPECompositionRoot
-├── BPE_SimpleScheduler       (IBlockScheduler)
-├── BPE_LifecycleNode         (rclcpp_lifecycle::LifecycleNode)
-└── BlockPluginManager        (pluginlib::ClassLoader<IBlockPlugin>)
+BPECompositionRoot(options)
+    ├── BPE_LifecycleNode(root, options)
+    └── BlockPluginManager(NodeTopicsInterface, logger)
+
+on_configure():
+    root reads config_file (YAML)
+      → loads and configures scheduler from scheduler: subtree
+      → injects actual IBlockScheduler into BlockPluginManager
+      → manager configures only blocks: subtree
+      → manager registers ITimerBlock instances with scheduler
 ```
 
-Construction is explicit:
+`BlockPluginManager` does not select a scheduler or read the top-level YAML
+file. It passes each block's `execution` node unchanged to
+`IBlockScheduler::register_block`; the scheduler interprets that node. The
+concrete scheduler is passed directly, without `SchedulerPluginHost`.
 
-```text
-create scheduler
-    ↓
-create lifecycle node(scheduler)
-    ↓
-create plugin manager(scheduler, NodeTopicsInterface, logger)
-    ↓
-inject plugin manager into lifecycle node
-```
+The scheduler can optionally implement `IEventSignalProvider`. A block can
+optionally implement `IEventSignalUser`. The manager injects the provider
+only when both interfaces are present (`dynamic_cast`); a user block with a
+non-provider scheduler generates a warning but does not by itself fail
+configuration. A block that **requires** a configured signal must reject its
+own configuration if no signal handle is available.
 
-The root owns all three objects with `shared_ptr` because references are shared across the trio, but ownership direction remains acyclic:
-
-- the lifecycle node holds scheduler and plugin-manager references;
-- the plugin manager holds scheduler and ROS `NodeTopicsInterface` references;
-- scheduler and manager do not own the lifecycle node;
-- `BPECompositionRoot` is the ultimate owner.
+`BPE_LifecycleNode` coordinates lifecycle transitions and delegates root
+configuration/cleanup to `BPECompositionRoot`.
 
 ## 4. Physical lifetime contract
 
@@ -81,9 +85,9 @@ Destruction order is deliberately coded in `BPECompositionRoot::~BPECompositionR
 ```text
 BPE_LifecycleNode
     ↓
-BlockPluginManager / pluginlib::ClassLoader
+BlockPluginManager / block plugin loader
     ↓
-BPE_SimpleScheduler
+selected scheduler / scheduler plugin loader
 ```
 
 This order is a correctness requirement.
@@ -94,7 +98,7 @@ Therefore:
 
 > **Do not replace the explicit composition-root destruction order with incidental member destruction or move the class loader into an object that can die before the lifecycle node.**
 
-The archived diagnostic fixtures that isolated this requirement remain in `bpe_ros_boundary_plugins/src/debug/` but are not compiled or registered.
+The original diagnostic plugin sources and explanation are archived in [`bpe_ros_boundary_plugins/docs/life_cycle_issues.md`](../bpe_ros_boundary_plugins/docs/life_cycle_issues.md); the former `src/debug/` directory was removed.
 
 ## 5. Lifecycle model
 
@@ -103,15 +107,17 @@ The archived diagnostic fixtures that isolated this requirement remain in `bpe_r
 ### 5.1 Configure
 
 ```text
-load YAML file
+BPECompositionRoot loads YAML file
     ↓
-configure scheduler
+load and configure selected scheduler plugin
+    ↓
+inject scheduler into BlockPluginManager
     ↓
 BlockPluginManager validates block list
     ↓
 load each plugin with pluginlib
     ↓
-inject ROS interface into IRosBoundaryBlock
+inject ROS interface into IRosBoundaryBlock and negotiate optional event signals
     ↓
 plugin.configure(config subtree)
     ↓
@@ -145,11 +151,11 @@ The scheduler stops first so no `ITimerBlock::execute()` call can race with plug
 ```text
 ensure scheduler stopped
     ↓
-clear scheduler block references
-    ↓
-cleanup plugins in reverse order
+cleanup plugins in reverse order and clear their scheduler references
     ↓
 destroy plugin instances
+    ↓
+release scheduler instance
     ↓
 reset process-wide blackboard
     ↓
@@ -199,12 +205,13 @@ Main thread
   └── rclcpp::SingleThreadedExecutor
       └── ROS callbacks, including RosInputBlock subscriptions
 
-Scheduler worker thread
-  └── BPE_SimpleScheduler
-      └── ITimerBlock::execute()
+Scheduler worker thread(s)
+  ├── FairScheduler: periodic ITimerBlock::execute()
+  ├── HybridFairScheduler: TIMER/EVENT pipelines
+  └── MultiScheduler: child scheduler workers
 ```
 
-A configuration with no scheduled blocks does not create the scheduler worker thread.
+The number of worker threads depends on the selected scheduler and its configuration.
 
 ROS/DDS may use additional internal threads; those are middleware implementation details and are not BPE scheduling domains.
 
@@ -217,7 +224,25 @@ The same pattern can be applied to future non-ROS boundaries: reception may be e
 
 ## 8. Scheduler design
 
-`BPE_SimpleScheduler` is a single-worker cyclic scheduler.
+BPE loads `FairScheduler` by default when `scheduler.type` is absent. The
+configured scheduler is a `pluginlib` implementation of `IBlockScheduler`.
+
+- **`FairScheduler`**: one worker, individual periodic block execution based
+  on per-block `execution` YAML.
+- **`HybridFairScheduler`**: one worker, ordered named TIMER or EVENT pipelines;
+  pipeline configuration resides under `scheduler.pipelines`. A signal marks
+  work eligible but does not carry payload data. Events can coalesce and
+  pipelines are subject to their nominal periods.
+- **`MultiScheduler`**: coordinates configured child schedulers and can place
+  work on multiple scheduler threads. Signal discovery across children must
+  have an unambiguous provider.
+
+See [`hybrid_scheduler.md`](hybrid_scheduler.md) for the hybrid schedule,
+priority, signal and coalescing semantics.
+
+### 8.1 FairScheduler timing
+
+`FairScheduler` is a single-worker cyclic scheduler.
 
 ### 8.1 Timing mechanism
 
@@ -241,7 +266,7 @@ The worker can request `SCHED_FIFO` with configurable priority. Real-time setup 
 
 ### 8.3 Runtime immutability
 
-`add`, `remove`, and `clear` are rejected while running. The scheduled block vector is constructed before start. `stop()` is idempotent and joins the worker thread before returning.
+Scheduler topology changes and `clear` are rejected while running. Scheduling structures are constructed before start. `stop()` is idempotent and joins the worker thread before returning.
 
 The scheduler worker contains no logging and does not grow its containers in the cyclic loop. This does not constrain allocations performed inside plugin `execute()` implementations.
 
@@ -330,63 +355,60 @@ The instance lives in the shared `block_plugin_engine_core` library rather than 
 
 ## 11. Native and serialized representations
 
-BPE stores two representations of one logical sample in each slot:
+`RosProtectedData` is currently the engine's blackboard slot payload. Its
+name is historical: **native-only C++ objects are supported**, independently
+of ROS 2 message generation or ROS type support.
 
 ```cpp
 struct RosProtectedData {
   std::shared_ptr<void> native;
-  rclcpp::SerializedMessage serialized;
+  std::optional<rclcpp::SerializedMessage> serialized;
 };
 ```
 
-Plugins should not manipulate these members directly. They use typed or serialized endpoint adapters.
+Only boundary adapters should access the serialized representation directly.
+For native-only labels the optional serialized value remains disengaged.
+ROS message types also remain native unless a ROS input or output requires
+serialized data; a typed producer serializes when the registry indicates an
+associated ROS output. Failed conversion cancels the write grant, avoiding a
+partial published sample.
 
-### 11.1 Typed internal endpoints
+### 11.1 Typed endpoint registration
 
-`TypedProducer<T>` and `TypedConsumer<T>` bind a blackboard label during plugin configuration. Binding:
+`TypedProducer<T>` and `TypedConsumer<T>` provide the same public API for
+native C++ and ROS-generated message types. The internal `register_data_type<T>`
+uses `rosidl_generator_traits::is_message<T>` at compile time:
 
-- registers the endpoint in the blackboard;
-- initializes native slot storage when required;
-- registers the ROS type name from `rosidl_generator_traits::name<T>()`;
-- installs type-erased serialize/deserialize functions in `RosTypeRegistry`.
+- **ROS message:** register its canonical ROS name and type-erased
+  serialization/deserialization operations;
+- **ordinary C++ type:** register a native type identity without ROS
+  serialization support.
 
-Runtime grants expose `T&` or `const T&` while retaining the underlying slot reservation through RAII.
+Bindings are completed during configuration and verified against existing
+registrations for the label. A type mismatch on a shared label is rejected.
+`MultiConsumer` and `MultiProducer` use the same typed facilities.
 
-### 11.2 ROS type registry
+### 11.2 ROS boundaries
 
-`RosTypeRegistry` is configuration-time mutable and runtime stable. For each label it records:
+`RosTypeRegistry` remains the name of the registry but also stores identities
+for native types. It validates labels shared between typed endpoints and ROS
+boundaries. For ROS input, a generic subscription supplies serialized bytes;
+the boundary deserializes them into the native object before commit. For ROS
+output, a generic publisher consumes the serialized representation when a new
+sample is available.
 
-- canonical ROS type string;
-- type-erased serialize function;
-- type-erased deserialize function;
-- whether one ROS output has been registered.
+A configured `RosInputBlock` can optionally request a named `signal` from
+`IEventSignalProvider` and emit it **after** committing its Blackboard update.
+Without `signal`, the block works with a periodic `FairScheduler` even if no
+provider is available. A configured signal requires a scheduler providing the
+named handle (for example `HybridFairScheduler`).
 
-A different ROS type for an existing label is rejected. A second ROS output for the same label is also rejected.
+### 11.3 Future serialization formats
 
-Registration order is intentionally flexible: a ROS boundary may establish label/type identity before a typed plugin supplies conversion functions, or vice versa.
-
-### 11.3 Conditional serialization
-
-A typed producer always writes the native representation. Before commit:
-
-```text
-if ROS output registered for label:
-    serialize native → serialized
-else:
-    no serialization
-```
-
-If serialization throws, the producer grant is cancelled and no new sample becomes visible.
-
-### 11.4 ROS input
-
-`RosInputBlock` receives a serialized sample on the main executor thread. Its serialized producer writes the slot's `SerializedMessage` and deserializes into the native object before commit. Deserialization failure cancels the grant.
-
-The input boundary can be configured before a typed endpoint has supplied conversion functions, but `start()` requires those functions to exist. This permits configuration-order independence while preventing an active input from committing data that cannot be represented natively.
-
-### 11.5 ROS output
-
-`RosOutputBlock` is an `ITimerBlock`. On each scheduled execution it reads the latest serialized representation and publishes only when the consumer grant reports new data.
+The typed endpoints are independent of the transport. Supporting another
+serialization format would require extending the internal registry and
+representation/transport adapters, but need not change `TypedProducer<T>` or
+`TypedConsumer<T>`. There is currently no generic multi-format serializer API.
 
 ## 12. Configuration-time versus runtime invariants
 
@@ -409,7 +431,7 @@ Installed public headers under `include/block_plugin_engine/` contain the interf
 - `IBlockPlugin`;
 - `ITimerBlock`;
 - `IRosBoundaryBlock`;
-- `IBlockScheduler` and scheduler configuration types;
+- `IBlockScheduler` and optional event-signal interfaces;
 - `BlockConfig`;
 - `TypedProducer<T>` / `TypedConsumer<T>` and adapters;
 - `RosProtectedData`, `BpeBlackboard`, and `RosTypeRegistry` support.
@@ -419,6 +441,6 @@ Engine composition classes live under `src/detail/` and are not installed:
 - `BPECompositionRoot`;
 - `BPE_LifecycleNode`;
 - `BlockPluginManager`;
-- `BPE_SimpleScheduler` implementation details.
+- `FairScheduler` implementation details.
 
 The separation is intentional: plugin authors depend on behavioral interfaces, not on the engine's composition root or node implementation.

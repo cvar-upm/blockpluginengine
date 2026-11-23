@@ -35,6 +35,7 @@ The current schema contains two top-level sections:
 
 ```yaml
 scheduler:
+  type: block_plugin_engine/FairScheduler
   realtime:
     enabled: true
     required: false
@@ -58,7 +59,7 @@ blocks:
 blocks: []
 ```
 
-The `scheduler` map may be omitted; scheduler defaults are then used.
+The `scheduler` map may be omitted; the engine defaults to `block_plugin_engine/FairScheduler`. The composition root loads the selected scheduler, passes it the `scheduler` subtree, then passes only `blocks` to `BlockPluginManager`.
 
 ## 3. Scheduler configuration
 
@@ -107,6 +108,16 @@ s
 
 The value must be non-negative and smaller than every configured timer block period.
 
+### 3.3 Scheduler selection and pipelines
+
+Select a scheduler using `scheduler.type`. The built-in choices are
+`block_plugin_engine/FairScheduler`, `block_plugin_engine/HybridFairScheduler`
+and `block_plugin_engine/MultiScheduler`. `HybridFairScheduler` uses named
+TIMER/EVENT pipelines under `scheduler.pipelines`; its member blocks are
+registered by name from `blocks`. See [`hybrid_scheduler.md`](hybrid_scheduler.md)
+for the YAML schema and signal semantics. Each scheduler is responsible for
+interpreting its own configuration and any per-block `execution` node.
+
 ## 4. Block entries
 
 Each block requires:
@@ -148,7 +159,7 @@ execution:
 
 Current rules:
 
-- the only supported policy is `timer`;
+- the supported per-block policy for `FairScheduler` is `timer`;
 - `period` is required and must be greater than zero;
 - accepted period suffixes are `ns`, `us`, `ms`, and `s`;
 - only blocks implementing `bpe::ITimerBlock` can be scheduled;
@@ -156,7 +167,7 @@ Current rules:
 
 For `HybridFairScheduler`, only the pipelines in the scheduler configuration schedule blocks; per-block `execution` is ignored.
 
-This separation is useful for boundary semantics. A ROS input block is callback-driven and has no `execution` section; a ROS output block is periodic and does.
+This separation is useful for boundary semantics. A ROS input block is callback-driven and has no `execution` section; a ROS output block implements `ITimerBlock` and runs either periodically or as a member of a hybrid pipeline.
 
 ## 6. Generic ROS input boundary
 
@@ -176,6 +187,7 @@ Configuration:
     ros_type: geometry_msgs/msg/TwistStamped
     blackboard_output: raw_twist
     qos_depth: 10
+    # signal: input_ready  # optional, for an EVENT pipeline
 ```
 
 Fields:
@@ -186,12 +198,13 @@ Fields:
 | `ros_type` | yes | Canonical ROS interface name such as `geometry_msgs/msg/TwistStamped`. |
 | `blackboard_output` | yes | Blackboard label produced by this boundary. |
 | `qos_depth` | no | Keep-last depth; defaults to `10` and must be greater than zero. |
+| `signal` | no | Named event signal to emit after committing each incoming message. Requires a scheduler exposing this signal. |
 
 The plugin creates an `rclcpp::GenericSubscription`. Incoming serialized messages are copied into the blackboard slot and deserialized into the native representation before commit.
 
 The boundary may configure before the corresponding typed endpoint, but activation requires the typed serialize/deserialize operations to have been registered for the label.
 
-Do not give a ROS input boundary an `execution` section: it does not implement `ITimerBlock` and is driven by subscription callbacks on the main executor thread.
+Do not give a ROS input boundary an `execution` section: it does not implement `ITimerBlock` and is driven by subscription callbacks on the main executor thread. `IEventSignalUser` is an optional capability: absence of a scheduler provider produces a warning but is not by itself a failure. If a `signal` is explicitly configured and cannot be resolved, the input plugin rejects its own configuration.
 
 ## 7. Generic ROS output boundary
 
@@ -225,13 +238,13 @@ Fields:
 | `blackboard_input` | yes | Blackboard label consumed by this boundary. |
 | `qos_depth` | no | Keep-last depth; defaults to `10` and must be greater than zero. |
 
-`RosOutputBlock` implements `ITimerBlock`; normal use therefore includes a timer `execution` section.
+`RosOutputBlock` implements `ITimerBlock`; with `FairScheduler` it uses a timer `execution` section. With `HybridFairScheduler` it can instead be referenced from `scheduler.pipelines`.
 
 Only one ROS output may be registered for a given blackboard label. A second output is rejected during configuration because the registry models serialized-output requirement as a single label property, not a publisher count.
 
 ## 8. Typed internal endpoints
 
-Internal plugins bind C++ ROS message types to blackboard labels through:
+Internal plugins bind either ordinary C++ types or ROS 2 message types to blackboard labels through:
 
 ```cpp
 bpe::TypedProducer<T>
@@ -247,11 +260,11 @@ output_.bind(config["blackboard_output"].as<std::string>());
 
 Binding is one-time. Access before binding or a second bind is rejected.
 
-All typed endpoints and ROS boundaries sharing a label must agree on the ROS type. The type registry rejects mismatches during configuration.
+All endpoints sharing a label must agree on its type identity; the registry rejects mismatches during configuration. Ordinary C++ types are registered without ROS serialization. For ROS-generated messages, conversion operations are registered and serialized storage is only constructed when needed by a ROS boundary.
 
 ## 9. Full pipeline example
 
-The integration test uses the following representative pipeline:
+One regression configuration in `bpe_test` uses the following representative pipeline:
 
 ```yaml
 scheduler:
@@ -315,9 +328,20 @@ The following are deliberate constraints of the current engine:
 
 - block instance names are unique;
 - a blackboard label has at most one producer;
-- all users of a label share one ROS type identity;
+- all users of a label share one consistent native or ROS type identity;
 - only one ROS output is registered per label;
 - scheduler topology does not change while running;
 - plugins are loaded/configured before activation;
 - execution settings require `ITimerBlock`;
 - type bindings and endpoint factories are considered immutable runtime infrastructure after configuration.
+
+## 11. Runnable examples
+
+For self-contained, non-test examples, see [`bpe_examples/README.md`](../bpe_examples/README.md):
+
+- `01_basic_pipeline.yaml`: native C++ types, independent periodic blocks;
+- `02_multichannel.yaml`: combined single-/multi-consumer and producer adapters;
+- `03_ros_boundary.yaml`: `PoseStamped` input, `PoseToVelocity` transformation and `Twist` output;
+- `04_hybrid.yaml`: two EVENT pipelines with a shared transform and a TIMER monitor.
+
+Each configuration has a corresponding `*.launch.yaml` ROS 2 launch file.

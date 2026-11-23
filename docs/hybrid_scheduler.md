@@ -83,8 +83,12 @@ producer can obtain several signals and any number of producers can share
 one signal. `signal()` carries **no data**; consumers read the latest
 blackboard value. A handle becomes inactive when its scheduler is cleared.
 
-The `SchedulerPluginHost` forwards the provider and `MultiScheduler` looks
-up signals across its child schedulers. Names must be unambiguous across
+The actual scheduler plugin implements `IEventSignalProvider` directly;
+`BPECompositionRoot` passes that scheduler to `BlockPluginManager`, which
+negotiates `IEventSignalUser`/`IEventSignalProvider` by `dynamic_cast`. If
+the block supports signals but the scheduler does not, the manager warns and
+continues; the block itself decides whether its configuration requires a
+signal. `MultiScheduler` looks up signals across child schedulers. Names must be unambiguous across
 children of `MultiScheduler`; duplicate matches return no handle.
 
 ## Execution and nominal fairness
@@ -108,3 +112,10 @@ pipeline may delay other pipelines and must be accounted for in temporal
 analysis. Reusing a block across schedulers requires the block to provide
 its own reentrancy/concurrency guarantees; the framework does not enforce
 exclusive membership.
+
+## Runnable example
+
+`bpe_examples/config/04_hybrid.yaml` defines two ROS-triggered EVENT pipelines
+sharing a `CommandMixer` block and one periodic TIMER pipeline. See
+[`bpe_examples/README.md`](../bpe_examples/README.md) for the YAML launch
+command, input messages and expected transformed output.
