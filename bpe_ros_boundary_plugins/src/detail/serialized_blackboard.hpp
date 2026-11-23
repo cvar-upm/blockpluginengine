@@ -28,15 +28,20 @@ class SerializedProducerAdapter {
 public:
   ~SerializedProducerAdapter() noexcept(false) {
     try {
-      type_info_->deserialize(grant_.data().serialized, grant_.data().native.get());
+      if (!grant_.data().serialized) {
+        throw std::logic_error("ROS input has no serialized message");
+      }
+      type_info_->deserialize(*grant_.data().serialized, grant_.data().native.get());
     } catch (...) {
       grant_.cancel();
       throw;
     }
   }
 
-  rclcpp::SerializedMessage& serialized() noexcept {
-    return grant_.data().serialized;
+  rclcpp::SerializedMessage& serialized() {
+    auto& data = grant_.data().serialized;
+    if (!data) data.emplace();
+    return *data;
   }
 
   SerializedProducerAdapter(const SerializedProducerAdapter&) = delete;
@@ -58,8 +63,8 @@ class SerializedConsumerAdapter {
 public:
   ~SerializedConsumerAdapter() = default;
 
-  const rclcpp::SerializedMessage& serialized() const noexcept {
-    return grant_.data().serialized;
+  const rclcpp::SerializedMessage& serialized() const {
+    return grant_.data().serialized.value();
   }
 
   std::uint64_t sequence() const noexcept {

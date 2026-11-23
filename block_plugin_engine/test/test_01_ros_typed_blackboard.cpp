@@ -1,5 +1,6 @@
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -217,6 +218,64 @@ TEST(RosTypedBlackboard, TwoMultiConsumersReadTheSameChannels) {
     EXPECT_DOUBLE_EQ(input.get<0>().value().z, 3.0);
     EXPECT_DOUBLE_EQ(input.get<1>().value().linear.y, 4.0);
   }
+}
+
+} // namespace
+
+namespace {
+
+struct NativeSample {
+  std::vector<double> values;
+  int sequence{0};
+};
+
+struct WrongNativeSample {
+  double value{0.0};
+};
+
+TEST(RosTypedBlackboard, NativeCppObjectRoundTripWithoutRosSerialization) {
+  const std::string label = "test_01_ros_typed_blackboard.native_vector";
+  bpe::TypedProducer<NativeSample> producer;
+  bpe::TypedConsumer<NativeSample> consumer;
+  producer.bind(label);
+  consumer.bind(label);
+
+  {
+    auto output = producer.write_access();
+    output.value().values = {1.0, 2.5, 4.0};
+    output.value().sequence = 7;
+  }
+  {
+    auto input = consumer.read_access();
+    ASSERT_TRUE(input.has_new_value());
+    EXPECT_EQ(input.value().sequence, 7);
+    EXPECT_EQ(input.value().values, (std::vector<double>{1.0, 2.5, 4.0}));
+  }
+  // Native channels do not construct an ROS serialized representation.
+  auto probe = bpe::the_blackboard().register_consumer(label);
+  auto raw = probe.read_access();
+  EXPECT_FALSE(raw.data().serialized.has_value());
+}
+
+TEST(RosTypedBlackboard, NativeCppTypeMismatchIsRejectedAtBind) {
+  const std::string label = "test_01_ros_typed_blackboard.native_type_mismatch";
+  bpe::TypedProducer<NativeSample> producer;
+  producer.bind(label);
+  bpe::TypedConsumer<WrongNativeSample> wrong;
+  EXPECT_THROW(wrong.bind(label), std::runtime_error);
+}
+
+TEST(RosTypedBlackboard, RosValueWithoutBoundaryDoesNotAllocateSerialization) {
+  const std::string label = "test_01_ros_typed_blackboard.ros_native_only";
+  bpe::TypedProducer<TestMessage> producer;
+  producer.bind(label);
+  {
+    auto output = producer.write_access();
+    output.value().x = 3.0;
+  }
+  auto probe = bpe::the_blackboard().register_consumer(label);
+  auto input = probe.read_access();
+  EXPECT_FALSE(input.data().serialized.has_value());
 }
 
 } // namespace

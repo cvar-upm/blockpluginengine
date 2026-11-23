@@ -66,6 +66,11 @@ const RosTypeInfo& RosTypeRegistry::register_ros_output(const std::string& label
   return info;
 }
 
+const RosTypeInfo& RosTypeRegistry::register_native(
+    const std::string& label, const std::string& cpp_type) {
+  return get_or_create(label, "cpp/" + cpp_type);
+}
+
 const RosTypeInfo& RosTypeRegistry::register_typed(
     const std::string& label,
     const std::string& ros_type,

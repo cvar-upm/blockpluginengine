@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <typeinfo>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -44,12 +45,15 @@ void deserialize_native(const rclcpp::SerializedMessage* serialized, void* nativ
 }
 
 template <typename T>
-const RosTypeInfo& register_typed_ros_type(const std::string& label) {
-  return the_ros_type_registry().register_typed(
-      label,
-      rosidl_generator_traits::name<T>(),
-      &serialize_native<T>,
-      &deserialize_native<T>);
+const RosTypeInfo& register_data_type(const std::string& label) {
+  if constexpr (rosidl_generator_traits::is_message<T>::value) {
+    return the_ros_type_registry().register_typed(
+        label, rosidl_generator_traits::name<T>(),
+        &serialize_native<T>, &deserialize_native<T>);
+  } else {
+    // Plain C++ objects do not require ROS serialization/type support.
+    return the_ros_type_registry().register_native(label, typeid(T).name());
+  }
 }
 
 using ProducerFactory = decltype(
@@ -79,7 +83,9 @@ public:
   ~TypedProducerAdapter() noexcept(false) {
     if (type_info_->requires_serialization()) {
       try {
-        type_info_->serialize(grant_.data().native.get(), grant_.data().serialized);
+        auto& serialized = grant_.data().serialized;
+        if (!serialized) serialized.emplace();
+        type_info_->serialize(grant_.data().native.get(), *serialized);
       } catch (...) {
         grant_.cancel();
         throw;
@@ -182,7 +188,7 @@ public:
 private:
   struct Binding {
     explicit Binding(const std::string& label)
-      : type_info(&detail::register_typed_ros_type<T>(label)),
+      : type_info(&detail::register_data_type<T>(label)),
         factory(the_blackboard().register_producer(
           label,
           detail::RosProtectedDataInitializer<T>{})) {}
@@ -226,7 +232,7 @@ public:
 private:
   struct Binding {
     explicit Binding(const std::string& label)
-      : type_info(&detail::register_typed_ros_type<T>(label)),
+      : type_info(&detail::register_data_type<T>(label)),
         factory(the_blackboard().register_consumer(
           label,
           detail::RosProtectedDataInitializer<T>{})) {}

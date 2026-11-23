@@ -44,6 +44,10 @@ public:
   const RosTypeInfo& register_ros_output(const std::string& label,
                                          const std::string& ros_type);
 
+  // Plain C++ values: establish a type identity without ROS operations.
+  const RosTypeInfo& register_native(const std::string& label,
+                                     const std::string& cpp_type);
+
   const RosTypeInfo& register_typed(const std::string& label,
                                     const std::string& ros_type,
                                     RosTypeInfo::SerializeFunction serialize,

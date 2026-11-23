@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 
 #include <rclcpp/serialized_message.hpp>
 
@@ -17,7 +18,9 @@ struct RosProtectedData {
   RosProtectedData() = default;
 
   std::shared_ptr<void> native;
-  rclcpp::SerializedMessage serialized;
+  // Constructed only when a ROS input/output actually needs serialized bytes.
+  // Native C++ channels leave this empty.
+  std::optional<rclcpp::SerializedMessage> serialized;
 };
 
 } // namespace bpe
