@@ -1,0 +1,15 @@
+scheduler:
+  type: block_plugin_engine/FairScheduler
+  realtime: {enabled: false}
+blocks:
+  - name: pose_input
+    type: bpe_ros_boundary_plugins/RosInputBlock
+    config: {topic: /bpe_examples/pose, ros_type: geometry_msgs/msg/PoseStamped, blackboard_output: ex03_pose}
+  - name: pose_to_velocity
+    type: bpe_examples/PoseToVelocity
+    execution: {policy: timer, period: 20ms}
+    config: {input: ex03_pose, output: ex03_velocity, gain: 0.5}
+  - name: velocity_output
+    type: bpe_ros_boundary_plugins/RosOutputBlock
+    execution: {policy: timer, period: 20ms}
+    config: {topic: /bpe_examples/velocity, ros_type: geometry_msgs/msg/Twist, blackboard_input: ex03_velocity}

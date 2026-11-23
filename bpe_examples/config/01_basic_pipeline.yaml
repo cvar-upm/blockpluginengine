@@ -1,0 +1,16 @@
+scheduler:
+  type: block_plugin_engine/FairScheduler
+  realtime: {enabled: false}
+blocks:
+  - name: sample_generator
+    type: bpe_examples/Generator
+    execution: {policy: timer, period: 20ms}
+    config: {output: ex01_sample}
+  - name: average
+    type: bpe_examples/Average
+    execution: {policy: timer, period: 50ms}
+    config: {input: ex01_sample, output: ex01_report}
+  - name: printer
+    type: bpe_examples/ReportPrinter
+    execution: {policy: timer, period: 200ms}
+    config: {input: ex01_report}

@@ -1,0 +1,12 @@
+<library path="bpe_examples_plugins">
+  <class name="bpe_examples/Generator" type="bpe_examples::Generator" base_class_type="bpe::IBlockPlugin"><description>Source of structured C++ samples</description></class>
+  <class name="bpe_examples/Average" type="bpe_examples::Average" base_class_type="bpe::IBlockPlugin"><description>Single consumer and producer</description></class>
+  <class name="bpe_examples/ReportPrinter" type="bpe_examples::ReportPrinter" base_class_type="bpe::IBlockPlugin"><description>Displays changed reports</description></class>
+  <class name="bpe_examples/FuseSamples" type="bpe_examples::FuseSamples" base_class_type="bpe::IBlockPlugin"><description>MultiConsumer to single producer</description></class>
+  <class name="bpe_examples/SplitReport" type="bpe_examples::SplitReport" base_class_type="bpe::IBlockPlugin"><description>Single consumer to MultiProducer</description></class>
+  <class name="bpe_examples/PairAnnotator" type="bpe_examples::PairAnnotator" base_class_type="bpe::IBlockPlugin"><description>MultiConsumer to MultiProducer</description></class>
+  <class name="bpe_examples/SummaryPrinter" type="bpe_examples::SummaryPrinter" base_class_type="bpe::IBlockPlugin"><description>Displays changed summaries</description></class>
+  <class name="bpe_examples/PoseToVelocity" type="bpe_examples::PoseToVelocity" base_class_type="bpe::IBlockPlugin"><description>Transforms PoseStamped to Twist</description></class>
+  <class name="bpe_examples/CommandMixer" type="bpe_examples::CommandMixer" base_class_type="bpe::IBlockPlugin"><description>Event-driven dual ROS input mixer</description></class>
+  <class name="bpe_examples/CommandMonitor" type="bpe_examples::CommandMonitor" base_class_type="bpe::IBlockPlugin"><description>Periodic monitor</description></class>
+</library>

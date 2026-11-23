@@ -1,0 +1,11 @@
+launch:
+  - node:
+      pkg: block_plugin_engine
+      exec: block_plugin_engine
+      name: block_plugin_engine
+      output: screen
+      param:
+        - name: config_file
+          value: "$(find-pkg-share bpe_examples)/config/03_ros_boundary.yaml"
+        - name: autostart
+          value: true

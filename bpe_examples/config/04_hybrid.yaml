@@ -1,0 +1,26 @@
+scheduler:
+  type: block_plugin_engine/HybridFairScheduler
+  realtime: {enabled: false}
+  pipelines:
+    - {name: speed_event, policy: event, signal: speed_ready, period: 10ms, blocks: [mix, output_command, output_alarm]}
+    - {name: direction_event, policy: event, signal: direction_ready, period: 10ms, blocks: [mix, output_command, output_alarm]}
+    - {name: periodic_monitor, policy: timer, period: 500ms, blocks: [monitor]}
+blocks:
+  - name: input_speed
+    type: bpe_ros_boundary_plugins/RosInputBlock
+    config: {topic: /bpe_examples/speed, ros_type: std_msgs/msg/Int32, blackboard_output: ex04_speed, signal: speed_ready}
+  - name: input_direction
+    type: bpe_ros_boundary_plugins/RosInputBlock
+    config: {topic: /bpe_examples/direction, ros_type: geometry_msgs/msg/Twist, blackboard_output: ex04_direction, signal: direction_ready}
+  - name: mix
+    type: bpe_examples/CommandMixer
+    config: {speed: ex04_speed, direction: ex04_direction, output_twist: ex04_command, output_level: ex04_level}
+  - name: output_command
+    type: bpe_ros_boundary_plugins/RosOutputBlock
+    config: {topic: /bpe_examples/command, ros_type: geometry_msgs/msg/Twist, blackboard_input: ex04_command}
+  - name: output_alarm
+    type: bpe_ros_boundary_plugins/RosOutputBlock
+    config: {topic: /bpe_examples/alarm, ros_type: std_msgs/msg/Int32, blackboard_input: ex04_level}
+  - name: monitor
+    type: bpe_examples/CommandMonitor
+    config: {input: ex04_command}

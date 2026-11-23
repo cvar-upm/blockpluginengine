@@ -1,0 +1,32 @@
+scheduler:
+  type: block_plugin_engine/FairScheduler
+  realtime: {enabled: false}
+blocks:
+  - name: gen_a
+    type: bpe_examples/Generator
+    execution: {policy: timer, period: 100ms}
+    config: {output: ex02_sample_a}
+  - name: gen_b
+    type: bpe_examples/Generator
+    execution: {policy: timer, period: 100ms}
+    config: {output: ex02_sample_b}
+  - name: fusion
+    type: bpe_examples/FuseSamples
+    execution: {policy: timer, period: 100ms}
+    config: {input_a: ex02_sample_a, input_b: ex02_sample_b, output: ex02_fused}
+  - name: split
+    type: bpe_examples/SplitReport
+    execution: {policy: timer, period: 100ms}
+    config: {input: ex02_fused, output_report: ex02_report, output_summary: ex02_summary}
+  - name: annotate
+    type: bpe_examples/PairAnnotator
+    execution: {policy: timer, period: 100ms}
+    config: {input_report: ex02_report, input_summary: ex02_summary, output_report: ex02_final_report, output_summary: ex02_final_summary}
+  - name: print_report
+    type: bpe_examples/ReportPrinter
+    execution: {policy: timer, period: 250ms}
+    config: {input: ex02_final_report}
+  - name: print_summary
+    type: bpe_examples/SummaryPrinter
+    execution: {policy: timer, period: 250ms}
+    config: {input: ex02_final_summary}
