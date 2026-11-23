@@ -65,6 +65,11 @@ TwistProducerBlock → TwistTransformBlock → TwistCheckerBlock
   `MultiConsumer` and `MultiProducer`, staggered data and 128 samples.
 - `test_03_engine_integration.py`: real BPE executable and five YAML fixtures.
 
+- `test_04_blackboard_concurrency.cpp`: deterministic cross-thread handshake tests
+  proving unpublished writes are invisible and held readers remain stable while
+  the producer makes progress. This isolates Blackboard correctness from
+  scheduler timing before testing real `MultiScheduler` event pipelines.
+
 ### Integration scenarios
 
 | YAML fixture | Coverage |

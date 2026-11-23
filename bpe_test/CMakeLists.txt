@@ -49,6 +49,15 @@ if(BUILD_TESTING)
   target_include_directories(test_02_multi_twist_pipeline PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
   add_dependencies(test_02_multi_twist_pipeline bpe_test_plugins)
   target_link_libraries(test_02_multi_twist_pipeline yaml-cpp)
+  # Deterministic cross-thread races on the real typed BPE blackboard.
+  find_package(Threads REQUIRED)
+  ament_add_gtest(test_04_blackboard_concurrency
+    test/test_04_blackboard_concurrency.cpp
+  )
+  target_compile_features(test_04_blackboard_concurrency PRIVATE cxx_std_20)
+  ament_target_dependencies(test_04_blackboard_concurrency block_plugin_engine)
+  target_link_libraries(test_04_blackboard_concurrency Threads::Threads)
+
   # Exercise the five end-to-end integration scenarios against the real BPE
   # executable, without reconstructing its lifecycle/plugin loaders.
   find_package(ament_cmake_pytest REQUIRED)

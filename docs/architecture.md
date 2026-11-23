@@ -326,6 +326,12 @@ Each label supports:
 
 A producer grant normally commits on destruction. `cancel()` releases the write claim without incrementing sequence, changing the latest committed index, or publishing the modified slot.
 
+### 10.3 In-place access is an essential performance property
+
+> **IMPORTANT: Do not copy protected payloads merely to release a Blackboard access earlier.** Producer and consumer grants reserve independent ring slots; they are not conventional mutex locks. Perform the necessary computation **in place** while holding the grant. A producer publishes on grant destruction, and a reader retains a stable committed value while its grant exists. Artificial copy/modify/copy-back patterns increase work and latency.
+>
+> See [Blackboard access guidance](blackboard_access.md), especially when generating block code automatically.
+
 ### 10.3 Capacity rule
 
 The ring reserves a structural margin of two slots beyond the consumer count:
