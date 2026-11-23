@@ -13,7 +13,7 @@
 
 #include "block_plugin_engine/iblock_scheduler.hpp"
 #include "block_plugin_engine/iros_boundary_block.hpp"
-#include "block_plugin_engine/itimer_block.hpp"
+#include "block_plugin_engine/ischeduled_block.hpp"
 #include "block_plugin_engine/event_signal.hpp"
 
 namespace bpe {
@@ -216,16 +216,16 @@ bool BlockPluginManager::configure_instance(const BlockInstanceConfig& config) {
 
   // The scheduler alone interprets the execution node. For pipeline schedulers
   // it is ignored; for periodic schedulers it defines individual registration.
-  if (auto* timer = dynamic_cast<ITimerBlock*>(plugin.get())) {
+  if (auto* timer = dynamic_cast<IScheduledBlock*>(plugin.get())) {
     const auto result = scheduler_->register_block(config.name, *timer, config.execution);
     if (result != SchedulerResult::SUCCESS) {
       RCLCPP_ERROR(logger_, "Could not register Block '%s' in the scheduler", config.name.c_str());
       return false;
     }
   } else if (config.execution) {
-    // With the ITimerBlock-based API a non-executable block cannot be scheduled.
+    // With the IScheduledBlock-based API a non-executable block cannot be scheduled.
     // It is still valid for this block to carry an unused execution node.
-    RCLCPP_DEBUG(logger_, "Ignoring execution configuration for non-ITimerBlock '%s'",
+    RCLCPP_DEBUG(logger_, "Ignoring execution configuration for non-IScheduledBlock '%s'",
                  config.name.c_str());
   }
 

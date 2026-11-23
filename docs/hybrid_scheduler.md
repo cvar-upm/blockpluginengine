@@ -3,7 +3,7 @@
 Plugin: `block_plugin_engine/HybridFairScheduler` (`bpe::BPE_HybridFairScheduler`).
 
 The scheduling unit is a **pipeline**, not a block. Each pipeline has a
-fixed ordered sequence of `ITimerBlock` instances, a nominal period, an
+fixed ordered sequence of `IScheduledBlock` instances, a nominal period, an
 optional offset, and a stable registration-order tie-breaker. A one-block
 pipeline is the ordinary single-block case. The scheduler executes the
 complete pipeline without interleaving another pipeline in the same worker.
@@ -37,7 +37,7 @@ blocks:
   - {name: publish, type: my_pkg/Publish}
 ```
 
-Blocks referenced by a pipeline must implement `ITimerBlock`. The manager
+Blocks referenced by a pipeline must implement `IScheduledBlock`. The manager
 loads them normally and resolves each reference via `IBlockScheduler::register_block`.
 A missing or incompatible reference causes `start()` to fail before the
 scheduler worker is launched. Pipeline names and signal names must each be

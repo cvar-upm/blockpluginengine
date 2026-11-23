@@ -9,7 +9,7 @@
 #include <yaml-cpp/yaml.h>
 
 #include "block_plugin_engine/iblock_plugin.hpp"
-#include "block_plugin_engine/itimer_block.hpp"
+#include "block_plugin_engine/ischeduled_block.hpp"
 #include "block_plugin_engine/typed_blackboard.hpp"
 #include "bpe_test/twist_checker_inspection.hpp"
 
@@ -35,13 +35,13 @@ TEST_F(MultiTwistPipelineTest, TwoIndependentChannelsAreTransformedAndChecked) {
   ASSERT_EQ(blocks_config.size(), 5U);
 
   std::array<std::shared_ptr<bpe::IBlockPlugin>, 5> blocks;
-  std::array<bpe::ITimerBlock*, 5> timers{};
+  std::array<bpe::IScheduledBlock*, 5> timers{};
 
   for (std::size_t i = 0; i < blocks.size(); ++i) {
     ASSERT_TRUE(blocks_config[i]["type"]);
     blocks[i] = loader_.createSharedInstance(blocks_config[i]["type"].as<std::string>());
     ASSERT_NE(blocks[i], nullptr);
-    timers[i] = dynamic_cast<bpe::ITimerBlock*>(blocks[i].get());
+    timers[i] = dynamic_cast<bpe::IScheduledBlock*>(blocks[i].get());
     ASSERT_NE(timers[i], nullptr);
     ASSERT_EQ(blocks[i]->configure(blocks_config[i]["config"]), bpe::BlockResult::SUCCESS);
   }

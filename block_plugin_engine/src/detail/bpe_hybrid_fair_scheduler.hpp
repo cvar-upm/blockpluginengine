@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "block_plugin_engine/iblock_scheduler.hpp"
-#include "block_plugin_engine/itimer_block_with_info.hpp"
+#include "detail/itimer_block_with_info.hpp"
 #include "detail/hybrid_deadline_clock.hpp"
 #include <stdexcept>
 #include <utility>
@@ -28,7 +28,7 @@ public:
   }
   ~BaseHybridFairScheduler() override;
   SchedulerResult configure(const SchedulerConfig&) override;
-  SchedulerResult register_block(const std::string&, ITimerBlock&,
+  SchedulerResult register_block(const std::string&, IScheduledBlock&,
                                  const YAML::Node&) override;
   std::shared_ptr<IEventSignal> get_signal(std::string_view name) override;
   SchedulerResult remove(const std::string&) override;
@@ -47,7 +47,7 @@ private:
   };
   struct Block {
     std::string name;
-    ITimerBlock* block{nullptr};
+    IScheduledBlock* block{nullptr};
     ITimerBlockWithInfo* with_info{nullptr};
   };
   struct Pipeline {

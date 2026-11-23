@@ -8,7 +8,7 @@
 
 #include "block_plugin_engine/block_config.hpp"
 #include "block_plugin_engine/iblock_plugin.hpp"
-#include "block_plugin_engine/itimer_block.hpp"
+#include "block_plugin_engine/ischeduled_block.hpp"
 #include "block_plugin_engine/typed_blackboard.hpp"
 #include "bpe_test/twist_checker_inspection.hpp"
 
@@ -31,7 +31,7 @@ bool message_is_expected(const geometry_msgs::msg::TwistStamped& message) noexce
 
 class TwistCheckerBlock final
   : public bpe::IBlockPlugin,
-    public bpe::ITimerBlock,
+    public bpe::IScheduledBlock,
     public ITwistCheckerInspection {
 public:
   using Message = geometry_msgs::msg::TwistStamped;

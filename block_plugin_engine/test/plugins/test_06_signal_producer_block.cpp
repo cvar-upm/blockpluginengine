@@ -3,14 +3,14 @@
 #include <pluginlib/class_list_macros.hpp>
 
 #include "block_plugin_engine/iblock_plugin.hpp"
-#include "block_plugin_engine/itimer_block.hpp"
+#include "block_plugin_engine/ischeduled_block.hpp"
 #include "block_plugin_engine/event_signal.hpp"
 #include "tools/event_log.hpp"
 
 namespace bpe::test {
 
 // A periodically scheduled producer that signals a pipeline on another worker.
-class TestSignalProducerBlock final : public IBlockPlugin, public ITimerBlock,
+class TestSignalProducerBlock final : public IBlockPlugin, public IScheduledBlock,
                                       public IEventSignalUser {
 public:
   void set_event_signal_provider(IEventSignalProvider& provider) override {

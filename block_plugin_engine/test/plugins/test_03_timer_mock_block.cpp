@@ -3,12 +3,12 @@
 #include <pluginlib/class_list_macros.hpp>
 
 #include "block_plugin_engine/iblock_plugin.hpp"
-#include "block_plugin_engine/itimer_block.hpp"
+#include "block_plugin_engine/ischeduled_block.hpp"
 #include "tools/event_log.hpp"
 
 namespace bpe::test {
 
-class TestTimerBlock : public IBlockPlugin, public ITimerBlock {
+class TestTimerBlock : public IBlockPlugin, public IScheduledBlock {
 public:
   BlockResult configure(const BlockConfig& config) override {
     if (!config["id"] || !config["label"]) {

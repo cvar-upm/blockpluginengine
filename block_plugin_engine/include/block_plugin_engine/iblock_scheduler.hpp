@@ -9,7 +9,7 @@
 
 namespace bpe {
 
-class ITimerBlock;
+class IScheduledBlock;
 
 enum class SchedulerResult { SUCCESS, INVALID_STATE, INVALID_CONFIG, NOT_FOUND, SYSTEM_ERROR };
 
@@ -22,7 +22,7 @@ public:
   // Register a block using scheduler-specific execution semantics.
   // Missing YAML configuration is valid: the scheduler decides whether to schedule it.
   virtual SchedulerResult register_block(
-      const std::string& instance_name, ITimerBlock& block,
+      const std::string& instance_name, IScheduledBlock& block,
       const YAML::Node& execution) = 0;
 
   virtual SchedulerResult remove(const std::string& instance_name) = 0;

@@ -9,12 +9,12 @@
 #include <mutex>
 #include <vector>
 
-#include "block_plugin_engine/itimer_block_with_info.hpp"
+#include "detail/itimer_block_with_info.hpp"
 
 namespace bpe::test {
 
 // A block records invocations; it never measures Linux scheduling latency.
-class PlainTimerMockBlock final : public ITimerBlock {
+class PlainTimerMockBlock final : public IScheduledBlock {
 public:
   ExecutionResult execute() override {
     calls_.fetch_add(1, std::memory_order_relaxed);

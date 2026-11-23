@@ -46,7 +46,7 @@ BPECompositionRoot
 
 `BlockPluginManager` loads, configures, starts, stops, and destroys block plugins.
 
-The selected scheduler executes registered `ITimerBlock` instances, either individually or in configured pipelines.
+The selected scheduler executes registered `IScheduledBlock` instances, either individually or in configured pipelines.
 
 The blackboard provides concurrent communication between producers and consumers.
 
@@ -85,11 +85,16 @@ stop
 cleanup
 ```
 
-Periodic blocks additionally implement:
+Scheduler-executed blocks (periodic or event-driven) additionally implement:
 
 ```cpp
-bpe::ITimerBlock
+bpe::IScheduledBlock
 ```
+
+For source compatibility with existing blocks, `ITimerBlock` remains available as a
+deprecated alias in `block_plugin_engine/itimer_block.hpp`. New code should include
+`block_plugin_engine/ischeduled_block.hpp` directly. Existing plugins must be
+recompiled when upgrading BPE; binary compatibility is not guaranteed.
 
 ROS boundary blocks implement:
 
@@ -102,10 +107,10 @@ which allows BPE to inject the ROS `NodeTopicsInterface`.
 For the supplied ROS boundary plugins:
 
 ```text
-IRosBoundaryBlock + !ITimerBlock
+IRosBoundaryBlock + !IScheduledBlock
     → ROS input
 
-IRosBoundaryBlock + ITimerBlock
+IRosBoundaryBlock + IScheduledBlock
     → ROS output
 ```
 

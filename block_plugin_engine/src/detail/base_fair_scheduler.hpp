@@ -12,7 +12,7 @@
 #include <vector>
 
 #include "block_plugin_engine/iblock_scheduler.hpp"
-#include "block_plugin_engine/itimer_block_with_info.hpp"
+#include "detail/itimer_block_with_info.hpp"
 #include "detail/monotonic_clock.hpp"
 
 namespace bpe {
@@ -43,7 +43,7 @@ public:
   SchedulerResult configure(const SchedulerConfig& config) override;
 
   SchedulerResult register_block(const std::string& instance_name,
-                                 ITimerBlock& block,
+                                 IScheduledBlock& block,
                                  const YAML::Node& execution) override;
 
   SchedulerResult remove(const std::string& instance_name) override;
@@ -55,7 +55,7 @@ public:
 private:
   struct ScheduledBlock {
     std::string name;
-    ITimerBlock* block{nullptr};
+    IScheduledBlock* block{nullptr};
     ITimerBlockWithInfo* block_with_info{nullptr};
     std::uint64_t activation_index{0};
     std::int64_t period_ns{0};

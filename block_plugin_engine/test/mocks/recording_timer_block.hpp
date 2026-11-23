@@ -3,12 +3,12 @@
 #include <string>
 #include <utility>
 
-#include "block_plugin_engine/itimer_block.hpp"
+#include "block_plugin_engine/ischeduled_block.hpp"
 #include "tools/event_log.hpp"
 
 namespace bpe::test {
 
-class RecordingTimerBlock final : public ITimerBlock {
+class RecordingTimerBlock final : public IScheduledBlock {
 public:
   explicit RecordingTimerBlock(std::string name) : name_(std::move(name)) {}
 

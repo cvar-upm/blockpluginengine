@@ -60,7 +60,7 @@ on_configure():
       → loads and configures scheduler from scheduler: subtree
       → injects actual IBlockScheduler into BlockPluginManager
       → manager configures only blocks: subtree
-      → manager registers ITimerBlock instances with scheduler
+      → manager registers IScheduledBlock instances with scheduler
 ```
 
 `BlockPluginManager` does not select a scheduler or read the top-level YAML
@@ -121,7 +121,7 @@ inject ROS interface into IRosBoundaryBlock and negotiate optional event signals
     ↓
 plugin.configure(config subtree)
     ↓
-register ITimerBlock entries with scheduler
+register IScheduledBlock entries with scheduler
 ```
 
 Configuration failures roll back already configured plugin instances. Shared blackboard/type-registry state is reset when engine-level plugin configuration fails.
@@ -144,7 +144,7 @@ stop scheduler and join worker
 stop plugins in reverse order
 ```
 
-The scheduler stops first so no `ITimerBlock::execute()` call can race with plugin stop.
+The scheduler stops first so no `IScheduledBlock::execute()` call can race with plugin stop.
 
 ### 5.4 Cleanup
 
@@ -206,7 +206,7 @@ Main thread
       └── ROS callbacks, including RosInputBlock subscriptions
 
 Scheduler worker thread(s)
-  ├── FairScheduler: periodic ITimerBlock::execute()
+  ├── FairScheduler: periodic IScheduledBlock::execute()
   ├── HybridFairScheduler: TIMER/EVENT pipelines
   └── MultiScheduler: child scheduler workers
 ```
@@ -217,8 +217,8 @@ ROS/DDS may use additional internal threads; those are middleware implementation
 
 This split has an important semantic consequence:
 
-- a ROS input boundary is callback-driven and does **not** implement `ITimerBlock`;
-- a ROS output boundary is scheduler-driven and **does** implement `ITimerBlock`.
+- a ROS input boundary is callback-driven and does **not** implement `IScheduledBlock`;
+- a ROS output boundary is scheduler-driven and **does** implement `IScheduledBlock`.
 
 The same pattern can be applied to future non-ROS boundaries: reception may be externally driven, while deterministic emission can be scheduled.
 
@@ -285,9 +285,9 @@ cleanup()
 
 `BlockConfig` is currently a semantic alias for `YAML::Node`.
 
-### 9.2 `ITimerBlock`
+### 9.2 `IScheduledBlock`
 
-A plugin implementing `ITimerBlock` may have an `execution:` section in YAML and is registered with the scheduler. A block that declares execution settings without implementing `ITimerBlock` is rejected during configuration.
+A plugin implementing `IScheduledBlock` may have an `execution:` section in YAML and is registered with the scheduler. A block that declares execution settings without implementing `IScheduledBlock` is rejected during configuration.
 
 ### 9.3 `IRosBoundaryBlock`
 
@@ -429,7 +429,7 @@ After activation, the structural model is fixed. Runtime code should treat plugi
 Installed public headers under `include/block_plugin_engine/` contain the interfaces required by plugin packages:
 
 - `IBlockPlugin`;
-- `ITimerBlock`;
+- `IScheduledBlock`;
 - `IRosBoundaryBlock`;
 - `IBlockScheduler` and optional event-signal interfaces;
 - `BlockConfig`;

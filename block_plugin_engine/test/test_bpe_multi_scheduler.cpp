@@ -7,7 +7,7 @@
 #include <gtest/gtest.h>
 #include <yaml-cpp/yaml.h>
 
-#include "block_plugin_engine/itimer_block_with_info.hpp"
+#include "detail/itimer_block_with_info.hpp"
 #include "detail/bpe_multi_scheduler.hpp"
 
 namespace bpe::test {

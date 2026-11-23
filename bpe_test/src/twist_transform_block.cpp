@@ -5,12 +5,12 @@
 
 #include "block_plugin_engine/block_config.hpp"
 #include "block_plugin_engine/iblock_plugin.hpp"
-#include "block_plugin_engine/itimer_block.hpp"
+#include "block_plugin_engine/ischeduled_block.hpp"
 #include "block_plugin_engine/typed_blackboard.hpp"
 
 namespace bpe_test {
 
-class TwistTransformBlock final : public bpe::IBlockPlugin, public bpe::ITimerBlock {
+class TwistTransformBlock final : public bpe::IBlockPlugin, public bpe::IScheduledBlock {
 public:
   using TwistSt = geometry_msgs::msg::TwistStamped;
 

@@ -15,7 +15,7 @@
 #include <yaml-cpp/yaml.h>
 
 #include "block_plugin_engine/iblock_scheduler.hpp"
-#include "block_plugin_engine/itimer_block.hpp"
+#include "block_plugin_engine/ischeduled_block.hpp"
 
 namespace bpe::test_support {
 
@@ -121,7 +121,7 @@ private:
   std::atomic<std::size_t> count_{0};
 };
 
-class RecordingTimerBlock : public ITimerBlock {
+class RecordingTimerBlock : public IScheduledBlock {
 public:
   RecordingTimerBlock(std::size_t min_iterations,
                       std::size_t max_iterations,

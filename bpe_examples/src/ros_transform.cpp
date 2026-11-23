@@ -4,11 +4,11 @@
 #include <geometry_msgs/msg/twist.hpp>
 #include <pluginlib/class_list_macros.hpp>
 #include "block_plugin_engine/iblock_plugin.hpp"
-#include "block_plugin_engine/itimer_block.hpp"
+#include "block_plugin_engine/ischeduled_block.hpp"
 #include "block_plugin_engine/typed_blackboard.hpp"
 namespace bpe_examples {
 // A real transform: pose position (metres) -> saturated planar velocity command (m/s).
-class PoseToVelocity final : public bpe::IBlockPlugin, public bpe::ITimerBlock {
+class PoseToVelocity final : public bpe::IBlockPlugin, public bpe::IScheduledBlock {
 public:
   bpe::BlockResult configure(const bpe::BlockConfig& c) override {
     try { input_.bind(c["input"].as<std::string>());

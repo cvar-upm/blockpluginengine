@@ -7,14 +7,14 @@
 
 #include "block_plugin_engine/block_config.hpp"
 #include "block_plugin_engine/iblock_plugin.hpp"
-#include "block_plugin_engine/itimer_block.hpp"
+#include "block_plugin_engine/ischeduled_block.hpp"
 #include "block_plugin_engine/typed_blackboard.hpp"
 
 namespace bpe_ros_boundary_plugins::test {
 
 // The same instance is intentionally registered in two event pipelines.
 // A complete output pair is published only when *both* inputs have changed.
-class MultiTransformBlock final : public bpe::IBlockPlugin, public bpe::ITimerBlock {
+class MultiTransformBlock final : public bpe::IBlockPlugin, public bpe::IScheduledBlock {
 public:
   using Number = std_msgs::msg::Int32;
   using Twist = geometry_msgs::msg::Twist;

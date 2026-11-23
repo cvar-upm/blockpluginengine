@@ -7,7 +7,7 @@
 #include <yaml-cpp/yaml.h>
 
 #include "block_plugin_engine/iblock_plugin.hpp"
-#include "block_plugin_engine/itimer_block.hpp"
+#include "block_plugin_engine/ischeduled_block.hpp"
 #include "bpe_test/twist_checker_inspection.hpp"
 
 namespace bpe_test::test {
@@ -34,9 +34,9 @@ TEST_F(TwistPipelineTest, TypedPluginsExchangeRosMessageThroughBlackboard) {
   ASSERT_NE(transform, nullptr);
   ASSERT_NE(checker, nullptr);
 
-  auto* producer_timer = dynamic_cast<bpe::ITimerBlock*>(producer.get());
-  auto* transform_timer = dynamic_cast<bpe::ITimerBlock*>(transform.get());
-  auto* checker_timer = dynamic_cast<bpe::ITimerBlock*>(checker.get());
+  auto* producer_timer = dynamic_cast<bpe::IScheduledBlock*>(producer.get());
+  auto* transform_timer = dynamic_cast<bpe::IScheduledBlock*>(transform.get());
+  auto* checker_timer = dynamic_cast<bpe::IScheduledBlock*>(checker.get());
   auto* inspection = dynamic_cast<ITwistCheckerInspection*>(checker.get());
 
   ASSERT_NE(producer_timer, nullptr);

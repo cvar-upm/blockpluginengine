@@ -7,11 +7,11 @@
 #include <iostream>
 #include <pluginlib/class_list_macros.hpp>
 #include "block_plugin_engine/iblock_plugin.hpp"
-#include "block_plugin_engine/itimer_block.hpp"
+#include "block_plugin_engine/ischeduled_block.hpp"
 #include "block_plugin_engine/typed_blackboard.hpp"
 #include "types.hpp"
 namespace bpe_examples {
-class Generator final : public bpe::IBlockPlugin, public bpe::ITimerBlock {
+class Generator final : public bpe::IBlockPlugin, public bpe::IScheduledBlock {
 public:
   bpe::BlockResult configure(const bpe::BlockConfig& cfg) override {
     try { producer_.bind(cfg["output"].as<std::string>());
@@ -28,7 +28,7 @@ private:
   bpe::TypedProducer<Sample> producer_;
   std::uint64_t counter_{0};
 };
-class Average final : public bpe::IBlockPlugin, public bpe::ITimerBlock {
+class Average final : public bpe::IBlockPlugin, public bpe::IScheduledBlock {
 public:
   bpe::BlockResult configure(const bpe::BlockConfig& cfg) override {
     try { consumer_.bind(cfg["input"].as<std::string>());
@@ -49,7 +49,7 @@ private:
   bpe::TypedConsumer<Sample> consumer_;
   bpe::TypedProducer<Report> producer_;
 };
-class ReportPrinter final : public bpe::IBlockPlugin, public bpe::ITimerBlock {
+class ReportPrinter final : public bpe::IBlockPlugin, public bpe::IScheduledBlock {
 public:
   bpe::BlockResult configure(const bpe::BlockConfig& cfg) override {
     try { consumer_.bind(cfg["input"].as<std::string>()); return bpe::BlockResult::SUCCESS; }

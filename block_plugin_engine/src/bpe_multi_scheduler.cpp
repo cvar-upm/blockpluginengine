@@ -87,7 +87,7 @@ SchedulerResult BPE_MultiScheduler::configure(const SchedulerConfig& config) {
 }
 
 SchedulerResult BPE_MultiScheduler::register_block(
-    const std::string& name, ITimerBlock& block, const YAML::Node& execution) {
+    const std::string& name, IScheduledBlock& block, const YAML::Node& execution) {
   if (running_ || schedulers_.empty()) return SchedulerResult::INVALID_STATE;
   if (std::any_of(entries_.begin(), entries_.end(),
                   [&](const Entry& e) { return e.name == name; }))

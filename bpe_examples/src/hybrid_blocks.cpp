@@ -4,11 +4,11 @@
 #include <std_msgs/msg/int32.hpp>
 #include <pluginlib/class_list_macros.hpp>
 #include "block_plugin_engine/iblock_plugin.hpp"
-#include "block_plugin_engine/itimer_block.hpp"
+#include "block_plugin_engine/ischeduled_block.hpp"
 #include "block_plugin_engine/typed_blackboard.hpp"
 namespace bpe_examples {
 // Same instance executes in either event pipeline; new values can arrive independently.
-class CommandMixer final : public bpe::IBlockPlugin, public bpe::ITimerBlock {
+class CommandMixer final : public bpe::IBlockPlugin, public bpe::IScheduledBlock {
 public:
   bpe::BlockResult configure(const bpe::BlockConfig& c) override {
     try { input_.bind(c["speed"].as<std::string>(),c["direction"].as<std::string>());
@@ -35,7 +35,7 @@ private:
   bool speed_changed_{false},direction_changed_{false};
 };
 // Periodic independent pipeline: no event is required to inspect last published data.
-class CommandMonitor final : public bpe::IBlockPlugin, public bpe::ITimerBlock {
+class CommandMonitor final : public bpe::IBlockPlugin, public bpe::IScheduledBlock {
 public:
   bpe::BlockResult configure(const bpe::BlockConfig& c) override {
     try { input_.bind(c["input"].as<std::string>()); return bpe::BlockResult::SUCCESS; }

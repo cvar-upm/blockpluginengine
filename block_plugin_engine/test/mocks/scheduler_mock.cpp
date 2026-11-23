@@ -23,7 +23,7 @@ SchedulerResult SchedulerMock::configure(const SchedulerConfig&) {
   calls_.push_back("configure");
   return SchedulerResult::SUCCESS;
 }
-SchedulerResult SchedulerMock::register_block(const std::string& name, ITimerBlock& block,
+SchedulerResult SchedulerMock::register_block(const std::string& name, IScheduledBlock& block,
                                    const YAML::Node& config) {
   calls_.push_back("register:" + name);
   if (add_result_ == SchedulerResult::SUCCESS && config && !config.IsNull())

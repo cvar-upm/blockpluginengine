@@ -162,12 +162,12 @@ Current rules:
 - the supported per-block policy for `FairScheduler` is `timer`;
 - `period` is required and must be greater than zero;
 - accepted period suffixes are `ns`, `us`, `ms`, and `s`;
-- only blocks implementing `bpe::ITimerBlock` can be scheduled;
-- a block implementing `ITimerBlock` is not automatically scheduled unless `execution` is present.
+- only blocks implementing `bpe::IScheduledBlock` can be scheduled;
+- a block implementing `IScheduledBlock` is not automatically scheduled unless `execution` is present.
 
 For `HybridFairScheduler`, only the pipelines in the scheduler configuration schedule blocks; per-block `execution` is ignored.
 
-This separation is useful for boundary semantics. A ROS input block is callback-driven and has no `execution` section; a ROS output block implements `ITimerBlock` and runs either periodically or as a member of a hybrid pipeline.
+This separation is useful for boundary semantics. A ROS input block is callback-driven and has no `execution` section; a ROS output block implements `IScheduledBlock` and runs either periodically or as a member of a hybrid pipeline.
 
 ## 6. Generic ROS input boundary
 
@@ -204,7 +204,7 @@ The plugin creates an `rclcpp::GenericSubscription`. Incoming serialized message
 
 The boundary may configure before the corresponding typed endpoint, but activation requires the typed serialize/deserialize operations to have been registered for the label.
 
-Do not give a ROS input boundary an `execution` section: it does not implement `ITimerBlock` and is driven by subscription callbacks on the main executor thread. `IEventSignalUser` is an optional capability: absence of a scheduler provider produces a warning but is not by itself a failure. If a `signal` is explicitly configured and cannot be resolved, the input plugin rejects its own configuration.
+Do not give a ROS input boundary an `execution` section: it does not implement `IScheduledBlock` and is driven by subscription callbacks on the main executor thread. `IEventSignalUser` is an optional capability: absence of a scheduler provider produces a warning but is not by itself a failure. If a `signal` is explicitly configured and cannot be resolved, the input plugin rejects its own configuration.
 
 ## 7. Generic ROS output boundary
 
@@ -238,7 +238,7 @@ Fields:
 | `blackboard_input` | yes | Blackboard label consumed by this boundary. |
 | `qos_depth` | no | Keep-last depth; defaults to `10` and must be greater than zero. |
 
-`RosOutputBlock` implements `ITimerBlock`; with `FairScheduler` it uses a timer `execution` section. With `HybridFairScheduler` it can instead be referenced from `scheduler.pipelines`.
+`RosOutputBlock` implements `IScheduledBlock`; with `FairScheduler` it uses a timer `execution` section. With `HybridFairScheduler` it can instead be referenced from `scheduler.pipelines`.
 
 Only one ROS output may be registered for a given blackboard label. A second output is rejected during configuration because the registry models serialized-output requirement as a single label property, not a publisher count.
 
@@ -332,7 +332,7 @@ The following are deliberate constraints of the current engine:
 - only one ROS output is registered per label;
 - scheduler topology does not change while running;
 - plugins are loaded/configured before activation;
-- execution settings require `ITimerBlock`;
+- execution settings require `IScheduledBlock`;
 - type bindings and endpoint factories are considered immutable runtime infrastructure after configuration.
 
 ## 11. Runnable examples

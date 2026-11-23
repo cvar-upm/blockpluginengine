@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "block_plugin_engine/iblock_scheduler.hpp"
-#include "block_plugin_engine/itimer_block.hpp"
+#include "block_plugin_engine/ischeduled_block.hpp"
 
 namespace bpe::test {
 
@@ -14,14 +14,14 @@ class SchedulerMock : public IBlockScheduler, public IEventSignalProvider {
 public:
   struct Entry {
     std::string name;
-    ITimerBlock* block;
+    IScheduledBlock* block;
     YAML::Node config;
   };
 
   SchedulerResult configure(const SchedulerConfig&) override;
   std::shared_ptr<IEventSignal> get_signal(std::string_view name) override;
   void allow_signal(std::string name);
-  SchedulerResult register_block(const std::string&, ITimerBlock&, const YAML::Node&) override;
+  SchedulerResult register_block(const std::string&, IScheduledBlock&, const YAML::Node&) override;
   SchedulerResult remove(const std::string&) override;
   SchedulerResult start() override;
   SchedulerResult start(std::chrono::nanoseconds) override;

@@ -8,7 +8,7 @@
 #include <rclcpp/logger.hpp>
 
 #include "block_plugin_engine/iblock_scheduler.hpp"
-#include "block_plugin_engine/itimer_block.hpp"
+#include "block_plugin_engine/ischeduled_block.hpp"
 #include "detail/block_plugin_manager.hpp"
 #include "mocks/scheduler_mock.hpp"
 #include "tools/event_log.hpp"
@@ -20,7 +20,7 @@ namespace {
 class SchedulerWithoutSignals final : public IBlockScheduler {
 public:
   SchedulerResult configure(const SchedulerConfig&) override { return SchedulerResult::SUCCESS; }
-  SchedulerResult register_block(const std::string&, ITimerBlock&, const YAML::Node&) override {
+  SchedulerResult register_block(const std::string&, IScheduledBlock&, const YAML::Node&) override {
     return SchedulerResult::SUCCESS;
   }
   SchedulerResult remove(const std::string&) override { return SchedulerResult::SUCCESS; }

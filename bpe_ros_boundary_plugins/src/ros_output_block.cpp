@@ -10,7 +10,7 @@
 #include "block_plugin_engine/block_config.hpp"
 #include "block_plugin_engine/iblock_plugin.hpp"
 #include "block_plugin_engine/iros_boundary_block.hpp"
-#include "block_plugin_engine/itimer_block.hpp"
+#include "block_plugin_engine/ischeduled_block.hpp"
 #include "detail/serialized_blackboard.hpp"
 
 namespace bpe_ros_boundary_plugins {
@@ -18,7 +18,7 @@ namespace bpe_ros_boundary_plugins {
 class RosOutputBlock final
   : public bpe::IBlockPlugin,
     public bpe::IRosBoundaryBlock,
-    public bpe::ITimerBlock {
+    public bpe::IScheduledBlock {
 public:
   void set_ros_interface(
       const rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr& topics) override {

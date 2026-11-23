@@ -12,8 +12,8 @@
 #include <string_view>
 #include <time.h>
 
-#include "block_plugin_engine/itimer_block.hpp"
-#include "block_plugin_engine/itimer_block_with_info.hpp"
+#include "block_plugin_engine/ischeduled_block.hpp"
+#include "detail/itimer_block_with_info.hpp"
 
 namespace bpe {
 namespace {
@@ -98,7 +98,7 @@ SchedulerResult BaseFairScheduler<Clock, RealtimePolicy>::configure(const Schedu
 
 template<typename Clock, typename RealtimePolicy>
 SchedulerResult BaseFairScheduler<Clock, RealtimePolicy>::register_block(
-    const std::string& instance_name, ITimerBlock& block, const YAML::Node& execution) {
+    const std::string& instance_name, IScheduledBlock& block, const YAML::Node& execution) {
   if (running_.load(std::memory_order_acquire)) return SchedulerResult::INVALID_STATE;
   // A timer-capable block without execution may remain unscheduled.
   if (!execution || execution.IsNull()) return SchedulerResult::SUCCESS;

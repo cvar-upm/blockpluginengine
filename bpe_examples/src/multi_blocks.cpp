@@ -4,12 +4,12 @@
 #include <string>
 #include <pluginlib/class_list_macros.hpp>
 #include "block_plugin_engine/iblock_plugin.hpp"
-#include "block_plugin_engine/itimer_block.hpp"
+#include "block_plugin_engine/ischeduled_block.hpp"
 #include "block_plugin_engine/typed_blackboard.hpp"
 #include "types.hpp"
 namespace bpe_examples {
 // MultiConsumer<Sample,Sample> + TypedProducer<Report>: two sources fused into one result.
-class FuseSamples final : public bpe::IBlockPlugin, public bpe::ITimerBlock {
+class FuseSamples final : public bpe::IBlockPlugin, public bpe::IScheduledBlock {
 public:
   bpe::BlockResult configure(const bpe::BlockConfig& c) override {
     try { inputs_.bind(c["input_a"].as<std::string>(),c["input_b"].as<std::string>());
@@ -33,7 +33,7 @@ private:
   Sample a_,b_; bool fresh_a_{false},fresh_b_{false};
 };
 // TypedConsumer<Report> + MultiProducer<Report,Summary>: split into two types.
-class SplitReport final : public bpe::IBlockPlugin, public bpe::ITimerBlock {
+class SplitReport final : public bpe::IBlockPlugin, public bpe::IScheduledBlock {
 public:
   bpe::BlockResult configure(const bpe::BlockConfig& c) override {
     try { input_.bind(c["input"].as<std::string>());
@@ -51,7 +51,7 @@ public:
 private: bpe::TypedConsumer<Report> input_; bpe::MultiProducer<Report,Summary> outputs_;
 };
 // MultiConsumer<Report,Summary> + MultiProducer<Report,Summary>.
-class PairAnnotator final : public bpe::IBlockPlugin, public bpe::ITimerBlock {
+class PairAnnotator final : public bpe::IBlockPlugin, public bpe::IScheduledBlock {
 public:
   bpe::BlockResult configure(const bpe::BlockConfig& c) override {
     try { inputs_.bind(c["input_report"].as<std::string>(),c["input_summary"].as<std::string>());
@@ -75,7 +75,7 @@ private:
   bpe::MultiProducer<Report,Summary> outputs_;
   Report report_; Summary summary_; bool report_fresh_{false},summary_fresh_{false};
 };
-class SummaryPrinter final : public bpe::IBlockPlugin, public bpe::ITimerBlock {
+class SummaryPrinter final : public bpe::IBlockPlugin, public bpe::IScheduledBlock {
 public:
   bpe::BlockResult configure(const bpe::BlockConfig& c) override {
     try { consumer_.bind(c["input"].as<std::string>()); return bpe::BlockResult::SUCCESS; }

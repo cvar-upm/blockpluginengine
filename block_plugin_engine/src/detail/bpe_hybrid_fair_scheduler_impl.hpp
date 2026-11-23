@@ -120,7 +120,7 @@ SchedulerResult BaseHybridFairScheduler<Clock>::configure(const SchedulerConfig&
 
 template<typename Clock>
 SchedulerResult BaseHybridFairScheduler<Clock>::register_block(
-    const std::string& name, ITimerBlock& block, const YAML::Node&) {
+    const std::string& name, IScheduledBlock& block, const YAML::Node&) {
   // Pipelines are scheduler-owned. Individual execution settings are intentionally ignored.
   if (running_) return SchedulerResult::INVALID_STATE;
   for (auto& pipeline : pipelines_) for (auto& entry : pipeline.blocks) {

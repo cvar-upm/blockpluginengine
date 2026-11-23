@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <stdexcept>
 
-#include "block_plugin_engine/itimer_block.hpp"
+#include "block_plugin_engine/ischeduled_block.hpp"
 
 namespace bpe {
 
@@ -15,7 +15,7 @@ struct TimerExecutionInfo {
   std::chrono::nanoseconds lateness{0};
 };
 
-class ITimerBlockWithInfo : public ITimerBlock {
+class ITimerBlockWithInfo : public IScheduledBlock {
 public:
   ExecutionResult execute() override {
     throw std::logic_error("ITimerBlockWithInfo requires execution information");
