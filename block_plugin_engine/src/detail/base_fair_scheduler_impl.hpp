@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Universidad Politécnica de Madrid (UPM) - CVAR-UPM
+// SPDX-License-Identifier: BSD-3-Clause
+
 #pragma once
 // Included by base_fair_scheduler.hpp; no separate compilation required.
 

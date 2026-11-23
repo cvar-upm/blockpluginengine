@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Universidad Politécnica de Madrid (UPM) - CVAR-UPM
+// SPDX-License-Identifier: BSD-3-Clause
+
 #include "block_plugin_engine/ros_type_registry.hpp"
 
 #include <memory>

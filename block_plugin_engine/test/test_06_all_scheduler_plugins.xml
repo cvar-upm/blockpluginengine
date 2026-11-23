@@ -1,3 +1,5 @@
+<!-- SPDX-FileCopyrightText: 2026 Universidad Politécnica de Madrid (UPM) - CVAR-UPM -->
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
 <library path="bpe_fair_scheduler">
   <class name="block_plugin_engine/FairScheduler"
          type="bpe::BPE_FairScheduler"

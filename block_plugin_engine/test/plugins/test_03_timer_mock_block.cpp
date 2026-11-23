@@ -1,14 +1,18 @@
+// SPDX-FileCopyrightText: 2026 Universidad Politécnica de Madrid (UPM) - CVAR-UPM
+// SPDX-License-Identifier: BSD-3-Clause
+
 #include <string>
 
 #include <pluginlib/class_list_macros.hpp>
 
 #include "block_plugin_engine/iblock_plugin.hpp"
-#include "block_plugin_engine/ischeduled_block.hpp"
+#include "block_plugin_engine/itimer_block.hpp"
 #include "tools/event_log.hpp"
 
 namespace bpe::test {
 
-class TestTimerBlock : public IBlockPlugin, public IScheduledBlock {
+// Compatibility fixture: the plugin intentionally uses the pre-1.0 alias.
+class TestTimerBlock : public IBlockPlugin, public ITimerBlock {
 public:
   BlockResult configure(const BlockConfig& config) override {
     if (!config["id"] || !config["label"]) {

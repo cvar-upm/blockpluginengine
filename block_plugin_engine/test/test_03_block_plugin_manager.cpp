@@ -1,7 +1,11 @@
+// SPDX-FileCopyrightText: 2026 Universidad Politécnica de Madrid (UPM) - CVAR-UPM
+// SPDX-License-Identifier: BSD-3-Clause
+
 #include <algorithm>
 #include <chrono>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -9,6 +13,7 @@
 
 #include "block_plugin_engine/iblock_scheduler.hpp"
 #include "block_plugin_engine/ischeduled_block.hpp"
+#include "block_plugin_engine/itimer_block.hpp"
 #include "detail/block_plugin_manager.hpp"
 #include "mocks/scheduler_mock.hpp"
 #include "tools/event_log.hpp"
@@ -96,6 +101,19 @@ TEST_F(BlockPluginManagerTest, LoadsAndRunsValidConfiguration) {
                 "basic_b.cleanup",
                 "basic_a.cleanup",
             }));
+}
+
+// The legacy name remains exactly the same C++ type, not a derived ABI variant.
+static_assert(std::is_same_v<ITimerBlock, IScheduledBlock>);
+
+TEST_F(BlockPluginManagerTest, LegacyTimerBlockAliasLoadsThroughPluginlib) {
+  // The real test plugin is compiled with ITimerBlock, not IScheduledBlock.
+  // BlockPluginManager loads it through pluginlib and registers/executes it.
+  ASSERT_TRUE(manager_->configure(load_blocks_config("test_03_valid.yaml")));
+  ASSERT_TRUE(manager_->start());
+  EXPECT_EQ(scheduler_->execute("timer"), ExecutionResult::SUCCESS);
+  ASSERT_TRUE(manager_->stop());
+  ASSERT_TRUE(manager_->cleanup());
 }
 
 TEST_F(BlockPluginManagerTest, RejectsDuplicateNamesBeforeLoadingPlugins) {

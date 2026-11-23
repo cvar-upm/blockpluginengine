@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Universidad Politécnica de Madrid (UPM) - CVAR-UPM -->
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+
 # Block Plugin Engine architecture
 
 ## 1. Goals and scope
@@ -450,3 +453,19 @@ Engine composition classes live under `src/detail/` and are not installed:
 - `FairScheduler` implementation details.
 
 The separation is intentional: plugin authors depend on behavioral interfaces, not on the engine's composition root or node implementation.
+
+## Internal execution-timing interface (BPE 1.0)
+
+`ITimerBlockWithInfo` and `TimerExecutionInfo` are **internal implementation details**,
+not installed headers or supported public extension points. The production
+`BaseFairScheduler` and `BaseHybridFairScheduler` still detect this internal
+interface and can dispatch `execute(const TimerExecutionInfo&)` for internal
+blocks. The existing timing tests depend on this behavior.
+
+This dependence is retained intentionally for the 1.0 release; replacing or
+removing the internal timing dispatch requires a separate design and regression
+review. External plugins must implement the public `IScheduledBlock` interface.
+The former name `ITimerBlock` is provided as a deprecated source-compatibility
+alias in `itimer_block.hpp`. It remains installed for existing consumers.
+Binary compatibility of already-built plugins is **not** guaranteed by this alias;
+recompile downstream plugins against this release.

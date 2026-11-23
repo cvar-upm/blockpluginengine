@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Universidad Politécnica de Madrid (UPM) - CVAR-UPM -->
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+
 # Blackboard access: modify in place, do not copy for synchronization
 
 > **IMPORTANT — DESIGN CONTRACT FOR HUMAN DEVELOPERS AND AI CODE GENERATORS**

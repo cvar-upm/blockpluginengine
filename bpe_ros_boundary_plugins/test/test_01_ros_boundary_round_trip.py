@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 Universidad Politécnica de Madrid (UPM) - CVAR-UPM
+# SPDX-License-Identifier: BSD-3-Clause
+
 """End-to-end ROS boundary test using the real BlockPluginEngine process.
 
 Two ROS message types travel through two EVENT pipelines. Both pipelines invoke

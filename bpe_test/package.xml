@@ -1,10 +1,13 @@
 <?xml version="1.0"?>
+<!-- SPDX-FileCopyrightText: 2026 Universidad Politécnica de Madrid (UPM) - CVAR-UPM -->
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
 <package format="3">
   <name>bpe_test</name>
-  <version>0.0.1</version>
+  <version>1.0.0</version>
   <description>Cross-package integration and functional regression tests for BlockPluginEngine.</description>
+  <author email="santiago.tapia@upm.es">Santiago Tapia-Fernández</author>
   <maintainer email="santiago.tapia@upm.es">Santiago Tapia-Fernández</maintainer>
-  <license>Apache-2.0</license>
+  <license>BSD-3-Clause</license>
   <buildtool_depend>ament_cmake</buildtool_depend>
   <test_depend>ament_cmake_gtest</test_depend>
   <test_depend>ament_cmake_pytest</test_depend>

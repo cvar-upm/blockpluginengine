@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Universidad Politécnica de Madrid (UPM) - CVAR-UPM
+# SPDX-License-Identifier: BSD-3-Clause
+
 
 add_library(bpe_test_support SHARED
   tools/event_log.cpp

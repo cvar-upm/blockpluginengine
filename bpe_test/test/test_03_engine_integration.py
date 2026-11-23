@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 Universidad Politécnica de Madrid (UPM) - CVAR-UPM
+# SPDX-License-Identifier: BSD-3-Clause
+
 """Exercise five lifecycle and integration scenarios using the real BPE executable.
 
 Four configure-only scenarios stop from INACTIVE; the fifth asserts the

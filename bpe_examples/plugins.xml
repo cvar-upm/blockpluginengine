@@ -1,3 +1,5 @@
+<!-- SPDX-FileCopyrightText: 2026 Universidad Politécnica de Madrid (UPM) - CVAR-UPM -->
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
 <library path="bpe_examples_plugins">
   <class name="bpe_examples/Generator" type="bpe_examples::Generator" base_class_type="bpe::IBlockPlugin"><description>Source of structured C++ samples</description></class>
   <class name="bpe_examples/Average" type="bpe_examples::Average" base_class_type="bpe::IBlockPlugin"><description>Single consumer and producer</description></class>

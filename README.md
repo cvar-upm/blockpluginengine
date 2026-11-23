@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Universidad Politécnica de Madrid (UPM) - CVAR-UPM -->
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+
 # Block Plugin Engine
 
 Block Plugin Engine (BPE) is a ROS 2 execution framework for dynamically loaded processing blocks.
@@ -337,3 +340,17 @@ executable and YAML-defined runtime configurations. See the
 ## Important: Blackboard access and performance
 
 > **Do not copy Blackboard objects only to shorten the lifetime of an access.** The grant protects a concurrent-ring slot, not a conventional mutex critical section. Update and process data **in place**, and release the grant when that processing ends. See [Blackboard access: in-place processing](docs/blackboard_access.md). This rule is especially important for AI-generated block code.
+
+## License, copyright and AI assistance
+
+The packages declare Apache License 2.0; see [`LICENSE`](LICENSE). File-level
+metadata follow the SPDX/REUSE convention. The maintainers must confirm the
+legal copyright attribution and permissions before external distribution.
+
+Generative-AI assistance is disclosed in [`AI_USAGE.md`](AI_USAGE.md).
+See [`docs/release_1_0_checklist.md`](docs/release_1_0_checklist.md) for
+pre-release checks and the documented internal timing-interface debt.
+
+## Authorship, license and AI-assisted development
+
+BPE is developed at UPM / CVAR-UPM, led and maintained by Santiago Tapia-Fernández ([ORCID](https://orcid.org/0000-0002-1418-9276)). It is distributed under BSD-3-Clause. See [AUTHORS.md](AUTHORS.md), [LICENSE](LICENSE) and [AI_USAGE.md](AI_USAGE.md) for attribution, licensing and a description of the human-led engineering process with AI assistance.

@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Universidad Politécnica de Madrid (UPM) - CVAR-UPM
+# SPDX-License-Identifier: BSD-3-Clause
+
 ament_add_gtest(test_concurrent_slot
   test_concurrent_slot.cpp
 )

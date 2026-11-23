@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Universidad Politécnica de Madrid (UPM) - CVAR-UPM -->
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+
 # Blackboard: commit before signalling an event
 
 > **CRITICAL — FOR DEVELOPERS AND AI CODE GENERATORS**

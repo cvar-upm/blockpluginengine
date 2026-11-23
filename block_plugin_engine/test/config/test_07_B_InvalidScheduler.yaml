@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Universidad Politécnica de Madrid (UPM) - CVAR-UPM
+# SPDX-License-Identifier: BSD-3-Clause
+
 # The scheduler plugin does not exist. on_configure() must fail gracefully.
 scheduler:
   type: block_plugin_engine/NonexistentScheduler
