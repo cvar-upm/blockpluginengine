@@ -75,6 +75,24 @@ if(BUILD_TESTING)
   set_tests_properties(test_05_multischeduler_blackboard_concurrency PROPERTIES ENVIRONMENT
     "AMENT_PREFIX_PATH=${BPE_TEST_SCHEDULER_PREFIX}:$ENV{AMENT_PREFIX_PATH};LD_LIBRARY_PATH=${BPE_TEST_SCHEDULER_PREFIX}/lib:$ENV{LD_LIBRARY_PATH}")
 
+  # Same four-scheduler concurrency scenario at shorter, parametrizable
+  # periods. Reuse the source, not a copied test implementation.
+  ament_add_gtest(test_06_multischeduler_blackboard_high_frequency
+    test/test_05_multischeduler_blackboard_concurrency.cpp
+    TIMEOUT 75
+  )
+  target_compile_features(test_06_multischeduler_blackboard_high_frequency PRIVATE cxx_std_20)
+  target_compile_definitions(test_06_multischeduler_blackboard_high_frequency PRIVATE
+    BPE_CONCURRENCY_STRESS_TEST=1)
+  ament_target_dependencies(test_06_multischeduler_blackboard_high_frequency
+    block_plugin_engine pluginlib
+  )
+  target_link_libraries(test_06_multischeduler_blackboard_high_frequency
+    yaml-cpp Threads::Threads
+  )
+  set_tests_properties(test_06_multischeduler_blackboard_high_frequency PROPERTIES ENVIRONMENT
+    "AMENT_PREFIX_PATH=${BPE_TEST_SCHEDULER_PREFIX}:$ENV{AMENT_PREFIX_PATH};LD_LIBRARY_PATH=${BPE_TEST_SCHEDULER_PREFIX}/lib:$ENV{LD_LIBRARY_PATH}")
+
   # Exercise the five end-to-end integration scenarios against the real BPE
   # executable, without reconstructing its lifecycle/plugin loaders.
   find_package(ament_cmake_pytest REQUIRED)

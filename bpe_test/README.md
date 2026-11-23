@@ -35,3 +35,46 @@ colcon test-result --test-result-base build/bpe_test --verbose
 The ROS subscription-only configuration is intentionally not activated: it
 regresses the lifetime problem diagnosed in
 `bpe_ros_boundary_plugins/docs/life_cycle_issues.md`.
+
+## Concurrent Blackboard scenarios
+
+`test_05_multischeduler_blackboard_concurrency` is the baseline with four
+scheduler threads: one TIMER writer, an EVENT reader and two independent TIMER
+readers. It defaults to 10,000 writes, a 2000 us writer period, and 1000 us
+EVENT/TIMER reader periods. The minimum coverage requirements are 90% (EVENT)
+and 80% (each TIMER reader).
+
+`test_06_multischeduler_blackboard_high_frequency` builds **the same C++ source**
+with a more demanding default configuration: 200 us writer period and 100 us
+EVENT/TIMER periods. In this stress scenario the minimum distinct-version
+coverage is 50% per reader, because Blackboard guarantees the latest consistent
+snapshot, not delivery of every version. Both scenarios still require zero
+payload integrity errors, increasing observed sequences and observation of the
+final version by all three readers. The test prints each reader's received
+count and percentage.
+
+Both tests accept the following environment variables (all period values are
+positive **integer microseconds**, between 50 and 1,000,000):
+
+| Variable | test_05 default | test_06 default |
+| --- | ---: | ---: |
+| `BPE_CONCURRENCY_WRITER_US` | 2000 | 200 |
+| `BPE_CONCURRENCY_EVENT_US` | 1000 | 100 |
+| `BPE_CONCURRENCY_TIMER_US` | 1000 | 100 |
+| `BPE_CONCURRENCY_WRITES` | 10000 | 10000 |
+
+The write count accepts values between 10,000 and 1,000,000. The two TIMER
+readers intentionally share the same *period*, but run on different scheduler
+threads. The supervisor has its own consumer and does not occupy a scheduler
+worker. A 75-second CTest timeout applies by default; increasing the write
+count or period substantially may require a larger timeout.
+
+Example (run the test binary directly to supply environment overrides without
+CTest's test-specific environment):
+
+```bash
+BPE_CONCURRENCY_WRITER_US=500 \
+BPE_CONCURRENCY_EVENT_US=250 \
+BPE_CONCURRENCY_TIMER_US=250 \
+./build/bpe_test/test_06_multischeduler_blackboard_high_frequency
+```

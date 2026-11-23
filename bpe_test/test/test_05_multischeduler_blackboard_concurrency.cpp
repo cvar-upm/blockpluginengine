@@ -5,6 +5,8 @@
 #include <cstdint>
 #include <cstdlib>
 #include <memory>
+#include <sstream>
+#include <stdexcept>
 #include <string>
 #include <thread>
 
@@ -129,23 +131,63 @@ std::uint64_t number_of_writes() {
   return kDefault;
 }
 
-TEST(BlackboardConcurrency, OneTimedWriterThreeIndependentReaders) {
+// The same production-equivalent four-worker scenario is built twice:
+// test_05 keeps the baseline timing, and test_06 runs at higher frequency.
+// Periods can be overridden independently (integer microseconds).
+#ifdef BPE_CONCURRENCY_STRESS_TEST
+constexpr std::uint64_t kDefaultWriterUs = 200;
+constexpr std::uint64_t kDefaultEventUs = 100;
+constexpr std::uint64_t kDefaultTimedUs = 100;
+constexpr unsigned kMinEventPercent = 50;
+constexpr unsigned kMinTimedPercent = 50;
+#define BPE_CONCURRENCY_CASE OneWriterThreeReadersHighFrequency
+#else
+constexpr std::uint64_t kDefaultWriterUs = 2000;
+constexpr std::uint64_t kDefaultEventUs = 1000;
+constexpr std::uint64_t kDefaultTimedUs = 1000;
+constexpr unsigned kMinEventPercent = 90;
+constexpr unsigned kMinTimedPercent = 80;
+#define BPE_CONCURRENCY_CASE OneTimedWriterThreeIndependentReaders
+#endif
+
+std::uint64_t period_us(const char* variable, std::uint64_t fallback) {
+  const char* env = std::getenv(variable);
+  if (!env || !*env) return fallback;
+  const std::string text(env);
+  std::size_t consumed = 0;
+  const auto value = std::stoull(text, &consumed);
+  if (consumed != text.size() || value < 50 || value > 1'000'000) {
+    throw std::invalid_argument(std::string(variable) +
+        " must be an integer between 50 and 1000000 microseconds");
+  }
+  return value;
+}
+
+TEST(BlackboardConcurrency, BPE_CONCURRENCY_CASE) {
   const std::uint64_t limit = number_of_writes();
-  constexpr const char* kLabel = "bpe_test_05_multischeduler_payload";
+  constexpr const char* kLabel = "bpe_test_multischeduler_payload";
+  const auto writer_us = period_us("BPE_CONCURRENCY_WRITER_US", kDefaultWriterUs);
+  const auto event_us = period_us("BPE_CONCURRENCY_EVENT_US", kDefaultEventUs);
+  const auto timed_us = period_us("BPE_CONCURRENCY_TIMER_US", kDefaultTimedUs);
+  // Each of the two TIMER readers has its own worker but uses this period.
+  std::cout << "Blackboard scenario: writer=" << writer_us
+            << "us, EVENT=" << event_us << "us, TIMER=" << timed_us
+            << "us, writes=" << limit << '\n';
 
   // Four independent workers: TIMER writer; EVENT reader; two TIMER readers.
-  // The EVENT pipelines accept at most one activation per nominal 1ms slot.
-  const auto config = YAML::Load(R"(
-start_delay: 200ms
-threads:
-  - {type: block_plugin_engine/FairScheduler, realtime: {enabled: false}}
-  - type: block_plugin_engine/HybridFairScheduler
-    realtime: {enabled: false}
-    pipelines:
-      - {name: reader_a_pipeline, policy: event, period: 1ms, signal: reader_a_ready, blocks: [reader_a]}
-  - {type: block_plugin_engine/FairScheduler, realtime: {enabled: false}}
-  - {type: block_plugin_engine/FairScheduler, realtime: {enabled: false}}
-)");
+  // The EVENT pipeline may coalesce notifications within its nominal period.
+  std::ostringstream config_text;
+  config_text << "start_delay: 200ms\n"
+      << "threads:\n"
+      << "  - {type: block_plugin_engine/FairScheduler, realtime: {enabled: false}}\n"
+      << "  - type: block_plugin_engine/HybridFairScheduler\n"
+      << "    realtime: {enabled: false}\n"
+      << "    pipelines:\n"
+      << "      - {name: reader_a_pipeline, policy: event, period: "
+      << event_us << "us, signal: reader_a_ready, blocks: [reader_a]}\n"
+      << "  - {type: block_plugin_engine/FairScheduler, realtime: {enabled: false}}\n"
+      << "  - {type: block_plugin_engine/FairScheduler, realtime: {enabled: false}}\n";
+  const auto config = YAML::Load(config_text.str());
 
   pluginlib::ClassLoader<bpe::IBlockScheduler> loader(
       "block_plugin_engine", "bpe::IBlockScheduler");
@@ -162,20 +204,20 @@ threads:
   supervisor.bind(kLabel);
 
   EXPECT_EQ(scheduler->register_block("writer", writer,
-      YAML::Load("{thread: 0, policy: timer, period: 2ms}")), bpe::SchedulerResult::SUCCESS);
+      YAML::Load("{thread: 0, policy: timer, period: " + std::to_string(writer_us) + "us}")), bpe::SchedulerResult::SUCCESS);
   EXPECT_EQ(scheduler->register_block("reader_a", reader_a,
       YAML::Load("{thread: 1}")), bpe::SchedulerResult::SUCCESS);
   EXPECT_EQ(scheduler->register_block("reader_c", reader_c,
-      YAML::Load("{thread: 2, policy: timer, period: 1ms}")), bpe::SchedulerResult::SUCCESS);
+      YAML::Load("{thread: 2, policy: timer, period: " + std::to_string(timed_us) + "us}")), bpe::SchedulerResult::SUCCESS);
 
   EXPECT_EQ(scheduler->register_block("reader_d", reader_d,
-      YAML::Load("{thread: 3, policy: timer, period: 1ms}")), bpe::SchedulerResult::SUCCESS);
+      YAML::Load("{thread: 3, policy: timer, period: " + std::to_string(timed_us) + "us}")), bpe::SchedulerResult::SUCCESS);
 
   ASSERT_EQ(scheduler->start(), bpe::SchedulerResult::SUCCESS);
   // Bounded test even if a scheduler stops progressing. Timeout increases for
   // configured larger workloads but does not depend on nominal RT guarantees.
   const auto deadline = std::chrono::steady_clock::now() +
-      std::chrono::milliseconds(limit * 3 + 10'000);
+      std::chrono::milliseconds((limit * writer_us + 999) / 1000 + 10'000);
   std::uint64_t supervisor_seen = 0;
   bool finished = false;
   while (std::chrono::steady_clock::now() < deadline) {
@@ -205,9 +247,9 @@ threads:
     EXPECT_EQ(reader->errors(), 0u);
     EXPECT_EQ(reader->last_seen(), limit);
   }
-  EXPECT_GE(reader_a.count(), limit * 90 / 100);
-  EXPECT_GE(reader_c.count(), limit * 80 / 100);
-  EXPECT_GE(reader_d.count(), limit * 80 / 100);
+  EXPECT_GE(reader_a.count(), limit * kMinEventPercent / 100);
+  EXPECT_GE(reader_c.count(), limit * kMinTimedPercent / 100);
+  EXPECT_GE(reader_d.count(), limit * kMinTimedPercent / 100);
   const auto percentage = [limit](std::uint64_t count) {
     return 100.0 * static_cast<double>(count) / static_cast<double>(limit);
   };
