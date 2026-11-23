@@ -31,6 +31,25 @@ if(BUILD_TESTING)
     block_plugin_engine bpe_system_test pluginlib geometry_msgs
   )
   target_link_libraries(test_02_multi_twist_pipeline yaml-cpp)
+  # Preserve the five legacy integration scenarios against the real BPE
+  # executable, without reconstructing its lifecycle/plugin loaders.
+  find_package(ament_cmake_pytest REQUIRED)
+  find_package(bpe_ros_boundary_plugins REQUIRED)
+
+  ament_add_pytest_test(test_03_engine_integration
+    test/test_03_engine_integration.py
+    TIMEOUT 120
+  )
+
+  get_filename_component(BPE_TEST_ENGINE_PREFIX
+    "${block_plugin_engine_DIR}/../../.." ABSOLUTE)
+  get_filename_component(BPE_TEST_BOUNDARY_PREFIX
+    "${bpe_ros_boundary_plugins_DIR}/../../.." ABSOLUTE)
+  get_filename_component(BPE_TEST_SYSTEM_PREFIX
+    "${bpe_system_test_DIR}/../../.." ABSOLUTE)
+
+  set_tests_properties(test_03_engine_integration PROPERTIES ENVIRONMENT
+    "AMENT_PREFIX_PATH=${CMAKE_INSTALL_PREFIX}:${BPE_TEST_ENGINE_PREFIX}:${BPE_TEST_BOUNDARY_PREFIX}:${BPE_TEST_SYSTEM_PREFIX}:$ENV{AMENT_PREFIX_PATH};LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib:${BPE_TEST_ENGINE_PREFIX}/lib:${BPE_TEST_BOUNDARY_PREFIX}/lib:${BPE_TEST_SYSTEM_PREFIX}/lib:$ENV{LD_LIBRARY_PATH};BPE_TEST_CONFIG_DIR=${CMAKE_CURRENT_SOURCE_DIR}/config;BPE_TEST_EXECUTABLE=${BPE_TEST_ENGINE_PREFIX}/lib/block_plugin_engine/block_plugin_engine")
 endif()
 
 ament_package()

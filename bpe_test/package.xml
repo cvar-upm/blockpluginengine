@@ -7,6 +7,10 @@
   <license>Apache-2.0</license>
   <buildtool_depend>ament_cmake</buildtool_depend>
   <test_depend>ament_cmake_gtest</test_depend>
+  <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>bpe_ros_boundary_plugins</test_depend>
+  <test_depend>rclpy</test_depend>
+  <test_depend>lifecycle_msgs</test_depend>
   <test_depend>block_plugin_engine</test_depend>
   <test_depend>bpe_system_test</test_depend>
   <test_depend>pluginlib</test_depend>
