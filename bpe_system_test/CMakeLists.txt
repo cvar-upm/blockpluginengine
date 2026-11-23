@@ -48,6 +48,10 @@ install(
   DESTINATION share/${PROJECT_NAME}
 )
 
+# Public inspection interface consumed by cross-package regression tests.
+install(DIRECTORY include/ DESTINATION include)
+ament_export_include_directories(include)
+
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
   find_package(yaml-cpp REQUIRED)
