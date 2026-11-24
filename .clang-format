@@ -35,7 +35,7 @@ AlignTrailingComments: true
 PointerAlignment: Left
 ReferenceAlignment: Left
 
-SortIncludes: true
+SortIncludes: Never
 IncludeBlocks: Preserve
 
 SpaceBeforeParens: ControlStatements
