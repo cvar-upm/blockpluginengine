@@ -1,0 +1,46 @@
+# SPDX-FileCopyrightText: 2026 Universidad Politécnica de Madrid (UPM) - CVAR-UPM
+# SPDX-License-Identifier: BSD-3-Clause
+
+name: clang-tidy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analysis:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: ros-industrial/industrial_ci@master
+        env:
+          ROS_DISTRO: jazzy
+          ROS_REPO: main
+          BASEDIR: ${{ runner.temp }}/bpe-clang-tidy
+          ADDITIONAL_DEBS: clang-tidy-18
+          TARGET_CMAKE_ARGS: -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+          AFTER_SCRIPT: >-
+            status=0;
+            python3 "$BASEDIR/target_ws/src/blockpluginengine/ci/static_analysis.py"
+            clang-tidy "$BASEDIR/target_ws/build" "$BASEDIR/report" || status=$?;
+            chmod -R a+rX "$BASEDIR/report";
+            exit "$status"
+      - name: Publish analysis summary
+        if: always()
+        run: |
+          report="${{ runner.temp }}/bpe-clang-tidy/report/summary.md"
+          if test -f "$report"; then cat "$report" >> "$GITHUB_STEP_SUMMARY"; fi
+      - name: Upload analysis report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: bpe-clang-tidy-jazzy-amd64
+          path: ${{ runner.temp }}/bpe-clang-tidy/report/
+          if-no-files-found: error
+          retention-days: 30

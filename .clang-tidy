@@ -1,0 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Universidad Politécnica de Madrid (UPM) - CVAR-UPM
+# SPDX-License-Identifier: BSD-3-Clause
+Checks: '-*,clang-analyzer-*,bugprone-*,performance-*,concurrency-*,portability-*'
+WarningsAsErrors: ''
+HeaderFilterRegex: '.*(blockpluginengine|install/(block_plugin_engine|bpe_blackboard|bpe_ros_boundary_plugins|bpe_examples|bpe_test))/.*'
+FormatStyle: none
