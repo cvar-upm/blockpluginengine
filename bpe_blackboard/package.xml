@@ -5,7 +5,7 @@
 <!-- SPDX-License-Identifier: BSD-3-Clause -->
 <package format="3">
   <name>bpe_blackboard</name>
-  <version>1.0.0</version>
+  <version>1.0.2</version>
   <description>Header-only concurrent blackboard library for the Block Plugin Engine.</description>
 
   <author email="santiago.tapia@upm.es">Santiago Tapia-Fernández</author>

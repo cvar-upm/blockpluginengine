@@ -3,7 +3,7 @@
 
 # AI-assisted development disclosure — Block Plugin Engine (BPE)
 
-**Release:** 1.0.0
+**Release:** 1.0.2
 **Institution and research group:** Universidad Politécnica de Madrid (UPM), CVAR-UPM
 **Human author, lead designer and maintainer:** Santiago Tapia-Fernández (santiago.tapia@upm.es; ORCID: https://orcid.org/0000-0002-1418-9276)
 
@@ -67,7 +67,7 @@ The work followed a human-directed, incremental development cycle:
    scheduler, ROS boundary, and concurrent Blackboard tests were added or expanded.
    Representative examples were also executed in the actual environment.
 7. **Release review:** API compatibility, installation, licensing, attribution and
-   documentation were reviewed before the 1.0.0 release.
+   documentation were reviewed before the 1.0.2 release.
 
 ## 4. AI systems and model identification
 

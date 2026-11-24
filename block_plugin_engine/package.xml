@@ -5,7 +5,7 @@
 <!-- SPDX-License-Identifier: BSD-3-Clause -->
 <package format="3">
   <name>block_plugin_engine</name>
-  <version>1.0.0</version>
+  <version>1.0.2</version>
   <description>BlockPluginEngine core ROS 2 package.</description>
 
   <author email="santiago.tapia@upm.es">Santiago Tapia-Fernández</author>

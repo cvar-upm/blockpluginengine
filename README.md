@@ -341,16 +341,20 @@ executable and YAML-defined runtime configurations. See the
 
 > **Do not copy Blackboard objects only to shorten the lifetime of an access.** The grant protects a concurrent-ring slot, not a conventional mutex critical section. Update and process data **in place**, and release the grant when that processing ends. See [Blackboard access: in-place processing](docs/blackboard_access.md). This rule is especially important for AI-generated block code.
 
-## License, copyright and AI assistance
-
-The packages declare Apache License 2.0; see [`LICENSE`](LICENSE). File-level
-metadata follow the SPDX/REUSE convention. The maintainers must confirm the
-legal copyright attribution and permissions before external distribution.
-
-Generative-AI assistance is disclosed in [`AI_USAGE.md`](AI_USAGE.md).
-See [`docs/release_1_0_checklist.md`](docs/release_1_0_checklist.md) for
-pre-release checks and the documented internal timing-interface debt.
-
 ## Authorship, license and AI-assisted development
 
 BPE is developed at UPM / CVAR-UPM, led and maintained by Santiago Tapia-Fernández ([ORCID](https://orcid.org/0000-0002-1418-9276)). It is distributed under BSD-3-Clause. See [AUTHORS.md](AUTHORS.md), [LICENSE](LICENSE) and [AI_USAGE.md](AI_USAGE.md) for attribution, licensing and a description of the human-led engineering process with AI assistance.
+
+For citation metadata, see [CITATION.cff](CITATION.cff).
+
+## Funding and acknowledgements
+
+Block Plugin Engine (BPE) has been developed at Universidad Politécnica de Madrid (UPM), within the CVAR-UPM research group, as part of the European research project [SHEREC — Safe, Healthy and Environmental Ship Recycling](https://doi.org/10.3030/101136056), under the European Union's Horizon Europe research and innovation programme, Grant Agreement No. 101136056.
+
+Although developed within the framework of SHEREC, BPE is designed as a general-purpose software framework for real-time robotic applications, intended to support reuse beyond the scope of the project.
+
+### Disclaimer
+
+Funded by the European Union. Views and opinions expressed are however those of the author(s) only and do not necessarily reflect those of the European Union or the European Commission. Neither the European Union nor the granting authority can be held responsible for them.
+
+This software is provided "as is", without warranties or guarantees, under the terms and conditions of the BSD-3-Clause license. See the [LICENSE](LICENSE) file for details.

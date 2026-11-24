@@ -3,7 +3,7 @@
 <!-- SPDX-License-Identifier: BSD-3-Clause -->
 <package format="3">
   <name>bpe_examples</name>
-  <version>1.0.0</version>
+  <version>1.0.2</version>
   <description>Self-contained example BlockPluginEngine applications with private plugin implementations.</description>
   <author email="santiago.tapia@upm.es">Santiago Tapia-Fernández</author>
   <maintainer email="santiago.tapia@upm.es">Santiago Tapia-Fernández</maintainer>

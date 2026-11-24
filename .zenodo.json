@@ -1,0 +1,31 @@
+{
+  "title": "Block Plugin Engine (BPE)",
+  "version": "1.0.2",
+  "upload_type": "software",
+  "access_right": "open",
+  "license": "bsd-3-clause",
+  "language": "eng",
+  "creators": [
+    {
+      "name": "Tapia-Fernández, Santiago",
+      "affiliation": "Universidad Politécnica de Madrid (UPM), CVAR-UPM",
+      "orcid": "0000-0002-1418-9276"
+    }
+  ],
+  "description": "Block Plugin Engine (BPE) is a C++ execution framework for ROS 2 applications based on dynamically loaded processing blocks. It provides configurable periodic, event-driven and multi-threaded scheduling, concurrent blackboard communication and generic ROS 2 input/output boundaries. Its architecture is designed to support predictable execution and memory behaviour in real-time robotic applications.",
+  "keywords": [
+    "ROS 2",
+    "Robotics",
+    "Real-time systems",
+    "Scheduling",
+    "Event-driven execution",
+    "Concurrent blackboard",
+    "Component-based software",
+    "C++"
+  ],
+  "grants": [
+    {
+      "id": "10.13039/501100000780::101136056"
+    }
+  ]
+}

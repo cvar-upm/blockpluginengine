@@ -6,3 +6,7 @@ Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Files: LICENSE LICENSES/BSD-3-Clause.txt
 Copyright: 2026 Universidad Politécnica de Madrid (UPM)
 License: BSD-3-Clause
+
+Files: .zenodo.json
+Copyright: 2026 Universidad Politécnica de Madrid (UPM)
+License: BSD-3-Clause
