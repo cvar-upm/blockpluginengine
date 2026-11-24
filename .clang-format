@@ -36,6 +36,7 @@ PointerAlignment: Left
 ReferenceAlignment: Left
 
 SortIncludes: Never
+SortUsingDeclarations: false
 IncludeBlocks: Preserve
 
 SpaceBeforeParens: ControlStatements
