@@ -3,6 +3,17 @@
 
 # Block Plugin Engine
 
+[![ROS 2 Jazzy](https://github.com/cvar-upm/blockpluginengine/actions/workflows/ci-jazzy.yml/badge.svg?branch=main)](https://github.com/cvar-upm/blockpluginengine/actions/workflows/ci-jazzy.yml?query=branch%3Amain)
+[![ROS 2 Lyrical](https://github.com/cvar-upm/blockpluginengine/actions/workflows/ci-lyrical.yml/badge.svg?branch=main)](https://github.com/cvar-upm/blockpluginengine/actions/workflows/ci-lyrical.yml?query=branch%3Amain)
+[![Code quality](https://github.com/cvar-upm/blockpluginengine/actions/workflows/code-quality.yml/badge.svg?branch=main)](https://github.com/cvar-upm/blockpluginengine/actions/workflows/code-quality.yml?query=branch%3Amain)
+[![Coverage report](https://github.com/cvar-upm/blockpluginengine/actions/workflows/coverage.yml/badge.svg?branch=main)](https://github.com/cvar-upm/blockpluginengine/actions/workflows/coverage.yml?query=branch%3Amain)
+[![ASan and UBSan](https://github.com/cvar-upm/blockpluginengine/actions/workflows/sanitizers.yml/badge.svg?branch=main)](https://github.com/cvar-upm/blockpluginengine/actions/workflows/sanitizers.yml?query=branch%3Amain)
+
+[![License](https://img.shields.io/badge/license-BSD--3--Clause-blue)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/cvar-upm/blockpluginengine)](https://github.com/cvar-upm/blockpluginengine/releases)
+
+CI validates AMD64 and ARM64 on ROS 2 Jazzy and Lyrical. The coverage workflow publishes a downloadable HTML report in its run artifacts. Hosted-runner tests do not certify real-time performance.
+
 Block Plugin Engine (BPE) is a ROS 2 execution framework for dynamically loaded processing blocks.
 
 BPE provides a single ROS 2 lifecycle node, a plugin manager, a selectable scheduler (periodic, event-driven, or multi-threaded) and a concurrent blackboard used to exchange data between blocks. ROS 2 is primarily treated as an input/output boundary: processing blocks can remain independent from ROS unless they explicitly implement a ROS boundary.

@@ -1,0 +1,39 @@
+# SPDX-FileCopyrightText: 2026 Universidad Politécnica de Madrid (UPM) - CVAR-UPM
+# SPDX-License-Identifier: BSD-3-Clause
+
+name: Code Quality
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    name: clang-format 14
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: sudo apt-get update && sudo apt-get install -y clang-format-14
+      - name: Check tracked C and C++ files
+        run: |
+          clang-format-14 --version
+          git ls-files -z '*.cpp' '*.hpp' '*.h' '*.c' '*.cc' | xargs -0 -r clang-format-14 --style="file:$PWD/.clang-format" --dry-run --Werror
+  reuse:
+    name: REUSE compliance
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install REUSE
+        run: |
+          python3 -m venv "$RUNNER_TEMP/reuse-venv"
+          "$RUNNER_TEMP/reuse-venv/bin/pip" install 'reuse==5.0.2'
+      - name: Check licensing metadata
+        run: '"$RUNNER_TEMP/reuse-venv/bin/reuse" lint'

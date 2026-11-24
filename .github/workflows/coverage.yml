@@ -1,0 +1,51 @@
+# SPDX-FileCopyrightText: 2026 Universidad Politécnica de Madrid (UPM) - CVAR-UPM
+# SPDX-License-Identifier: BSD-3-Clause
+
+name: Code Coverage
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  coverage:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ros-industrial/industrial_ci@master
+        env:
+          ROS_DISTRO: jazzy
+          ROS_REPO: main
+          BASEDIR: ${{ runner.temp }}/bpe-coverage
+          ADDITIONAL_DEBS: gcovr
+          TARGET_CMAKE_ARGS: >-
+            -DCMAKE_BUILD_TYPE=Debug
+            -DCMAKE_C_FLAGS="--coverage -fprofile-update=atomic"
+            -DCMAKE_CXX_FLAGS="--coverage -fprofile-update=atomic"
+            -DCMAKE_EXE_LINKER_FLAGS=--coverage
+            -DCMAKE_SHARED_LINKER_FLAGS=--coverage
+            -DCMAKE_MODULE_LINKER_FLAGS=--coverage
+          AFTER_SCRIPT: >-
+            cd "$BASEDIR/target_ws" &&
+            mkdir -p "$BASEDIR/report" &&
+            gcovr --root "$PWD/src"
+            --filter '.*(block_plugin_engine|bpe_blackboard|bpe_ros_boundary_plugins|bpe_examples|bpe_test)/(src|include)/.*'
+            --exclude '.*/(test|tests)/.*'
+            --html-details "$BASEDIR/report/index.html"
+            --json-summary "$BASEDIR/report/summary.json"
+            --print-summary "$PWD/build" &&
+            python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["line_total"] > 0, "Empty coverage report"' "$BASEDIR/report/summary.json" &&
+            chmod -R a+rX "$BASEDIR/report"
+      - name: Upload HTML coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: bpe-coverage-jazzy-amd64
+          path: ${{ runner.temp }}/bpe-coverage/report/
+          if-no-files-found: error
+          retention-days: 30
