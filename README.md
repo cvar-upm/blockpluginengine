@@ -150,6 +150,10 @@ if (input.has_new_value()) {
 
 The typed API hides the internal `RosProtectedData`, grant factories, serialized representation, and type-erasure mechanisms.
 
+## Important: Blackboard access and performance
+
+> **Do not copy Blackboard objects only to shorten the lifetime of an access.** The grant protects a concurrent-ring slot, not a conventional mutex critical section. Update and process data **in place**, and release the grant when that processing ends. See [Blackboard access: in-place processing](docs/blackboard_access.md). This rule is especially important for AI-generated block code.
+
 ## ROS boundaries
 
 The package `bpe_ros_boundary_plugins` provides two generic ROS plugins:
@@ -337,9 +341,6 @@ executable and YAML-defined runtime configurations. See the
 - [`docs/configuration.md`](docs/configuration.md) — YAML configuration format and plugin configuration.
 - [`docs/hybrid_scheduler.md`](docs/hybrid_scheduler.md) — event signals and scheduler-owned pipelines.
 - [`docs/testing.md`](docs/testing.md) — test architecture, integration scenarios, and regression strategy.
-## Important: Blackboard access and performance
-
-> **Do not copy Blackboard objects only to shorten the lifetime of an access.** The grant protects a concurrent-ring slot, not a conventional mutex critical section. Update and process data **in place**, and release the grant when that processing ends. See [Blackboard access: in-place processing](docs/blackboard_access.md). This rule is especially important for AI-generated block code.
 
 ## Authorship, license and AI-assisted development
 
