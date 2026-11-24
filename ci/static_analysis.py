@@ -56,6 +56,8 @@ def main():
                 with xml.open("w") as out, (report / f"{package}.txt").open("w") as log:
                     result = subprocess.run(["cppcheck", f"--project={filtered}",
                                              "--enable=warning,performance,portability", "--std=c++20",
+                                             "--library=googletest",
+                                             f"--library={root / 'ci/cppcheck-pluginlib.cfg'}",
                                              "--inline-suppr", "--xml", "--xml-version=2"],
                                             stdout=log, stderr=out)
                 for diagnostic in ET.parse(xml).findall(".//error"):
