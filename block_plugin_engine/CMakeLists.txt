@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Universidad Politécnica de Madrid (UPM) - CVAR-UPM
 # SPDX-License-Identifier: BSD-3-Clause
 
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.16)
 project(block_plugin_engine)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
@@ -37,13 +37,15 @@ target_include_directories(block_plugin_engine_core
     $<INSTALL_INTERFACE:include>
 )
 
-ament_target_dependencies(block_plugin_engine_core
-  rclcpp
-  rosidl_runtime_cpp
+target_link_libraries(block_plugin_engine_core
+  rclcpp::rclcpp
+  rosidl_runtime_cpp::rosidl_runtime_cpp
 )
 
 target_link_libraries(block_plugin_engine_core
   bpe_blackboard::bpe_blackboard
+  rclcpp_lifecycle::rclcpp_lifecycle
+  yaml-cpp
 )
 
 #
@@ -59,7 +61,9 @@ target_compile_features(bpe_multi_scheduler PUBLIC cxx_std_20)
 target_include_directories(bpe_multi_scheduler PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-ament_target_dependencies(bpe_multi_scheduler pluginlib)
+target_link_libraries(bpe_multi_scheduler
+  pluginlib::pluginlib
+)
 target_link_libraries(bpe_multi_scheduler yaml-cpp)
 
 add_library(bpe_hybrid_fair_scheduler SHARED src/bpe_hybrid_fair_scheduler.cpp)
@@ -67,7 +71,9 @@ target_compile_features(bpe_hybrid_fair_scheduler PUBLIC cxx_std_20)
 target_include_directories(bpe_hybrid_fair_scheduler PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-ament_target_dependencies(bpe_hybrid_fair_scheduler pluginlib)
+target_link_libraries(bpe_hybrid_fair_scheduler
+  pluginlib::pluginlib
+)
 target_link_libraries(bpe_hybrid_fair_scheduler Threads::Threads block_plugin_engine_core)
 
 add_library(bpe_fair_scheduler SHARED
@@ -84,7 +90,9 @@ target_include_directories(bpe_fair_scheduler
     $<INSTALL_INTERFACE:include>
 )
 
-ament_target_dependencies(bpe_fair_scheduler pluginlib)
+target_link_libraries(bpe_fair_scheduler
+  pluginlib::pluginlib
+)
 
 target_link_libraries(bpe_fair_scheduler
   Threads::Threads
@@ -112,10 +120,10 @@ target_include_directories(block_plugin_engine
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-ament_target_dependencies(block_plugin_engine
-  rclcpp
-  rclcpp_lifecycle
-  pluginlib
+target_link_libraries(block_plugin_engine
+  rclcpp::rclcpp
+  rclcpp_lifecycle::rclcpp_lifecycle
+  pluginlib::pluginlib
 )
 
 target_link_libraries(block_plugin_engine
@@ -143,8 +151,15 @@ install(
 )
 
 install(
+  TARGETS block_plugin_engine_core
+  EXPORT export_block_plugin_engine_core
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
+
+install(
   TARGETS
-    block_plugin_engine_core
     bpe_fair_scheduler
     bpe_hybrid_fair_scheduler
     bpe_multi_scheduler
@@ -163,6 +178,7 @@ install(
 
 ament_export_include_directories(include)
 ament_export_libraries(block_plugin_engine_core)
+ament_export_targets(export_block_plugin_engine_core HAS_LIBRARY_TARGET)
 
 ament_export_dependencies(
   bpe_blackboard

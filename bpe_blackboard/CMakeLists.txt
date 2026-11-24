@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Universidad Politécnica de Madrid (UPM) - CVAR-UPM
 # SPDX-License-Identifier: BSD-3-Clause
 
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.16)
 project(bpe_blackboard)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")

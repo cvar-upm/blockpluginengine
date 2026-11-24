@@ -7,7 +7,6 @@
 [![ROS 2 Lyrical](https://github.com/cvar-upm/blockpluginengine/actions/workflows/ci-lyrical.yml/badge.svg?branch=main)](https://github.com/cvar-upm/blockpluginengine/actions/workflows/ci-lyrical.yml?query=branch%3Amain)
 [![Code quality](https://github.com/cvar-upm/blockpluginengine/actions/workflows/code-quality.yml/badge.svg?branch=main)](https://github.com/cvar-upm/blockpluginengine/actions/workflows/code-quality.yml?query=branch%3Amain)
 [![Coverage report](https://github.com/cvar-upm/blockpluginengine/actions/workflows/coverage.yml/badge.svg?branch=main)](https://github.com/cvar-upm/blockpluginengine/actions/workflows/coverage.yml?query=branch%3Amain)
-[![ASan and UBSan](https://github.com/cvar-upm/blockpluginengine/actions/workflows/sanitizers.yml/badge.svg?branch=main)](https://github.com/cvar-upm/blockpluginengine/actions/workflows/sanitizers.yml?query=branch%3Amain)
 
 [![License](https://img.shields.io/badge/license-BSD--3--Clause-blue)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/cvar-upm/blockpluginengine)](https://github.com/cvar-upm/blockpluginengine/releases)

@@ -26,8 +26,8 @@ target_include_directories(bpe_test_plugins
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-ament_target_dependencies(bpe_test_plugins
-  pluginlib
+target_link_libraries(bpe_test_plugins
+  pluginlib::pluginlib
 )
 
 target_link_libraries(bpe_test_plugins
@@ -53,9 +53,9 @@ target_include_directories(test_03_block_plugin_manager
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-ament_target_dependencies(test_03_block_plugin_manager
-  rclcpp
-  pluginlib
+target_link_libraries(test_03_block_plugin_manager
+  rclcpp::rclcpp
+  pluginlib::pluginlib
 )
 
 target_link_libraries(test_03_block_plugin_manager
@@ -122,9 +122,9 @@ ament_add_gtest(test_01_ros_typed_blackboard
   test_01_ros_typed_blackboard.cpp
 )
 
-ament_target_dependencies(test_01_ros_typed_blackboard
-  geometry_msgs
-  rclcpp
+target_link_libraries(test_01_ros_typed_blackboard
+  ${geometry_msgs_TARGETS}
+  rclcpp::rclcpp
 )
 
 target_include_directories(test_01_ros_typed_blackboard
@@ -165,7 +165,9 @@ target_compile_features(bpe_test_simulated_schedulers PUBLIC cxx_std_20)
 target_include_directories(bpe_test_simulated_schedulers PRIVATE
   ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}
 )
-ament_target_dependencies(bpe_test_simulated_schedulers pluginlib)
+target_link_libraries(bpe_test_simulated_schedulers
+  pluginlib::pluginlib
+)
 target_link_libraries(bpe_test_simulated_schedulers
   bpe_test_support block_plugin_engine_core yaml-cpp Threads::Threads
 )
@@ -185,8 +187,11 @@ target_include_directories(test_07_bpe_lifecycle PRIVATE
   ${PROJECT_SOURCE_DIR}/include
   ${PROJECT_SOURCE_DIR}/src
 )
-ament_target_dependencies(test_07_bpe_lifecycle
-  rclcpp rclcpp_lifecycle pluginlib lifecycle_msgs
+target_link_libraries(test_07_bpe_lifecycle
+  rclcpp::rclcpp
+  rclcpp_lifecycle::rclcpp_lifecycle
+  pluginlib::pluginlib
+  ${lifecycle_msgs_TARGETS}
 )
 target_link_libraries(test_07_bpe_lifecycle
   block_plugin_engine_core yaml-cpp Threads::Threads
@@ -224,7 +229,10 @@ target_compile_features(test_06_scheduler_integration PUBLIC cxx_std_20)
 target_include_directories(test_06_scheduler_integration PRIVATE
   ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}
 )
-ament_target_dependencies(test_06_scheduler_integration rclcpp pluginlib)
+target_link_libraries(test_06_scheduler_integration
+  rclcpp::rclcpp
+  pluginlib::pluginlib
+)
 target_link_libraries(test_06_scheduler_integration
   block_plugin_engine_core bpe_test_support yaml-cpp Threads::Threads
 )

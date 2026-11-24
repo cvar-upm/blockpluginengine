@@ -4,8 +4,7 @@
 name: ASan and UBSan
 
 on:
-  push:
-    branches: [main]
+  # Temporarily manual-only while investigating ROS 2 type support leaks locally.
   workflow_dispatch:
 
 permissions:
@@ -15,7 +14,7 @@ jobs:
   sanitizers:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: ros-industrial/industrial_ci@master

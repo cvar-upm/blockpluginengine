@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Universidad Politécnica de Madrid (UPM) - CVAR-UPM
 # SPDX-License-Identifier: BSD-3-Clause
 
-cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 3.16)
 project(bpe_test)
 
 find_package(ament_cmake REQUIRED)
@@ -18,7 +18,11 @@ add_library(bpe_test_plugins SHARED
 )
 target_compile_features(bpe_test_plugins PUBLIC cxx_std_20)
 target_include_directories(bpe_test_plugins PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-ament_target_dependencies(bpe_test_plugins block_plugin_engine pluginlib geometry_msgs)
+target_link_libraries(bpe_test_plugins
+  block_plugin_engine::block_plugin_engine_core
+  pluginlib::pluginlib
+  ${geometry_msgs_TARGETS}
+)
 pluginlib_export_plugin_description_file(block_plugin_engine plugins.xml)
 install(TARGETS bpe_test_plugins LIBRARY DESTINATION lib ARCHIVE DESTINATION lib RUNTIME DESTINATION bin)
 
@@ -32,8 +36,9 @@ if(BUILD_TESTING)
     test/test_01_twist_pipeline.cpp
   )
   target_compile_features(test_01_twist_pipeline PRIVATE cxx_std_20)
-  ament_target_dependencies(test_01_twist_pipeline
-    block_plugin_engine pluginlib
+  target_link_libraries(test_01_twist_pipeline
+    block_plugin_engine::block_plugin_engine_core
+    pluginlib::pluginlib
   )
   target_include_directories(test_01_twist_pipeline PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
   add_dependencies(test_01_twist_pipeline bpe_test_plugins)
@@ -46,8 +51,10 @@ if(BUILD_TESTING)
   target_compile_definitions(test_02_multi_twist_pipeline PRIVATE
     BPE_TEST_MULTI_CONFIG_PATH="${CMAKE_CURRENT_SOURCE_DIR}/config/test_02_multi_twist_pipeline.yaml"
   )
-  ament_target_dependencies(test_02_multi_twist_pipeline
-    block_plugin_engine pluginlib geometry_msgs
+  target_link_libraries(test_02_multi_twist_pipeline
+    block_plugin_engine::block_plugin_engine_core
+    pluginlib::pluginlib
+    ${geometry_msgs_TARGETS}
   )
   target_include_directories(test_02_multi_twist_pipeline PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
   add_dependencies(test_02_multi_twist_pipeline bpe_test_plugins)
@@ -58,7 +65,9 @@ if(BUILD_TESTING)
     test/test_04_blackboard_concurrency.cpp
   )
   target_compile_features(test_04_blackboard_concurrency PRIVATE cxx_std_20)
-  ament_target_dependencies(test_04_blackboard_concurrency block_plugin_engine)
+  target_link_libraries(test_04_blackboard_concurrency
+    block_plugin_engine::block_plugin_engine_core
+  )
   target_link_libraries(test_04_blackboard_concurrency Threads::Threads)
 
   # Four real scheduler workers: TIMER writer, EVENT reader, two TIMER readers.
@@ -67,8 +76,9 @@ if(BUILD_TESTING)
     TIMEOUT 75
   )
   target_compile_features(test_05_multischeduler_blackboard_concurrency PRIVATE cxx_std_20)
-  ament_target_dependencies(test_05_multischeduler_blackboard_concurrency
-    block_plugin_engine pluginlib
+  target_link_libraries(test_05_multischeduler_blackboard_concurrency
+    block_plugin_engine::block_plugin_engine_core
+    pluginlib::pluginlib
   )
   target_link_libraries(test_05_multischeduler_blackboard_concurrency
     yaml-cpp Threads::Threads
@@ -87,8 +97,9 @@ if(BUILD_TESTING)
   target_compile_features(test_06_multischeduler_blackboard_high_frequency PRIVATE cxx_std_20)
   target_compile_definitions(test_06_multischeduler_blackboard_high_frequency PRIVATE
     BPE_CONCURRENCY_STRESS_TEST=1)
-  ament_target_dependencies(test_06_multischeduler_blackboard_high_frequency
-    block_plugin_engine pluginlib
+  target_link_libraries(test_06_multischeduler_blackboard_high_frequency
+    block_plugin_engine::block_plugin_engine_core
+    pluginlib::pluginlib
   )
   target_link_libraries(test_06_multischeduler_blackboard_high_frequency
     yaml-cpp Threads::Threads
