@@ -24,14 +24,12 @@ public:
 
   bpe::BlockResult configure(const bpe::BlockConfig& config) override {
     try {
-      if (!config["inputs"] || !config["outputs"] ||
-          !config["inputs"].IsSequence() || !config["outputs"].IsSequence() ||
-          config["inputs"].size() != 2 || config["outputs"].size() != 2)
+      if (!config["inputs"] || !config["outputs"] || !config["inputs"].IsSequence() ||
+          !config["outputs"].IsSequence() || config["inputs"].size() != 2 ||
+          config["outputs"].size() != 2)
         return bpe::BlockResult::FAILURE;
-      inputs_.bind(config["inputs"][0].as<std::string>(),
-                   config["inputs"][1].as<std::string>());
-      outputs_.bind(config["outputs"][0].as<std::string>(),
-                    config["outputs"][1].as<std::string>());
+      inputs_.bind(config["inputs"][0].as<std::string>(), config["inputs"][1].as<std::string>());
+      outputs_.bind(config["outputs"][0].as<std::string>(), config["outputs"][1].as<std::string>());
       return bpe::BlockResult::SUCCESS;
     } catch (...) {
       return bpe::BlockResult::FAILURE;

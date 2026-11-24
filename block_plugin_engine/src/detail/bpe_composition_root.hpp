@@ -20,8 +20,7 @@ class BlockPluginManager;
 // into the block manager. The scheduler loader outlives every loaded instance.
 class BPECompositionRoot {
 public:
-  explicit BPECompositionRoot(
-      const rclcpp::NodeOptions& options = rclcpp::NodeOptions());
+  explicit BPECompositionRoot(const rclcpp::NodeOptions& options = rclcpp::NodeOptions());
   ~BPECompositionRoot();
 
   BPECompositionRoot(const BPECompositionRoot&) = delete;
@@ -34,8 +33,12 @@ public:
   // Called by lifecycle callbacks, after the config_file parameter is known.
   bool configure(const std::string& config_file);
   bool cleanup();
-  const std::shared_ptr<IBlockScheduler>& scheduler() const noexcept { return scheduler_; }
-  BlockPluginManager& plugin_manager() noexcept { return *plugin_manager_; }
+  const std::shared_ptr<IBlockScheduler>& scheduler() const noexcept {
+    return scheduler_;
+  }
+  BlockPluginManager& plugin_manager() noexcept {
+    return *plugin_manager_;
+  }
 
 private:
   pluginlib::ClassLoader<IBlockScheduler> scheduler_loader_;

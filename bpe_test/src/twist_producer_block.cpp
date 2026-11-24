@@ -14,9 +14,7 @@
 
 namespace bpe_test {
 
-class TwistProducerBlock final
-  : public bpe::IBlockPlugin,
-    public bpe::IScheduledBlock {
+class TwistProducerBlock final : public bpe::IBlockPlugin, public bpe::IScheduledBlock {
 public:
   using Message = geometry_msgs::msg::TwistStamped;
 
@@ -65,6 +63,4 @@ private:
 
 } // namespace bpe_test
 
-PLUGINLIB_EXPORT_CLASS(
-  bpe_test::TwistProducerBlock,
-  bpe::IBlockPlugin)
+PLUGINLIB_EXPORT_CLASS(bpe_test::TwistProducerBlock, bpe::IBlockPlugin)

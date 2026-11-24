@@ -21,18 +21,17 @@
 namespace bpe {
 
 // Scheduler-owned, non-preemptive pipelines; no EventService/global registry.
-template<typename Clock>
+template <typename Clock>
 class BaseHybridFairScheduler final : public IBlockScheduler, public IEventSignalProvider {
 public:
   BaseHybridFairScheduler() : clock_(std::make_shared<Clock>()) {}
-  explicit BaseHybridFairScheduler(std::shared_ptr<Clock> clock)
-      : clock_(std::move(clock)) {
-    if (!clock_) throw std::invalid_argument("hybrid scheduler clock must not be null");
+  explicit BaseHybridFairScheduler(std::shared_ptr<Clock> clock) : clock_(std::move(clock)) {
+    if (!clock_)
+      throw std::invalid_argument("hybrid scheduler clock must not be null");
   }
   ~BaseHybridFairScheduler() override;
   SchedulerResult configure(const SchedulerConfig&) override;
-  SchedulerResult register_block(const std::string&, IScheduledBlock&,
-                                 const YAML::Node&) override;
+  SchedulerResult register_block(const std::string&, IScheduledBlock&, const YAML::Node&) override;
   std::shared_ptr<IEventSignal> get_signal(std::string_view name) override;
   SchedulerResult remove(const std::string&) override;
   using IBlockScheduler::start;

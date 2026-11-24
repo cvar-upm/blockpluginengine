@@ -18,10 +18,9 @@
 
 namespace bpe_ros_boundary_plugins {
 
-class RosOutputBlock final
-  : public bpe::IBlockPlugin,
-    public bpe::IRosBoundaryBlock,
-    public bpe::IScheduledBlock {
+class RosOutputBlock final : public bpe::IBlockPlugin,
+                             public bpe::IRosBoundaryBlock,
+                             public bpe::IScheduledBlock {
 public:
   void set_ros_interface(
       const rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr& topics) override {
@@ -48,8 +47,8 @@ public:
           result = bpe::BlockResult::FAILURE;
         } else {
           consumer_.bind(blackboard_input_, ros_type_);
-          publisher_ = rclcpp::create_generic_publisher(
-              topics_, topic_, ros_type_, rclcpp::QoS(qos_depth_));
+          publisher_ =
+              rclcpp::create_generic_publisher(topics_, topic_, ros_type_, rclcpp::QoS(qos_depth_));
         }
       }
     } catch (...) {
@@ -93,6 +92,4 @@ private:
 
 } // namespace bpe_ros_boundary_plugins
 
-PLUGINLIB_EXPORT_CLASS(
-  bpe_ros_boundary_plugins::RosOutputBlock,
-  bpe::IBlockPlugin)
+PLUGINLIB_EXPORT_CLASS(bpe_ros_boundary_plugins::RosOutputBlock, bpe::IBlockPlugin)

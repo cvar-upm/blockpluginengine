@@ -20,4 +20,4 @@ struct Summary {
   std::uint64_t sequence{0};
   std::vector<double> statistics;
 };
-}  // namespace bpe_examples
+} // namespace bpe_examples

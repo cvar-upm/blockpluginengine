@@ -26,10 +26,12 @@ public:
   }
   bool wait_for_count(unsigned n, std::chrono::milliseconds timeout = std::chrono::seconds{2}) {
     std::unique_lock<std::mutex> lock(mutex_);
-    return cv_.wait_for(lock, timeout,
-                        [&] { return calls_.load(std::memory_order_relaxed) >= n; });
+    return cv_.wait_for(lock, timeout, [&] { return calls_.load(std::memory_order_relaxed) >= n; });
   }
-  unsigned count() const { return calls_.load(std::memory_order_relaxed); }
+  unsigned count() const {
+    return calls_.load(std::memory_order_relaxed);
+  }
+
 private:
   std::atomic<unsigned> calls_{0};
   std::mutex mutex_;
@@ -40,10 +42,13 @@ class TimerMockBlock final : public ITimerBlockWithInfo {
 public:
   TimerMockBlock() = default;
 
-  void set_on_execute(std::function<void()> callback) { callback_ = std::move(callback); }
+  void set_on_execute(std::function<void()> callback) {
+    callback_ = std::move(callback);
+  }
 
   ExecutionResult execute(const TimerExecutionInfo& info) override {
-    if (callback_) callback_();
+    if (callback_)
+      callback_();
     {
       std::lock_guard<std::mutex> lock(mutex_);
       infos_.push_back(info);

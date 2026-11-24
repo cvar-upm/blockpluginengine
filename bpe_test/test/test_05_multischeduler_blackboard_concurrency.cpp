@@ -52,7 +52,8 @@ struct DeterministicPayload {
   bool check() const noexcept {
     std::int64_t sum = 0;
     for (std::size_t i = 0; i + 1 < data.size(); ++i) {
-      if (data[i] != expected(logical_sequence, i)) return false;
+      if (data[i] != expected(logical_sequence, i))
+        return false;
       sum += data[i];
     }
     return data.back() == -sum;
@@ -61,19 +62,19 @@ struct DeterministicPayload {
 
 class Writer final : public bpe::IScheduledBlock {
 public:
-  Writer(const std::string& label, std::uint64_t limit,
-         std::shared_ptr<bpe::IEventSignal> signal)
-      : limit_(limit), signal_(std::move(signal)) {
+  Writer(const std::string& label, std::uint64_t limit, std::shared_ptr<bpe::IEventSignal> signal)
+    : limit_(limit), signal_(std::move(signal)) {
     producer_.bind(label);
   }
 
   bpe::ExecutionResult execute() override {
     const auto next = written_.load(std::memory_order_relaxed) + 1;
-    if (next > limit_) return bpe::ExecutionResult::SUCCESS;
+    if (next > limit_)
+      return bpe::ExecutionResult::SUCCESS;
     {
       auto grant = producer_.write_access();
       grant.value().assign(next); // Direct, in-place modification.
-    } // Commit before signalling the event reader.
+    }                             // Commit before signalling the event reader.
     written_.store(next, std::memory_order_release);
     if (!signal_->signal()) {
       signal_failures_.fetch_add(1, std::memory_order_relaxed);
@@ -81,8 +82,13 @@ public:
     return bpe::ExecutionResult::SUCCESS;
   }
 
-  std::uint64_t written() const { return written_.load(std::memory_order_acquire); }
-  unsigned signal_failures() const { return signal_failures_.load(); }
+  std::uint64_t written() const {
+    return written_.load(std::memory_order_acquire);
+  }
+  unsigned signal_failures() const {
+    return signal_failures_.load();
+  }
+
 private:
   bpe::TypedProducer<DeterministicPayload> producer_;
   std::uint64_t limit_;
@@ -93,13 +99,17 @@ private:
 
 class Reader final : public bpe::IScheduledBlock {
 public:
-  explicit Reader(const std::string& label) { consumer_.bind(label); }
+  explicit Reader(const std::string& label) {
+    consumer_.bind(label);
+  }
 
   bpe::ExecutionResult execute() override {
     auto grant = consumer_.read_access();
-    if (!grant.has_new_value()) return bpe::ExecutionResult::SUCCESS;
+    if (!grant.has_new_value())
+      return bpe::ExecutionResult::SUCCESS;
     const auto seq = grant.value().logical_sequence;
-    if (seq == 0) return bpe::ExecutionResult::SUCCESS;
+    if (seq == 0)
+      return bpe::ExecutionResult::SUCCESS;
     if (!grant.value().check() || seq <= last_) {
       errors_.fetch_add(1, std::memory_order_relaxed);
     } else {
@@ -111,9 +121,16 @@ public:
     return bpe::ExecutionResult::SUCCESS;
   }
 
-  std::uint64_t count() const { return received_.load(std::memory_order_acquire); }
-  std::uint64_t last_seen() const { return last_seen_.load(std::memory_order_acquire); }
-  unsigned errors() const { return errors_.load(std::memory_order_acquire); }
+  std::uint64_t count() const {
+    return received_.load(std::memory_order_acquire);
+  }
+  std::uint64_t last_seen() const {
+    return last_seen_.load(std::memory_order_acquire);
+  }
+  unsigned errors() const {
+    return errors_.load(std::memory_order_acquire);
+  }
+
 private:
   bpe::TypedConsumer<DeterministicPayload> consumer_;
   // Only this reader's worker thread accesses these two non-atomic variables.
@@ -126,11 +143,14 @@ private:
 std::uint64_t number_of_writes() {
   constexpr std::uint64_t kDefault = 10'000;
   const char* env = std::getenv("BPE_CONCURRENCY_WRITES");
-  if (!env || !*env) return kDefault;
+  if (!env || !*env)
+    return kDefault;
   try {
     const auto number = std::stoull(env);
-    if (number >= kDefault && number <= 1'000'000) return number;
-  } catch (const std::exception&) {}
+    if (number >= kDefault && number <= 1'000'000)
+      return number;
+  } catch (const std::exception&) {
+  }
   return kDefault;
 }
 
@@ -155,13 +175,14 @@ constexpr unsigned kMinTimedPercent = 80;
 
 std::uint64_t period_us(const char* variable, std::uint64_t fallback) {
   const char* env = std::getenv(variable);
-  if (!env || !*env) return fallback;
+  if (!env || !*env)
+    return fallback;
   const std::string text(env);
   std::size_t consumed = 0;
   const auto value = std::stoull(text, &consumed);
   if (consumed != text.size() || value < 50 || value > 1'000'000) {
     throw std::invalid_argument(std::string(variable) +
-        " must be an integer between 50 and 1000000 microseconds");
+                                " must be an integer between 50 and 1000000 microseconds");
   }
   return value;
 }
@@ -173,9 +194,8 @@ TEST(BlackboardConcurrency, BPE_CONCURRENCY_CASE) {
   const auto event_us = period_us("BPE_CONCURRENCY_EVENT_US", kDefaultEventUs);
   const auto timed_us = period_us("BPE_CONCURRENCY_TIMER_US", kDefaultTimedUs);
   // Each of the two TIMER readers has its own worker but uses this period.
-  std::cout << "Blackboard scenario: writer=" << writer_us
-            << "us, EVENT=" << event_us << "us, TIMER=" << timed_us
-            << "us, writes=" << limit << '\n';
+  std::cout << "Blackboard scenario: writer=" << writer_us << "us, EVENT=" << event_us
+            << "us, TIMER=" << timed_us << "us, writes=" << limit << '\n';
 
   // Keep each FairScheduler spin margin strictly below its block period.
   // This preserves the usual 100us default for the baseline, while allowing
@@ -187,22 +207,22 @@ TEST(BlackboardConcurrency, BPE_CONCURRENCY_CASE) {
   // The EVENT pipeline may coalesce notifications within its nominal period.
   std::ostringstream config_text;
   config_text << "start_delay: 200ms\n"
-      << "threads:\n"
-      << "  - {type: block_plugin_engine/FairScheduler, realtime: {enabled: false}, "
-      << "timing: {spin_before_deadline: " << writer_spin_us << "us}}\n"
-      << "  - type: block_plugin_engine/HybridFairScheduler\n"
-      << "    realtime: {enabled: false}\n"
-      << "    pipelines:\n"
-      << "      - {name: reader_a_pipeline, policy: event, period: "
-      << event_us << "us, signal: reader_a_ready, blocks: [reader_a]}\n"
-      << "  - {type: block_plugin_engine/FairScheduler, realtime: {enabled: false}, "
-      << "timing: {spin_before_deadline: " << timed_spin_us << "us}}\n"
-      << "  - {type: block_plugin_engine/FairScheduler, realtime: {enabled: false}, "
-      << "timing: {spin_before_deadline: " << timed_spin_us << "us}}\n";
+              << "threads:\n"
+              << "  - {type: block_plugin_engine/FairScheduler, realtime: {enabled: false}, "
+              << "timing: {spin_before_deadline: " << writer_spin_us << "us}}\n"
+              << "  - type: block_plugin_engine/HybridFairScheduler\n"
+              << "    realtime: {enabled: false}\n"
+              << "    pipelines:\n"
+              << "      - {name: reader_a_pipeline, policy: event, period: " << event_us
+              << "us, signal: reader_a_ready, blocks: [reader_a]}\n"
+              << "  - {type: block_plugin_engine/FairScheduler, realtime: {enabled: false}, "
+              << "timing: {spin_before_deadline: " << timed_spin_us << "us}}\n"
+              << "  - {type: block_plugin_engine/FairScheduler, realtime: {enabled: false}, "
+              << "timing: {spin_before_deadline: " << timed_spin_us << "us}}\n";
   const auto config = YAML::Load(config_text.str());
 
-  pluginlib::ClassLoader<bpe::IBlockScheduler> loader(
-      "block_plugin_engine", "bpe::IBlockScheduler");
+  pluginlib::ClassLoader<bpe::IBlockScheduler> loader("block_plugin_engine",
+                                                      "bpe::IBlockScheduler");
   auto scheduler = loader.createSharedInstance("block_plugin_engine/MultiScheduler");
   ASSERT_EQ(scheduler->configure(config), bpe::SchedulerResult::SUCCESS);
   auto* events = dynamic_cast<bpe::IEventSignalProvider*>(scheduler.get());
@@ -215,28 +235,38 @@ TEST(BlackboardConcurrency, BPE_CONCURRENCY_CASE) {
   bpe::TypedConsumer<DeterministicPayload> supervisor;
   supervisor.bind(kLabel);
 
-  ASSERT_EQ(scheduler->register_block("writer", writer,
-      YAML::Load("{thread: 0, policy: timer, period: " + std::to_string(writer_us) + "us}")), bpe::SchedulerResult::SUCCESS);
-  ASSERT_EQ(scheduler->register_block("reader_a", reader_a,
-      YAML::Load("{thread: 1}")), bpe::SchedulerResult::SUCCESS);
-  ASSERT_EQ(scheduler->register_block("reader_c", reader_c,
-      YAML::Load("{thread: 2, policy: timer, period: " + std::to_string(timed_us) + "us}")), bpe::SchedulerResult::SUCCESS);
+  ASSERT_EQ(scheduler->register_block("writer",
+                                      writer,
+                                      YAML::Load("{thread: 0, policy: timer, period: " +
+                                                 std::to_string(writer_us) + "us}")),
+            bpe::SchedulerResult::SUCCESS);
+  ASSERT_EQ(scheduler->register_block("reader_a", reader_a, YAML::Load("{thread: 1}")),
+            bpe::SchedulerResult::SUCCESS);
+  ASSERT_EQ(scheduler->register_block("reader_c",
+                                      reader_c,
+                                      YAML::Load("{thread: 2, policy: timer, period: " +
+                                                 std::to_string(timed_us) + "us}")),
+            bpe::SchedulerResult::SUCCESS);
 
-  ASSERT_EQ(scheduler->register_block("reader_d", reader_d,
-      YAML::Load("{thread: 3, policy: timer, period: " + std::to_string(timed_us) + "us}")), bpe::SchedulerResult::SUCCESS);
+  ASSERT_EQ(scheduler->register_block("reader_d",
+                                      reader_d,
+                                      YAML::Load("{thread: 3, policy: timer, period: " +
+                                                 std::to_string(timed_us) + "us}")),
+            bpe::SchedulerResult::SUCCESS);
 
   ASSERT_EQ(scheduler->start(), bpe::SchedulerResult::SUCCESS);
   // Bounded test even if a scheduler stops progressing. Timeout increases for
   // configured larger workloads but does not depend on nominal RT guarantees.
   const auto deadline = std::chrono::steady_clock::now() +
-      std::chrono::milliseconds((limit * writer_us + 999) / 1000 + 10'000);
+                        std::chrono::milliseconds((limit * writer_us + 999) / 1000 + 10'000);
   std::uint64_t supervisor_seen = 0;
   bool finished = false;
   while (std::chrono::steady_clock::now() < deadline) {
     {
       auto grant = supervisor.read_access();
       if (grant.has_new_value() && grant.value().logical_sequence > 0) {
-        if (!grant.value().check()) ADD_FAILURE() << "Supervisor saw invalid payload";
+        if (!grant.value().check())
+          ADD_FAILURE() << "Supervisor saw invalid payload";
         supervisor_seen = grant.value().logical_sequence;
       }
     }
@@ -250,9 +280,8 @@ TEST(BlackboardConcurrency, BPE_CONCURRENCY_CASE) {
   EXPECT_EQ(scheduler->stop(), bpe::SchedulerResult::SUCCESS);
 
   EXPECT_TRUE(finished) << "Timed out: supervisor=" << supervisor_seen
-      << " writer=" << writer.written() << " readers="
-      << reader_a.last_seen() << "," << reader_c.last_seen() << ","
-      << reader_d.last_seen();
+                        << " writer=" << writer.written() << " readers=" << reader_a.last_seen()
+                        << "," << reader_c.last_seen() << "," << reader_d.last_seen();
   EXPECT_EQ(writer.written(), limit);
   EXPECT_EQ(writer.signal_failures(), 0u);
   for (const auto* reader : {&reader_a, &reader_c, &reader_d}) {
@@ -266,12 +295,12 @@ TEST(BlackboardConcurrency, BPE_CONCURRENCY_CASE) {
     return 100.0 * static_cast<double>(count) / static_cast<double>(limit);
   };
   std::cout << "Blackboard 1W/3R: " << writer.written() << " writes; "
-            << "A EVENT: " << reader_a.count() << "/" << limit
-            << " (" << percentage(reader_a.count()) << "%), "
-            << "C TIMER: " << reader_c.count() << "/" << limit
-            << " (" << percentage(reader_c.count()) << "%), "
-            << "D TIMER: " << reader_d.count() << "/" << limit
-            << " (" << percentage(reader_d.count()) << "%)\n";
+            << "A EVENT: " << reader_a.count() << "/" << limit << " ("
+            << percentage(reader_a.count()) << "%), "
+            << "C TIMER: " << reader_c.count() << "/" << limit << " ("
+            << percentage(reader_c.count()) << "%), "
+            << "D TIMER: " << reader_d.count() << "/" << limit << " ("
+            << percentage(reader_d.count()) << "%)\n";
   EXPECT_EQ(scheduler->clear(), bpe::SchedulerResult::SUCCESS);
 }
 

@@ -13,7 +13,8 @@
 namespace bpe::test {
 
 // A periodically scheduled producer that signals a pipeline on another worker.
-class TestSignalProducerBlock final : public IBlockPlugin, public IScheduledBlock,
+class TestSignalProducerBlock final : public IBlockPlugin,
+                                      public IScheduledBlock,
                                       public IEventSignalUser {
 public:
   void set_event_signal_provider(IEventSignalProvider& provider) override {
@@ -21,7 +22,8 @@ public:
     record_event("producer.inject");
   }
   BlockResult configure(const BlockConfig& config) override {
-    if (!provider_ || !config["signal"]) return BlockResult::FAILURE;
+    if (!provider_ || !config["signal"])
+      return BlockResult::FAILURE;
     signal_ = provider_->get_signal(config["signal"].as<std::string>());
     record_event(signal_ ? "producer.configure" : "producer.missing_signal");
     return signal_ ? BlockResult::SUCCESS : BlockResult::FAILURE;
@@ -30,12 +32,18 @@ public:
     record_event("producer.start");
     return BlockResult::SUCCESS;
   }
-  BlockResult stop() override { return BlockResult::SUCCESS; }
-  BlockResult cleanup() override { signal_.reset(); return BlockResult::SUCCESS; }
+  BlockResult stop() override {
+    return BlockResult::SUCCESS;
+  }
+  BlockResult cleanup() override {
+    signal_.reset();
+    return BlockResult::SUCCESS;
+  }
   ExecutionResult execute() override {
     record_event("producer.execute");
     return signal_ && signal_->signal() ? ExecutionResult::SUCCESS : ExecutionResult::FAILURE;
   }
+
 private:
   IEventSignalProvider* provider_{nullptr};
   std::shared_ptr<IEventSignal> signal_;

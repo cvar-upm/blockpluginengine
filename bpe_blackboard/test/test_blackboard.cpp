@@ -182,7 +182,6 @@ TEST(BlackboardTests, SeveralConsumerEndpointsCanHoldDifferentSamples) {
   EXPECT_EQ(reader_6.data().value, 6);
 }
 
-
 TEST(BlackboardTests, UsesDefaultInitializationMargin) {
   Blackboard<TestProtectedData> blackboard;
 

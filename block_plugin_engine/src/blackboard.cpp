@@ -31,10 +31,10 @@ void reset_blackboard() {
   auto& instance = blackboard_instance();
 
   RCLCPP_DEBUG(rclcpp::get_logger("block_plugin_engine"),
-              "Runtime state: destroying blackboard instance");
+               "Runtime state: destroying blackboard instance");
   instance = std::move(replacement);
   RCLCPP_DEBUG(rclcpp::get_logger("block_plugin_engine"),
-              "Runtime state: blackboard instance destroyed and recreated");
+               "Runtime state: blackboard instance destroyed and recreated");
 }
 
 } // namespace detail

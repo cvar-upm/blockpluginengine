@@ -15,8 +15,7 @@
 namespace bpe::test {
 namespace {
 
-using CallbackReturn =
-    rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
+using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
 
 std::string config_file(const char* filename) {
   return std::string(BPE_TEST_CONFIG_DIR) + "/" + filename;
@@ -40,7 +39,8 @@ protected:
   }
 
   static void TearDownTestSuite() {
-    if (rclcpp::ok()) rclcpp::shutdown();
+    if (rclcpp::ok())
+      rclcpp::shutdown();
   }
 };
 
@@ -62,23 +62,19 @@ TEST_F(LifecycleIntegration, LifecycleConfiguresActivatesDeactivatesAndCleansUp)
 
   node.configure(outcome);
   ASSERT_EQ(outcome, CallbackReturn::SUCCESS);
-  EXPECT_EQ(node.get_current_state().id(),
-            lifecycle_msgs::msg::State::PRIMARY_STATE_INACTIVE);
+  EXPECT_EQ(node.get_current_state().id(), lifecycle_msgs::msg::State::PRIMARY_STATE_INACTIVE);
 
   node.activate(outcome);
   ASSERT_EQ(outcome, CallbackReturn::SUCCESS);
-  EXPECT_EQ(node.get_current_state().id(),
-            lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE);
+  EXPECT_EQ(node.get_current_state().id(), lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE);
 
   node.deactivate(outcome);
   ASSERT_EQ(outcome, CallbackReturn::SUCCESS);
-  EXPECT_EQ(node.get_current_state().id(),
-            lifecycle_msgs::msg::State::PRIMARY_STATE_INACTIVE);
+  EXPECT_EQ(node.get_current_state().id(), lifecycle_msgs::msg::State::PRIMARY_STATE_INACTIVE);
 
   node.cleanup(outcome);
   ASSERT_EQ(outcome, CallbackReturn::SUCCESS);
-  EXPECT_EQ(node.get_current_state().id(),
-            lifecycle_msgs::msg::State::PRIMARY_STATE_UNCONFIGURED);
+  EXPECT_EQ(node.get_current_state().id(), lifecycle_msgs::msg::State::PRIMARY_STATE_UNCONFIGURED);
 }
 
 TEST_F(LifecycleIntegration, LifecycleReconfiguresAfterCleanup) {
@@ -122,8 +118,7 @@ TEST_F(LifecycleIntegration, ShutdownDirectlyFromActive) {
   ASSERT_EQ(outcome, CallbackReturn::SUCCESS);
   node.shutdown(outcome);
   ASSERT_EQ(outcome, CallbackReturn::SUCCESS);
-  EXPECT_EQ(node.get_current_state().id(),
-            lifecycle_msgs::msg::State::PRIMARY_STATE_FINALIZED);
+  EXPECT_EQ(node.get_current_state().id(), lifecycle_msgs::msg::State::PRIMARY_STATE_FINALIZED);
 }
 
 } // namespace

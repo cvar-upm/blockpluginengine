@@ -74,7 +74,6 @@ TEST(RosTypedBlackboard, RebindingIsRejected) {
   EXPECT_THROW(consumer.bind("test_01_ros_typed_blackboard.other_consumer"), std::logic_error);
 }
 
-
 // MultiProducer and MultiConsumer group independent typed channels.
 TEST(RosTypedBlackboard, MultiProducerAndMultiConsumerShareTypedValues) {
   bpe::MultiProducer<TestMessage, OtherMessage> producer;

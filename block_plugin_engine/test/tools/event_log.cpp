@@ -45,7 +45,8 @@ bool wait_for_event(const std::string& name, std::chrono::milliseconds timeout) 
   });
 }
 
-bool wait_for_event_count(const std::string& name, std::size_t count,
+bool wait_for_event_count(const std::string& name,
+                          std::size_t count,
                           std::chrono::milliseconds timeout) {
   std::unique_lock<std::mutex> lock(event_mutex);
   return event_cv.wait_for(lock, timeout, [&] {

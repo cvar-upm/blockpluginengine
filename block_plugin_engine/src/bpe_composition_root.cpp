@@ -20,12 +20,12 @@ constexpr const char* DEFAULT_SCHEDULER = "block_plugin_engine/FairScheduler";
 }
 
 BPECompositionRoot::BPECompositionRoot(const rclcpp::NodeOptions& options)
-    : scheduler_loader_("block_plugin_engine", "bpe::IBlockScheduler") {
+  : scheduler_loader_("block_plugin_engine", "bpe::IBlockScheduler") {
   const auto logger = rclcpp::get_logger("block_plugin_engine");
   RCLCPP_INFO(logger, "Constructing BlockPluginEngine composition root");
   node_ = std::make_shared<BPE_LifecycleNode>(*this, options);
-  plugin_manager_ = std::make_shared<BlockPluginManager>(
-      node_->get_node_topics_interface(), node_->get_logger());
+  plugin_manager_ =
+      std::make_shared<BlockPluginManager>(node_->get_node_topics_interface(), node_->get_logger());
   RCLCPP_INFO(logger, "BlockPluginEngine composition root constructed");
 }
 
@@ -49,7 +49,8 @@ bool BPECompositionRoot::configure(const std::string& config_file) {
       return false;
     }
     const auto type = scheduler_config && scheduler_config["type"]
-        ? scheduler_config["type"].as<std::string>() : DEFAULT_SCHEDULER;
+                          ? scheduler_config["type"].as<std::string>()
+                          : DEFAULT_SCHEDULER;
     if (type.empty()) {
       RCLCPP_ERROR(logger, "Scheduler type cannot be empty");
       return false;
@@ -70,8 +71,10 @@ bool BPECompositionRoot::configure(const std::string& config_file) {
       return false;
     }
   } catch (const YAML::Exception& error) {
-    RCLCPP_ERROR(logger, "Could not load or interpret configuration '%s': %s",
-                 config_file.c_str(), error.what());
+    RCLCPP_ERROR(logger,
+                 "Could not load or interpret configuration '%s': %s",
+                 config_file.c_str(),
+                 error.what());
     cleanup();
     return false;
   } catch (const pluginlib::PluginlibException& error) {
@@ -87,7 +90,8 @@ bool BPECompositionRoot::configure(const std::string& config_file) {
 }
 
 bool BPECompositionRoot::cleanup() {
-  if (scheduler_) scheduler_->stop();
+  if (scheduler_)
+    scheduler_->stop();
   // The manager drops block instances (and scheduler references) before the
   // scheduler DSO is released. The node remains alive for ROS teardown.
   const bool ok = plugin_manager_->cleanup();

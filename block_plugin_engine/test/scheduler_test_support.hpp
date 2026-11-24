@@ -75,8 +75,7 @@ inline std::size_t calibrate_iterations(std::chrono::nanoseconds target) {
     const std::int64_t elapsed = measure_work_time(iterations);
 
     if (elapsed > 0) {
-      double ratio =
-        static_cast<double>(target.count()) / static_cast<double>(elapsed);
+      double ratio = static_cast<double>(target.count()) / static_cast<double>(elapsed);
 
       if (ratio > 0.85 && ratio < 1.15) {
         break;
@@ -88,8 +87,7 @@ inline std::size_t calibrate_iterations(std::chrono::nanoseconds target) {
         ratio = 4.0;
       }
 
-      iterations =
-        static_cast<std::size_t>(static_cast<double>(iterations) * ratio);
+      iterations = static_cast<std::size_t>(static_cast<double>(iterations) * ratio);
 
       if (iterations == 0) {
         iterations = 1;
@@ -103,8 +101,7 @@ inline std::size_t calibrate_iterations(std::chrono::nanoseconds target) {
 class ExecutionLog {
 public:
   void record(int block_id) {
-    const std::size_t index =
-      count_.fetch_add(1, std::memory_order_relaxed);
+    const std::size_t index = count_.fetch_add(1, std::memory_order_relaxed);
 
     if (index < events_.size()) {
       events_[index] = block_id;
@@ -141,8 +138,7 @@ public:
       block_id_(block_id) {}
 
   ExecutionResult execute() override {
-    const std::size_t index =
-      count_.fetch_add(1, std::memory_order_relaxed);
+    const std::size_t index = count_.fetch_add(1, std::memory_order_relaxed);
 
     const std::int64_t start = now_nanoseconds();
 
@@ -228,33 +224,28 @@ inline bool wait_for_samples(const RecordingTimerBlock& block,
                              std::chrono::milliseconds timeout) {
   const auto limit = std::chrono::steady_clock::now() + timeout;
 
-  while (block.count() < expected &&
-         std::chrono::steady_clock::now() < limit) {
+  while (block.count() < expected && std::chrono::steady_clock::now() < limit) {
     std::this_thread::sleep_for(1ms);
   }
 
   return block.count() >= expected;
 }
 
-inline bool wait_for_events(const ExecutionLog& log,
-                            std::size_t expected,
-                            std::chrono::milliseconds timeout) {
+inline bool
+wait_for_events(const ExecutionLog& log, std::size_t expected, std::chrono::milliseconds timeout) {
   const auto limit = std::chrono::steady_clock::now() + timeout;
 
-  while (log.count() < expected &&
-         std::chrono::steady_clock::now() < limit) {
+  while (log.count() < expected && std::chrono::steady_clock::now() < limit) {
     std::this_thread::sleep_for(1ms);
   }
 
   return log.count() >= expected;
 }
 
-inline SchedulerConfig scheduler_config(
-  std::chrono::nanoseconds spin_before_deadline) {
+inline SchedulerConfig scheduler_config(std::chrono::nanoseconds spin_before_deadline) {
   YAML::Node config;
   config["realtime"]["enabled"] = false;
-  config["timing"]["spin_before_deadline"] =
-    std::to_string(spin_before_deadline.count()) + "ns";
+  config["timing"]["spin_before_deadline"] = std::to_string(spin_before_deadline.count()) + "ns";
   return config;
 }
 

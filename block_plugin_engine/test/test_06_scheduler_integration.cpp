@@ -52,9 +52,11 @@ protected:
   }
 
   void TearDown() override {
-    if (scheduler_) scheduler_->stop();
+    if (scheduler_)
+      scheduler_->stop();
     if (manager_) {
-      if (started_blocks_) manager_->stop();
+      if (started_blocks_)
+        manager_->stop();
       manager_->cleanup();
       manager_.reset();
     }
@@ -73,8 +75,8 @@ protected:
       scheduler_.reset();
     }
     const auto config = yaml["scheduler"];
-    const std::string type = config && config["type"]
-        ? config["type"].as<std::string>() : "block_plugin_engine/FairScheduler";
+    const std::string type = config && config["type"] ? config["type"].as<std::string>()
+                                                      : "block_plugin_engine/FairScheduler";
     scheduler_ = loader_.createSharedInstance(type);
     const auto result = scheduler_->configure(config);
     if (result != SchedulerResult::SUCCESS) {
@@ -87,7 +89,8 @@ protected:
   }
 
   bool start() {
-    if (!manager_->start()) return false;
+    if (!manager_->start())
+      return false;
     started_blocks_ = true;
     return scheduler_->start(origin_) == SchedulerResult::SUCCESS;
   }
@@ -144,13 +147,14 @@ TEST_F(SchedulerIntegration, HybridResolvesPipelinesAndIgnoresBlockExecution) {
   const auto b = std::find(log.begin(), log.end(), "b.execute");
   ASSERT_NE(a, log.end());
   ASSERT_NE(b, log.end());
-  EXPECT_LT(a, b); // One complete pipeline, in configured order.
+  EXPECT_LT(a, b);                   // One complete pipeline, in configured order.
   EXPECT_EQ(count("a.execute"), 1u); // Invalid individual execution was ignored.
   EXPECT_EQ(count("c.execute"), 1u);
 }
 
 TEST_F(SchedulerIntegration, MultiSchedulerForwardsTimedSignalToHybridOnOtherWorker) {
-  ASSERT_TRUE(configure_file("test_06_C_MultiSchedulerForwardsTimedSignalToHybridOnOtherWorker.yaml"));
+  ASSERT_TRUE(
+      configure_file("test_06_C_MultiSchedulerForwardsTimedSignalToHybridOnOtherWorker.yaml"));
   ASSERT_TRUE(contains("producer.inject"));
   ASSERT_TRUE(contains("producer.configure"));
   ASSERT_TRUE(start());
@@ -172,16 +176,15 @@ TEST_F(SchedulerIntegration, MultiSchedulerForwardsTimedSignalToHybridOnOtherWor
 }
 
 TEST_F(SchedulerIntegration, HybridFailsToStartWhenPipelineReferencesMissingBlock) {
-  ASSERT_TRUE(configure_file("test_06_D_HybridFailsToStartWhenPipelineReferencesMissingBlock.yaml"));
+  ASSERT_TRUE(
+      configure_file("test_06_D_HybridFailsToStartWhenPipelineReferencesMissingBlock.yaml"));
   ASSERT_TRUE(manager_->start());
   started_blocks_ = true;
   EXPECT_EQ(scheduler_->start(), SchedulerResult::INVALID_CONFIG);
   EXPECT_FALSE(contains("present.execute"));
 }
 
-
 TEST_F(SchedulerIntegration, HybridCleanupInvalidatesSignalsAndAllowsReconfigure) {
-  
   ASSERT_TRUE(configure_file("test_06_E_HybridCleanupInvalidatesSignalsAndAllowsReconfigure.yaml"));
   auto* old_provider = dynamic_cast<IEventSignalProvider*>(scheduler_.get());
   ASSERT_NE(old_provider, nullptr);
@@ -208,15 +211,18 @@ TEST_F(SchedulerIntegration, HybridCleanupInvalidatesSignalsAndAllowsReconfigure
 }
 
 TEST_F(SchedulerIntegration, SchedulerRejectsInvalidFairExecutionAndManagerRollsBack) {
-  const auto config = load_config("test_06_F_SchedulerRejectsInvalidFairExecutionAndManagerRollsBack.yaml");
+  const auto config =
+      load_config("test_06_F_SchedulerRejectsInvalidFairExecutionAndManagerRollsBack.yaml");
   scheduler_ = loader_.createSharedInstance("block_plugin_engine/FairScheduler");
   ASSERT_EQ(scheduler_->configure(config["scheduler"]), SchedulerResult::SUCCESS);
   manager_->set_scheduler(scheduler_);
-  EXPECT_FALSE(manager_->configure(load_config("test_06_F_SchedulerRejectsInvalidFairExecutionAndManagerRollsBack.yaml")["blocks"]));
+  EXPECT_FALSE(manager_->configure(load_config(
+      "test_06_F_SchedulerRejectsInvalidFairExecutionAndManagerRollsBack.yaml")["blocks"]));
   EXPECT_TRUE(contains("first.cleanup"));
   EXPECT_TRUE(contains("invalid.cleanup"));
   // Retrying after the manager's rollback must work.
-  ASSERT_TRUE(manager_->configure(load_config("test_06_F_SchedulerRejectsInvalidFairExecutionAndManagerRollsBack.yaml")["retry_blocks"]));
+  ASSERT_TRUE(manager_->configure(load_config(
+      "test_06_F_SchedulerRejectsInvalidFairExecutionAndManagerRollsBack.yaml")["retry_blocks"]));
 }
 
 } // namespace

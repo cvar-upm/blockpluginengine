@@ -21,10 +21,9 @@
 
 namespace bpe_ros_boundary_plugins {
 
-class RosInputBlock final
-  : public bpe::IBlockPlugin,
-    public bpe::IRosBoundaryBlock,
-    public bpe::IEventSignalUser {
+class RosInputBlock final : public bpe::IBlockPlugin,
+                            public bpe::IRosBoundaryBlock,
+                            public bpe::IEventSignalUser {
 public:
   void set_ros_interface(
       const rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr& topics) override {
@@ -105,13 +104,15 @@ public:
 
 private:
   void on_message(std::shared_ptr<rclcpp::SerializedMessage> message) {
-    if (!active_.load(std::memory_order_acquire)) return;
+    if (!active_.load(std::memory_order_acquire))
+      return;
     {
       // Commit and deserialize the Blackboard grant before notifying a pipeline.
       auto output = producer_.write_access();
       output.serialized() = *message;
     }
-    if (signal_) signal_->signal();
+    if (signal_)
+      signal_->signal();
   }
 
   detail::SerializedProducer producer_;
@@ -130,6 +131,4 @@ private:
 
 } // namespace bpe_ros_boundary_plugins
 
-PLUGINLIB_EXPORT_CLASS(
-  bpe_ros_boundary_plugins::RosInputBlock,
-  bpe::IBlockPlugin)
+PLUGINLIB_EXPORT_CLASS(bpe_ros_boundary_plugins::RosInputBlock, bpe::IBlockPlugin)

@@ -9,7 +9,7 @@ namespace bpe::lfbb {
 
 template <typename ProtectedData, std::size_t InitializationMargin>
 ConsumerGrantFactory<ProtectedData, InitializationMargin>::ConsumerGrantFactory(Ring* ring) noexcept
-    : ring_(ring) {}
+  : ring_(ring) {}
 
 template <typename ProtectedData, std::size_t InitializationMargin>
 ConsumerGrant<ProtectedData, InitializationMargin>

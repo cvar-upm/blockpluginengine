@@ -8,9 +8,8 @@
 namespace bpe::lfbb {
 
 template <typename ProtectedData, std::size_t InitializationMargin>
-ProducerGrant<ProtectedData, InitializationMargin>::ProducerGrant(Ring* ring,
-                                                                   bool& active) noexcept
-    : ring_(ring), slot_(ring_->claim_next_write_slot()), active_(active) {}
+ProducerGrant<ProtectedData, InitializationMargin>::ProducerGrant(Ring* ring, bool& active) noexcept
+  : ring_(ring), slot_(ring_->claim_next_write_slot()), active_(active) {}
 
 template <typename ProtectedData, std::size_t InitializationMargin>
 ProducerGrant<ProtectedData, InitializationMargin>::~ProducerGrant() {

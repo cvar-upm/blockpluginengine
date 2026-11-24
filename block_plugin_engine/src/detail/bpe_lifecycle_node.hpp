@@ -11,7 +11,7 @@ class BPECompositionRoot;
 class BPE_LifecycleNode : public rclcpp_lifecycle::LifecycleNode {
 public:
   explicit BPE_LifecycleNode(BPECompositionRoot& root,
-      const rclcpp::NodeOptions& options = rclcpp::NodeOptions());
+                             const rclcpp::NodeOptions& options = rclcpp::NodeOptions());
 
 protected:
   CallbackReturn on_configure(const rclcpp_lifecycle::State&) override;

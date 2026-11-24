@@ -18,8 +18,7 @@ namespace {
 
 class TwistPipelineTest : public ::testing::Test {
 protected:
-  TwistPipelineTest()
-    : loader_("block_plugin_engine", "bpe::IBlockPlugin") {}
+  TwistPipelineTest() : loader_("block_plugin_engine", "bpe::IBlockPlugin") {}
 
   std::shared_ptr<bpe::IBlockPlugin> load(const std::string& type) {
     return loader_.createSharedInstance(type);

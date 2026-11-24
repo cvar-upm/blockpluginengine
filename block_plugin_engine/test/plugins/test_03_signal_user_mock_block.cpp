@@ -19,13 +19,16 @@ public:
     signal_ = provider_ ? provider_->get_signal("ready") : nullptr;
     record_event(signal_ ? "signal.configure:resolved" : "signal.configure:missing");
     return (signal_ || (config["optional"] && config["optional"].as<bool>()))
-        ? BlockResult::SUCCESS : BlockResult::FAILURE;
+               ? BlockResult::SUCCESS
+               : BlockResult::FAILURE;
   }
   BlockResult start() override {
-    if (!signal_ || !signal_->signal()) return BlockResult::FAILURE;
+    if (!signal_ || !signal_->signal())
+      return BlockResult::FAILURE;
     record_event("signal.start:sent");
     return BlockResult::SUCCESS;
   }
+
 private:
   IEventSignalProvider* provider_{nullptr};
   std::shared_ptr<IEventSignal> signal_;

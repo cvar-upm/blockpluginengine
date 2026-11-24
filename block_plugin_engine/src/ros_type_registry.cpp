@@ -21,7 +21,6 @@ std::unique_ptr<RosTypeRegistry>& ros_type_registry_instance() {
 
 } // namespace
 
-
 RosTypeInfo::RosTypeInfo(std::string ros_type) : ros_type_(std::move(ros_type)) {}
 
 const std::string& RosTypeInfo::ros_type() const noexcept {
@@ -69,16 +68,15 @@ const RosTypeInfo& RosTypeRegistry::register_ros_output(const std::string& label
   return info;
 }
 
-const RosTypeInfo& RosTypeRegistry::register_native(
-    const std::string& label, const std::string& cpp_type) {
+const RosTypeInfo& RosTypeRegistry::register_native(const std::string& label,
+                                                    const std::string& cpp_type) {
   return get_or_create(label, "cpp/" + cpp_type);
 }
 
-const RosTypeInfo& RosTypeRegistry::register_typed(
-    const std::string& label,
-    const std::string& ros_type,
-    RosTypeInfo::SerializeFunction serialize,
-    RosTypeInfo::DeserializeFunction deserialize) {
+const RosTypeInfo& RosTypeRegistry::register_typed(const std::string& label,
+                                                   const std::string& ros_type,
+                                                   RosTypeInfo::SerializeFunction serialize,
+                                                   RosTypeInfo::DeserializeFunction deserialize) {
   if (serialize == nullptr || deserialize == nullptr) {
     throw std::invalid_argument("ROS type operations cannot be null");
   }
@@ -93,8 +91,7 @@ const RosTypeInfo& RosTypeRegistry::register_typed(
   return info;
 }
 
-RosTypeInfo& RosTypeRegistry::get_or_create(const std::string& label,
-                                            const std::string& ros_type) {
+RosTypeInfo& RosTypeRegistry::get_or_create(const std::string& label, const std::string& ros_type) {
   if (label.empty()) {
     throw std::invalid_argument("Blackboard label cannot be empty");
   }
@@ -129,10 +126,10 @@ void reset_ros_type_registry() {
   auto& instance = ros_type_registry_instance();
 
   RCLCPP_DEBUG(rclcpp::get_logger("block_plugin_engine"),
-              "Runtime state: destroying ROS type registry instance");
+               "Runtime state: destroying ROS type registry instance");
   instance = std::move(replacement);
   RCLCPP_DEBUG(rclcpp::get_logger("block_plugin_engine"),
-              "Runtime state: ROS type registry instance destroyed and recreated");
+               "Runtime state: ROS type registry instance destroyed and recreated");
 }
 
 } // namespace detail

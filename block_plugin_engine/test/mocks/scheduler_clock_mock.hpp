@@ -44,7 +44,8 @@ public:
   void advance_to(duration value) {
     {
       std::lock_guard<std::mutex> lock(mutex_);
-      if (value.count() > ticks_) ticks_ = value.count();
+      if (value.count() > ticks_)
+        ticks_ = value.count();
       fire_if_due();
     }
     cv_.notify_all();
@@ -61,7 +62,8 @@ public:
 
   void wait_until(const timespec& deadline, const std::atomic<bool>& running) {
     std::unique_lock<std::mutex> lock(mutex_);
-    cv_.wait(lock, [&] { return !running.load(std::memory_order_acquire) || ticks_ >= to_ns(deadline); });
+    cv_.wait(lock,
+             [&] { return !running.load(std::memory_order_acquire) || ticks_ >= to_ns(deadline); });
   }
 
   void busy_wait_until(const timespec& deadline, const std::atomic<bool>& running) {
@@ -71,9 +73,7 @@ public:
   void notify_stop() {
     // Synchronize with wait_until(): the worker must not enter the wait
     // after the stop notification has already been sent.
-    {
-      std::lock_guard<std::mutex> lock(mutex_);
-    }
+    { std::lock_guard<std::mutex> lock(mutex_); }
     cv_.notify_all();
   }
 
@@ -96,7 +96,8 @@ public:
 
   bool arm_deadline(int fd, std::int64_t deadline) {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (fd != deadline_fd_) return false;
+    if (fd != deadline_fd_)
+      return false;
     deadline_armed_ = deadline >= 0;
     deadline_ns_ = deadline;
     fire_if_due();
@@ -105,7 +106,8 @@ public:
 
   void consume_deadline(int fd) {
     eventfd_t count{};
-    while (::eventfd_read(fd, &count) == 0) {}
+    while (::eventfd_read(fd, &count) == 0) {
+    }
   }
 
   void release_deadline_fd(int fd) noexcept {
@@ -138,22 +140,24 @@ public:
 
   void before_observe() {
     std::unique_lock<std::mutex> lock(mutex_);
-    if (!frozen_) return;
+    if (!frozen_)
+      return;
     worker_frozen_ = true;
     cv_.notify_all();
     cv_.wait(lock, [&] { return !frozen_; });
     worker_frozen_ = false;
   }
 
-  void on_stop() { release(); }
+  void on_stop() {
+    release();
+  }
 
 private:
   static std::int64_t to_ns(const timespec& t) {
     return static_cast<std::int64_t>(t.tv_sec) * 1'000'000'000LL + t.tv_nsec;
   }
   static timespec to_timespec(std::int64_t ns) {
-    return {static_cast<time_t>(ns / 1'000'000'000LL),
-            static_cast<long>(ns % 1'000'000'000LL)};
+    return {static_cast<time_t>(ns / 1'000'000'000LL), static_cast<long>(ns % 1'000'000'000LL)};
   }
 
   void fire_if_due() {

@@ -10,9 +10,8 @@
 
 namespace bpe {
 
-BPE_LifecycleNode::BPE_LifecycleNode(BPECompositionRoot& root,
-                                     const rclcpp::NodeOptions& options)
-    : rclcpp_lifecycle::LifecycleNode("block_plugin_engine", options), root_(root) {
+BPE_LifecycleNode::BPE_LifecycleNode(BPECompositionRoot& root, const rclcpp::NodeOptions& options)
+  : rclcpp_lifecycle::LifecycleNode("block_plugin_engine", options), root_(root) {
   declare_parameter<std::string>("config_file", "");
   declare_parameter<bool>("autostart", false);
 }
@@ -63,7 +62,8 @@ BPE_LifecycleNode::CallbackReturn BPE_LifecycleNode::on_cleanup(const rclcpp_lif
 
 BPE_LifecycleNode::CallbackReturn BPE_LifecycleNode::on_shutdown(const rclcpp_lifecycle::State&) {
   RCLCPP_INFO(get_logger(), "Shutting down BlockPluginEngine");
-  if (root_.scheduler()) root_.scheduler()->stop();
+  if (root_.scheduler())
+    root_.scheduler()->stop();
   root_.plugin_manager().stop();
   root_.cleanup();
   RCLCPP_INFO(get_logger(), "BlockPluginEngine shutdown completed");

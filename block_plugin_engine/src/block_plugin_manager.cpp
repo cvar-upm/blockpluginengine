@@ -31,7 +31,8 @@ BlockPluginManager::BlockPluginManager(
 
 void BlockPluginManager::set_scheduler(std::shared_ptr<IBlockScheduler> scheduler) {
   // Scheduler replacement is legal only when no block instances are loaded.
-  if (!blocks_.empty()) throw std::logic_error("Cannot replace scheduler with loaded blocks");
+  if (!blocks_.empty())
+    throw std::logic_error("Cannot replace scheduler with loaded blocks");
   scheduler_ = std::move(scheduler);
 }
 
@@ -108,7 +109,8 @@ bool BlockPluginManager::cleanup() {
   bool success = true;
 
   RCLCPP_DEBUG(logger_, "Clearing scheduler block references");
-  if (scheduler_) scheduler_->clear();
+  if (scheduler_)
+    scheduler_->clear();
   RCLCPP_DEBUG(logger_, "Scheduler block references cleared");
 
   for (auto it = blocks_.rbegin(); it != blocks_.rend(); ++it) {
@@ -180,10 +182,8 @@ bool BlockPluginManager::load_configuration(const YAML::Node& blocks,
 bool BlockPluginManager::configure_instance(const BlockInstanceConfig& config) {
   std::shared_ptr<IBlockPlugin> plugin;
 
-  RCLCPP_DEBUG(logger_,
-               "Loading Block '%s' of type '%s'",
-               config.name.c_str(),
-               config.type.c_str());
+  RCLCPP_DEBUG(
+      logger_, "Loading Block '%s' of type '%s'", config.name.c_str(), config.type.c_str());
 
   try {
     plugin = loader_.createSharedInstance(config.type);
@@ -203,7 +203,8 @@ bool BlockPluginManager::configure_instance(const BlockInstanceConfig& config) {
     if (auto* provider = dynamic_cast<IEventSignalProvider*>(scheduler_.get())) {
       events->set_event_signal_provider(*provider);
     } else {
-      RCLCPP_WARN(logger_, "Block '%s' supports event signals, but scheduler does not",
+      RCLCPP_WARN(logger_,
+                  "Block '%s' supports event signals, but scheduler does not",
                   config.name.c_str());
     }
   }
@@ -228,7 +229,8 @@ bool BlockPluginManager::configure_instance(const BlockInstanceConfig& config) {
   } else if (config.execution) {
     // With the IScheduledBlock-based API a non-executable block cannot be scheduled.
     // It is still valid for this block to carry an unused execution node.
-    RCLCPP_DEBUG(logger_, "Ignoring execution configuration for non-IScheduledBlock '%s'",
+    RCLCPP_DEBUG(logger_,
+                 "Ignoring execution configuration for non-IScheduledBlock '%s'",
                  config.name.c_str());
   }
 

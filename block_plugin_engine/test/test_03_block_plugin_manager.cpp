@@ -24,14 +24,24 @@ namespace {
 // Scheduler deliberately lacks IEventSignalProvider, unlike SchedulerMock.
 class SchedulerWithoutSignals final : public IBlockScheduler {
 public:
-  SchedulerResult configure(const SchedulerConfig&) override { return SchedulerResult::SUCCESS; }
+  SchedulerResult configure(const SchedulerConfig&) override {
+    return SchedulerResult::SUCCESS;
+  }
   SchedulerResult register_block(const std::string&, IScheduledBlock&, const YAML::Node&) override {
     return SchedulerResult::SUCCESS;
   }
-  SchedulerResult remove(const std::string&) override { return SchedulerResult::SUCCESS; }
-  SchedulerResult start(std::chrono::nanoseconds) override { return SchedulerResult::SUCCESS; }
-  SchedulerResult stop() override { return SchedulerResult::SUCCESS; }
-  SchedulerResult clear() override { return SchedulerResult::SUCCESS; }
+  SchedulerResult remove(const std::string&) override {
+    return SchedulerResult::SUCCESS;
+  }
+  SchedulerResult start(std::chrono::nanoseconds) override {
+    return SchedulerResult::SUCCESS;
+  }
+  SchedulerResult stop() override {
+    return SchedulerResult::SUCCESS;
+  }
+  SchedulerResult clear() override {
+    return SchedulerResult::SUCCESS;
+  }
 };
 
 class BlockPluginManagerTest : public ::testing::Test {
@@ -42,9 +52,8 @@ protected:
     scheduler_ = std::make_shared<SchedulerMock>();
     ros_topics_.reset();
 
-    manager_ = std::make_unique<BlockPluginManager>(ros_topics_,
-                                                    rclcpp::get_logger("bpe_test"),
-                                                    std::vector<std::string>{BPE_TEST_PLUGIN_XML});
+    manager_ = std::make_unique<BlockPluginManager>(
+        ros_topics_, rclcpp::get_logger("bpe_test"), std::vector<std::string>{BPE_TEST_PLUGIN_XML});
     manager_->set_scheduler(scheduler_);
   }
 
@@ -160,7 +169,6 @@ TEST_F(BlockPluginManagerTest, StopsPreviouslyStartedBlocksOnStartFailure) {
   ASSERT_TRUE(manager_->cleanup());
 }
 
-
 // Construct invalid configurations in memory: these must fail before loading any plugin.
 class BlockConfigValidationTest : public BlockPluginManagerTest,
                                   public ::testing::WithParamInterface<std::string> {};
@@ -170,27 +178,32 @@ TEST_P(BlockConfigValidationTest, RejectsMalformedBlockConfiguration) {
   EXPECT_TRUE(events().empty());
   EXPECT_TRUE(scheduler_->entries().empty());
 }
-INSTANTIATE_TEST_SUITE_P(InvalidBlocks, BlockConfigValidationTest,
-  ::testing::Values(
-    "{}", "null", "42", "[3]", "[{}]", "[{name: a}]", "[{type: bpe_test/TestBasicBlock}]",
-    "[{name: '', type: bpe_test/TestBasicBlock}]", "[{name: x, type: ''}]"
-  ));
+INSTANTIATE_TEST_SUITE_P(InvalidBlocks,
+                         BlockConfigValidationTest,
+                         ::testing::Values("{}",
+                                           "null",
+                                           "42",
+                                           "[3]",
+                                           "[{}]",
+                                           "[{name: a}]",
+                                           "[{type: bpe_test/TestBasicBlock}]",
+                                           "[{name: '', type: bpe_test/TestBasicBlock}]",
+                                           "[{name: x, type: ''}]"));
 
 TEST_F(BlockPluginManagerTest, SignalCapabilityIsOptionalWithoutProvider) {
   manager_->set_scheduler(std::make_shared<SchedulerWithoutSignals>());
-  ASSERT_TRUE(manager_->configure(YAML::Load(
-      "[{name: optional_emitter, type: bpe_test/TestSignalUserMockBlock, "
-      "config: {optional: true}}]")));
+  ASSERT_TRUE(manager_->configure(
+      YAML::Load("[{name: optional_emitter, type: bpe_test/TestSignalUserMockBlock, "
+                 "config: {optional: true}}]")));
   EXPECT_EQ(events(), (std::vector<std::string>{"signal.configure:missing"}));
   EXPECT_TRUE(manager_->cleanup());
 }
 
 TEST_F(BlockPluginManagerTest, InjectsPullSignalProviderBeforeConfigure) {
   scheduler_->allow_signal("ready");
-  ASSERT_TRUE(manager_->configure(YAML::Load(
-      "[{name: emitter, type: bpe_test/TestSignalUserMockBlock}]")));
-  EXPECT_EQ(events(), (std::vector<std::string>{
-      "signal.inject", "signal.configure:resolved"}));
+  ASSERT_TRUE(
+      manager_->configure(YAML::Load("[{name: emitter, type: bpe_test/TestSignalUserMockBlock}]")));
+  EXPECT_EQ(events(), (std::vector<std::string>{"signal.inject", "signal.configure:resolved"}));
   ASSERT_TRUE(manager_->start());
   EXPECT_EQ(events().back(), "signal.start:sent");
   EXPECT_TRUE(manager_->stop());
@@ -221,7 +234,6 @@ TEST_F(BlockPluginManagerTest, RegistersTimerExecutionConfiguration) {
   EXPECT_EQ(timer.config["thread"].as<unsigned>(), 3U);
   EXPECT_TRUE(manager_->cleanup());
 }
-
 
 TEST_F(BlockPluginManagerTest, ForwardsExecutionWithoutParsingIt) {
   auto blocks = YAML::Load(R"(
@@ -264,18 +276,22 @@ TEST_F(BlockPluginManagerTest, RollsBackWhenSchedulerRejectsAdd) {
 )")));
   EXPECT_EQ(scheduler_->calls(), (std::vector<std::string>{"register:timer", "clear"}));
   EXPECT_TRUE(scheduler_->entries().empty());
-  EXPECT_EQ(events(), (std::vector<std::string>{
-    "plain.configure:9", "timer.configure:rejected", "timer.cleanup", "plain.cleanup"}));
+  EXPECT_EQ(
+      events(),
+      (std::vector<std::string>{
+          "plain.configure:9", "timer.configure:rejected", "timer.cleanup", "plain.cleanup"}));
 }
 
 TEST_F(BlockPluginManagerTest, CleanupClearsSchedulerBeforeBlockCleanup) {
   ASSERT_TRUE(manager_->configure(load_blocks_config("test_03_valid.yaml")));
   clear_events();
   EXPECT_TRUE(manager_->cleanup());
-  EXPECT_EQ(scheduler_->calls(), (std::vector<std::string>{"register:timer", "register:idle_timer", "clear"}));
+  EXPECT_EQ(scheduler_->calls(),
+            (std::vector<std::string>{"register:timer", "register:idle_timer", "clear"}));
   EXPECT_TRUE(scheduler_->entries().empty());
-  EXPECT_EQ(events(), (std::vector<std::string>{
-      "idle_timer.cleanup", "timer.cleanup", "basic_b.cleanup", "basic_a.cleanup"}));
+  EXPECT_EQ(events(),
+            (std::vector<std::string>{
+                "idle_timer.cleanup", "timer.cleanup", "basic_b.cleanup", "basic_a.cleanup"}));
   // SchedulerMock records clear; block event log records cleanup separately.
   // A cross-log ordering assertion is intentionally not claimed here.
 }
@@ -329,7 +345,8 @@ TEST_F(BlockPluginManagerTest, ContinuesCleaningAfterFailure) {
 )")));
   clear_events();
   EXPECT_FALSE(manager_->cleanup());
-  EXPECT_EQ(events(), (std::vector<std::string>{"late.cleanup", "failure.cleanup", "early.cleanup"}));
+  EXPECT_EQ(events(),
+            (std::vector<std::string>{"late.cleanup", "failure.cleanup", "early.cleanup"}));
 }
 TEST_F(BlockPluginManagerTest, CleansUpAfterStartFailure) {
   ASSERT_TRUE(manager_->configure(load_blocks_config("test_03_start_failure.yaml")));

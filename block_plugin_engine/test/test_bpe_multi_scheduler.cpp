@@ -20,19 +20,26 @@ using namespace std::chrono_literals;
 class Probe final : public ITimerBlockWithInfo {
 public:
   ExecutionResult execute(const TimerExecutionInfo& info) override {
-    if (count_.load(std::memory_order_relaxed) == 0) first_ = info;
+    if (count_.load(std::memory_order_relaxed) == 0)
+      first_ = info;
     count_.fetch_add(1, std::memory_order_release);
     return ExecutionResult::SUCCESS;
   }
-  bool has_sample() const { return count_.load(std::memory_order_acquire) > 0; }
-  TimerExecutionInfo first() const { return first_; }
+  bool has_sample() const {
+    return count_.load(std::memory_order_acquire) > 0;
+  }
+  TimerExecutionInfo first() const {
+    return first_;
+  }
+
 private:
   TimerExecutionInfo first_{};
   std::atomic<unsigned> count_{0};
 };
 
 YAML::Node config(std::string delay = "200ms") {
-  return YAML::Load("start_delay: " + delay + "\nthreads:\n"
+  return YAML::Load("start_delay: " + delay +
+                    "\nthreads:\n"
                     "  - type: block_plugin_engine/FairScheduler\n"
                     "    realtime: {enabled: false}\n"
                     "  - type: block_plugin_engine/FairScheduler\n"
@@ -50,7 +57,8 @@ TEST(BPEMultiSchedulerTest, SharedOriginAndIndependentBlocks) {
   ASSERT_EQ(scheduler.register_block("second", second, c), SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.start(), SchedulerResult::SUCCESS);
   auto deadline = std::chrono::steady_clock::now() + 2s;
-  while ((!first.has_sample() || !second.has_sample()) && std::chrono::steady_clock::now() < deadline) {
+  while ((!first.has_sample() || !second.has_sample()) &&
+         std::chrono::steady_clock::now() < deadline) {
     std::this_thread::sleep_for(1ms);
   }
   ASSERT_EQ(scheduler.stop(), SchedulerResult::SUCCESS);

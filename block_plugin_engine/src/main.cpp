@@ -21,11 +21,7 @@ void handle_signal(int) noexcept {
 } // namespace
 
 int main(int argc, char* argv[]) {
-  rclcpp::init(
-      argc,
-      argv,
-      rclcpp::InitOptions(),
-      rclcpp::SignalHandlerOptions::None);
+  rclcpp::init(argc, argv, rclcpp::InitOptions(), rclcpp::SignalHandlerOptions::None);
 
   std::signal(SIGINT, handle_signal);
   std::signal(SIGTERM, handle_signal);
@@ -52,7 +48,8 @@ int main(int argc, char* argv[]) {
         node->activate(callback_result);
 
         if (callback_result != CallbackReturn::SUCCESS) {
-          RCLCPP_ERROR(node->get_logger(), "BlockPluginEngine autostart activate transition failed");
+          RCLCPP_ERROR(node->get_logger(),
+                       "BlockPluginEngine autostart activate transition failed");
           result = 1;
         }
       }

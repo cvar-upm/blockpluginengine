@@ -25,8 +25,7 @@ namespace {
 
 class MultiTwistPipelineTest : public ::testing::Test {
 protected:
-  MultiTwistPipelineTest()
-    : loader_("block_plugin_engine", "bpe::IBlockPlugin") {}
+  MultiTwistPipelineTest() : loader_("block_plugin_engine", "bpe::IBlockPlugin") {}
 
   pluginlib::ClassLoader<bpe::IBlockPlugin> loader_;
 };
@@ -78,10 +77,8 @@ TEST_F(MultiTwistPipelineTest, TwoIndependentChannelsAreTransformedAndChecked) {
     auto result_b = probe_b.read_access();
     ASSERT_TRUE(result_a.has_new_value());
     ASSERT_TRUE(result_b.has_new_value());
-    EXPECT_DOUBLE_EQ(result_a.value().twist.linear.x,
-                     2.0 * static_cast<double>(sample + 1));
-    EXPECT_DOUBLE_EQ(result_b.value().twist.linear.x,
-                     2.0 * static_cast<double>(sample + 2));
+    EXPECT_DOUBLE_EQ(result_a.value().twist.linear.x, 2.0 * static_cast<double>(sample + 1));
+    EXPECT_DOUBLE_EQ(result_b.value().twist.linear.x, 2.0 * static_cast<double>(sample + 2));
   }
 
   EXPECT_EQ(checker_a->checked_samples(), sample_count);

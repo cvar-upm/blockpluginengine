@@ -7,7 +7,7 @@ namespace bpe::lfbb::details {
 
 template <typename ProtectedData>
 ConcurrentSlot<ProtectedData>::ConcurrentSlot(ProtectedData protected_data)
-    : data_(std::move(protected_data)) {}
+  : data_(std::move(protected_data)) {}
 
 template <typename ProtectedData>
 bool ConcurrentSlot<ProtectedData>::try_acquire_writer() noexcept {

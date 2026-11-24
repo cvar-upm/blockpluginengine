@@ -21,21 +21,17 @@ namespace {
 bool message_is_expected(const geometry_msgs::msg::TwistStamped& message) noexcept {
   const double value = -message.twist.angular.x;
 
-  return message.header.frame_id == "bpe_test" &&
-         message.twist.linear.x == 2.0 * value &&
-         message.twist.linear.y == -2.0 * value &&
-         message.twist.linear.z == 3.0 * value &&
-         message.twist.angular.x == -value &&
-         message.twist.angular.y == -2.0 * value &&
+  return message.header.frame_id == "bpe_test" && message.twist.linear.x == 2.0 * value &&
+         message.twist.linear.y == -2.0 * value && message.twist.linear.z == 3.0 * value &&
+         message.twist.angular.x == -value && message.twist.angular.y == -2.0 * value &&
          message.twist.angular.z == (0.5 * value) + 0.25;
 }
 
 } // namespace
 
-class TwistCheckerBlock final
-  : public bpe::IBlockPlugin,
-    public bpe::IScheduledBlock,
-    public ITwistCheckerInspection {
+class TwistCheckerBlock final : public bpe::IBlockPlugin,
+                                public bpe::IScheduledBlock,
+                                public ITwistCheckerInspection {
 public:
   using Message = geometry_msgs::msg::TwistStamped;
 
@@ -65,9 +61,8 @@ public:
       bool valid = message_is_expected(input.value());
 
       if (input.has_missed()) {
-        missed_samples_.fetch_add(
-          static_cast<std::size_t>(input.missed()),
-          std::memory_order_relaxed);
+        missed_samples_.fetch_add(static_cast<std::size_t>(input.missed()),
+                                  std::memory_order_relaxed);
       }
 
       if (last_sequence_ == 0) {
@@ -113,6 +108,4 @@ private:
 
 } // namespace bpe_test
 
-PLUGINLIB_EXPORT_CLASS(
-  bpe_test::TwistCheckerBlock,
-  bpe::IBlockPlugin)
+PLUGINLIB_EXPORT_CLASS(bpe_test::TwistCheckerBlock, bpe::IBlockPlugin)

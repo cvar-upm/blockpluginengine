@@ -33,12 +33,12 @@ inline bool ends_with(std::string_view value, std::string_view suffix) {
 
 } // namespace
 
-template<typename Clock, typename RealtimePolicy>
+template <typename Clock, typename RealtimePolicy>
 BaseFairScheduler<Clock, RealtimePolicy>::~BaseFairScheduler() {
   stop();
 }
 
-template<typename Clock, typename RealtimePolicy>
+template <typename Clock, typename RealtimePolicy>
 SchedulerResult BaseFairScheduler<Clock, RealtimePolicy>::configure(const SchedulerConfig& config) {
   SchedulerResult result = SchedulerResult::SUCCESS;
 
@@ -99,12 +99,14 @@ SchedulerResult BaseFairScheduler<Clock, RealtimePolicy>::configure(const Schedu
   return result;
 }
 
-template<typename Clock, typename RealtimePolicy>
+template <typename Clock, typename RealtimePolicy>
 SchedulerResult BaseFairScheduler<Clock, RealtimePolicy>::register_block(
     const std::string& instance_name, IScheduledBlock& block, const YAML::Node& execution) {
-  if (running_.load(std::memory_order_acquire)) return SchedulerResult::INVALID_STATE;
+  if (running_.load(std::memory_order_acquire))
+    return SchedulerResult::INVALID_STATE;
   // A timer-capable block without execution may remain unscheduled.
-  if (!execution || execution.IsNull()) return SchedulerResult::SUCCESS;
+  if (!execution || execution.IsNull())
+    return SchedulerResult::SUCCESS;
 
   std::chrono::nanoseconds period{}, offset{};
   try {
@@ -120,21 +122,27 @@ SchedulerResult BaseFairScheduler<Clock, RealtimePolicy>::register_block(
     return SchedulerResult::INVALID_CONFIG;
   }
   if (offset.count() < 0 || config_.spin_before_deadline.count() < 0 ||
-      config_.spin_before_deadline >= period) return SchedulerResult::INVALID_CONFIG;
+      config_.spin_before_deadline >= period)
+    return SchedulerResult::INVALID_CONFIG;
 
   const auto duplicated = std::find_if(
       blocks_.begin(), blocks_.end(), [&instance_name](const ScheduledBlock& scheduled) {
         return scheduled.name == instance_name;
       });
-  if (duplicated != blocks_.end()) return SchedulerResult::INVALID_CONFIG;
+  if (duplicated != blocks_.end())
+    return SchedulerResult::INVALID_CONFIG;
 
-  blocks_.push_back(ScheduledBlock{
-      instance_name, &block, dynamic_cast<ITimerBlockWithInfo*>(&block),
-      0, period.count(), offset.count(), timespec{}});
+  blocks_.push_back(ScheduledBlock{instance_name,
+                                   &block,
+                                   dynamic_cast<ITimerBlockWithInfo*>(&block),
+                                   0,
+                                   period.count(),
+                                   offset.count(),
+                                   timespec{}});
   return SchedulerResult::SUCCESS;
 }
 
-template<typename Clock, typename RealtimePolicy>
+template <typename Clock, typename RealtimePolicy>
 SchedulerResult BaseFairScheduler<Clock, RealtimePolicy>::remove(const std::string& instance_name) {
   SchedulerResult result = SchedulerResult::SUCCESS;
 
@@ -156,7 +164,7 @@ SchedulerResult BaseFairScheduler<Clock, RealtimePolicy>::remove(const std::stri
   return result;
 }
 
-template<typename Clock, typename RealtimePolicy>
+template <typename Clock, typename RealtimePolicy>
 SchedulerResult BaseFairScheduler<Clock, RealtimePolicy>::start(std::chrono::nanoseconds origin) {
   SchedulerResult result = SchedulerResult::SUCCESS;
 
@@ -203,7 +211,7 @@ SchedulerResult BaseFairScheduler<Clock, RealtimePolicy>::start(std::chrono::nan
   return result;
 }
 
-template<typename Clock, typename RealtimePolicy>
+template <typename Clock, typename RealtimePolicy>
 SchedulerResult BaseFairScheduler<Clock, RealtimePolicy>::stop() {
   if (running_.exchange(false, std::memory_order_acq_rel)) {
     start_gate_.store(true, std::memory_order_release);
@@ -217,7 +225,7 @@ SchedulerResult BaseFairScheduler<Clock, RealtimePolicy>::stop() {
   return SchedulerResult::SUCCESS;
 }
 
-template<typename Clock, typename RealtimePolicy>
+template <typename Clock, typename RealtimePolicy>
 SchedulerResult BaseFairScheduler<Clock, RealtimePolicy>::clear() {
   SchedulerResult result = SchedulerResult::SUCCESS;
 
@@ -230,18 +238,21 @@ SchedulerResult BaseFairScheduler<Clock, RealtimePolicy>::clear() {
   return result;
 }
 
-template<typename Clock, typename RealtimePolicy>
-bool BaseFairScheduler<Clock, RealtimePolicy>::time_before(const timespec& lhs, const timespec& rhs) {
+template <typename Clock, typename RealtimePolicy>
+bool BaseFairScheduler<Clock, RealtimePolicy>::time_before(const timespec& lhs,
+                                                           const timespec& rhs) {
   return lhs.tv_sec < rhs.tv_sec || (lhs.tv_sec == rhs.tv_sec && lhs.tv_nsec < rhs.tv_nsec);
 }
 
-template<typename Clock, typename RealtimePolicy>
-bool BaseFairScheduler<Clock, RealtimePolicy>::time_reached(const timespec& now, const timespec& deadline) {
+template <typename Clock, typename RealtimePolicy>
+bool BaseFairScheduler<Clock, RealtimePolicy>::time_reached(const timespec& now,
+                                                            const timespec& deadline) {
   return !time_before(now, deadline);
 }
 
-template<typename Clock, typename RealtimePolicy>
-timespec BaseFairScheduler<Clock, RealtimePolicy>::subtract_ns(const timespec& time, std::int64_t nanoseconds) {
+template <typename Clock, typename RealtimePolicy>
+timespec BaseFairScheduler<Clock, RealtimePolicy>::subtract_ns(const timespec& time,
+                                                               std::int64_t nanoseconds) {
   timespec result = time;
 
   result.tv_sec -= nanoseconds / NANOSECONDS_PER_SECOND;
@@ -255,7 +266,7 @@ timespec BaseFairScheduler<Clock, RealtimePolicy>::subtract_ns(const timespec& t
   return result;
 }
 
-template<typename Clock, typename RealtimePolicy>
+template <typename Clock, typename RealtimePolicy>
 void BaseFairScheduler<Clock, RealtimePolicy>::add_ns(timespec& time, std::int64_t nanoseconds) {
   time.tv_sec += nanoseconds / NANOSECONDS_PER_SECOND;
   time.tv_nsec += nanoseconds % NANOSECONDS_PER_SECOND;
@@ -266,8 +277,9 @@ void BaseFairScheduler<Clock, RealtimePolicy>::add_ns(timespec& time, std::int64
   }
 }
 
-template<typename Clock, typename RealtimePolicy>
-bool BaseFairScheduler<Clock, RealtimePolicy>::parse_duration(const YAML::Node& node, std::chrono::nanoseconds& value) {
+template <typename Clock, typename RealtimePolicy>
+bool BaseFairScheduler<Clock, RealtimePolicy>::parse_duration(const YAML::Node& node,
+                                                              std::chrono::nanoseconds& value) {
   bool success = false;
 
   if (node.IsScalar()) {
@@ -308,7 +320,7 @@ bool BaseFairScheduler<Clock, RealtimePolicy>::parse_duration(const YAML::Node& 
   return success;
 }
 
-template<typename Clock, typename RealtimePolicy>
+template <typename Clock, typename RealtimePolicy>
 SchedulerResult BaseFairScheduler<Clock, RealtimePolicy>::validate_start_configuration() const {
   SchedulerResult result = SchedulerResult::SUCCESS;
 
@@ -327,7 +339,7 @@ SchedulerResult BaseFairScheduler<Clock, RealtimePolicy>::validate_start_configu
   return result;
 }
 
-template<typename Clock, typename RealtimePolicy>
+template <typename Clock, typename RealtimePolicy>
 bool BaseFairScheduler<Clock, RealtimePolicy>::configure_realtime_thread() {
   bool success = true;
 
@@ -338,8 +350,9 @@ bool BaseFairScheduler<Clock, RealtimePolicy>::configure_realtime_thread() {
   return success;
 }
 
-template<typename Clock, typename RealtimePolicy>
-void BaseFairScheduler<Clock, RealtimePolicy>::initialize_deadlines(std::chrono::nanoseconds origin) {
+template <typename Clock, typename RealtimePolicy>
+void BaseFairScheduler<Clock, RealtimePolicy>::initialize_deadlines(
+    std::chrono::nanoseconds origin) {
   timespec now{};
   now.tv_sec = static_cast<time_t>(origin.count() / NANOSECONDS_PER_SECOND);
   now.tv_nsec = static_cast<long>(origin.count() % NANOSECONDS_PER_SECOND);
@@ -352,7 +365,7 @@ void BaseFairScheduler<Clock, RealtimePolicy>::initialize_deadlines(std::chrono:
   }
 }
 
-template<typename Clock, typename RealtimePolicy>
+template <typename Clock, typename RealtimePolicy>
 void BaseFairScheduler<Clock, RealtimePolicy>::worker_loop() {
   const bool realtime_ok = configure_realtime_thread();
   realtime_setup_ok_.store(realtime_ok, std::memory_order_release);
@@ -383,8 +396,8 @@ void BaseFairScheduler<Clock, RealtimePolicy>::worker_loop() {
       if (time_reached(now, earliest->next_execution)) {
         if (earliest->block_with_info != nullptr) {
           const std::int64_t scheduled_ns =
-              static_cast<std::int64_t>(earliest->next_execution.tv_sec) *
-                  NANOSECONDS_PER_SECOND + earliest->next_execution.tv_nsec;
+              static_cast<std::int64_t>(earliest->next_execution.tv_sec) * NANOSECONDS_PER_SECOND +
+              earliest->next_execution.tv_nsec;
           const std::int64_t now_ns =
               static_cast<std::int64_t>(now.tv_sec) * NANOSECONDS_PER_SECOND + now.tv_nsec;
           const TimerExecutionInfo info{
@@ -401,6 +414,5 @@ void BaseFairScheduler<Clock, RealtimePolicy>::worker_loop() {
     }
   }
 }
-
 
 } // namespace bpe

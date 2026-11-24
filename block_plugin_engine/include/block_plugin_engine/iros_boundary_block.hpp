@@ -12,8 +12,7 @@ public:
   virtual ~IRosBoundaryBlock() = default;
 
   virtual void
-  set_ros_interface(
-      const rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr& topics) = 0;
+  set_ros_interface(const rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr& topics) = 0;
 };
 
 } // namespace bpe

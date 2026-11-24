@@ -9,10 +9,8 @@ namespace bpe::lfbb {
 
 template <typename ProtectedData, std::size_t InitializationMargin>
 ConsumerGrant<ProtectedData, InitializationMargin>::ConsumerGrant(
-    Ring* ring,
-    bool& active,
-    std::uint64_t& last_seen_sequence) noexcept
-    : active_(active) {
+    Ring* ring, bool& active, std::uint64_t& last_seen_sequence) noexcept
+  : active_(active) {
   do {
     slot_ = ring->get_last_committed_slot();
   } while (!slot_->try_acquire_reader());

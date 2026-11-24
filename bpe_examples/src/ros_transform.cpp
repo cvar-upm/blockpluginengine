@@ -14,24 +14,30 @@ namespace bpe_examples {
 class PoseToVelocity final : public bpe::IBlockPlugin, public bpe::IScheduledBlock {
 public:
   bpe::BlockResult configure(const bpe::BlockConfig& c) override {
-    try { input_.bind(c["input"].as<std::string>());
+    try {
+      input_.bind(c["input"].as<std::string>());
       output_.bind(c["output"].as<std::string>());
-      gain_=c["gain"] ? c["gain"].as<double>() : 0.5;
+      gain_ = c["gain"] ? c["gain"].as<double>() : 0.5;
       return bpe::BlockResult::SUCCESS;
-    } catch (...) { return bpe::BlockResult::FAILURE; }
+    } catch (...) {
+      return bpe::BlockResult::FAILURE;
+    }
   }
   bpe::ExecutionResult execute() override {
-    auto in=input_.read_access(); if (!in.has_new_value()) return bpe::ExecutionResult::SUCCESS;
-    auto out=output_.write_access();
-    out.value()=geometry_msgs::msg::Twist{};
-    out.value().linear.x=std::clamp(gain_*in.value().pose.position.x,-1.0,1.0);
-    out.value().linear.y=std::clamp(gain_*in.value().pose.position.y,-1.0,1.0);
+    auto in = input_.read_access();
+    if (!in.has_new_value())
+      return bpe::ExecutionResult::SUCCESS;
+    auto out = output_.write_access();
+    out.value() = geometry_msgs::msg::Twist{};
+    out.value().linear.x = std::clamp(gain_ * in.value().pose.position.x, -1.0, 1.0);
+    out.value().linear.y = std::clamp(gain_ * in.value().pose.position.y, -1.0, 1.0);
     return bpe::ExecutionResult::SUCCESS;
   }
+
 private:
   bpe::TypedConsumer<geometry_msgs::msg::PoseStamped> input_;
   bpe::TypedProducer<geometry_msgs::msg::Twist> output_;
   double gain_{0.5};
 };
-}
+} // namespace bpe_examples
 PLUGINLIB_EXPORT_CLASS(bpe_examples::PoseToVelocity, bpe::IBlockPlugin)

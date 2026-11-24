@@ -20,9 +20,8 @@ Blackboard<ProtectedData, InitializationMargin>::register_producer(const std::st
 template <typename ProtectedData, std::size_t InitializationMargin>
 template <typename Initializer>
 ProducerGrantFactory<ProtectedData, InitializationMargin>
-Blackboard<ProtectedData, InitializationMargin>::register_producer(
-    const std::string& label,
-    const Initializer& initializer) {
+Blackboard<ProtectedData, InitializationMargin>::register_producer(const std::string& label,
+                                                                   const Initializer& initializer) {
   std::lock_guard<std::mutex> lock(mutex_);
 
   auto [iterator, inserted] = entries_.try_emplace(label);
@@ -47,9 +46,8 @@ Blackboard<ProtectedData, InitializationMargin>::register_consumer(const std::st
 template <typename ProtectedData, std::size_t InitializationMargin>
 template <typename Initializer>
 ConsumerGrantFactory<ProtectedData, InitializationMargin>
-Blackboard<ProtectedData, InitializationMargin>::register_consumer(
-    const std::string& label,
-    const Initializer& initializer) {
+Blackboard<ProtectedData, InitializationMargin>::register_consumer(const std::string& label,
+                                                                   const Initializer& initializer) {
   std::lock_guard<std::mutex> lock(mutex_);
 
   auto [iterator, inserted] = entries_.try_emplace(label);

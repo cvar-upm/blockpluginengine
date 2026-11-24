@@ -27,17 +27,21 @@ struct FairSchedulerConfig {
   std::chrono::nanoseconds spin_before_deadline{std::chrono::microseconds{100}};
 };
 
-template<typename Clock, typename RealtimePolicy = SystemRealtimePolicy>
+template <typename Clock, typename RealtimePolicy = SystemRealtimePolicy>
 class BaseFairScheduler final : public IBlockScheduler {
 public:
   BaseFairScheduler() : clock_(std::make_shared<Clock>()) {}
   explicit BaseFairScheduler(std::shared_ptr<Clock> clock, RealtimePolicy realtime = {})
-      : clock_(std::move(clock)), realtime_(std::move(realtime)) {
-    if (!clock_) { throw std::invalid_argument("scheduler clock must not be null"); }
+    : clock_(std::move(clock)), realtime_(std::move(realtime)) {
+    if (!clock_) {
+      throw std::invalid_argument("scheduler clock must not be null");
+    }
   }
   ~BaseFairScheduler() override;
 
-  std::shared_ptr<Clock> clock() const noexcept { return clock_; }
+  std::shared_ptr<Clock> clock() const noexcept {
+    return clock_;
+  }
   SchedulerResult start() override {
     const timespec t = clock_->now();
     return start(std::chrono::seconds{t.tv_sec} + std::chrono::nanoseconds{t.tv_nsec});

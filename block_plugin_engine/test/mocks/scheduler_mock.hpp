@@ -31,10 +31,18 @@ public:
   SchedulerResult stop() override;
   SchedulerResult clear() override;
 
-  const std::vector<Entry>& entries() const { return entries_; }
-  const std::vector<std::string>& calls() const { return calls_; }
-  void set_add_result(SchedulerResult result) { add_result_ = result; }
-  void set_clear_result(SchedulerResult result) { clear_result_ = result; }
+  const std::vector<Entry>& entries() const {
+    return entries_;
+  }
+  const std::vector<std::string>& calls() const {
+    return calls_;
+  }
+  void set_add_result(SchedulerResult result) {
+    add_result_ = result;
+  }
+  void set_clear_result(SchedulerResult result) {
+    clear_result_ = result;
+  }
   void reset();
   ExecutionResult execute(const std::string& name);
 

@@ -24,9 +24,9 @@ public:
 
   // Register a block using scheduler-specific execution semantics.
   // Missing YAML configuration is valid: the scheduler decides whether to schedule it.
-  virtual SchedulerResult register_block(
-      const std::string& instance_name, IScheduledBlock& block,
-      const YAML::Node& execution) = 0;
+  virtual SchedulerResult register_block(const std::string& instance_name,
+                                         IScheduledBlock& block,
+                                         const YAML::Node& execution) = 0;
 
   virtual SchedulerResult remove(const std::string& instance_name) = 0;
   // Monotonic absolute origin shared by composable schedulers.

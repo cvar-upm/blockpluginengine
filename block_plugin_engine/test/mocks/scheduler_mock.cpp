@@ -9,9 +9,11 @@
 namespace bpe::test {
 namespace {
 struct TestSignal : IEventSignal {
-  bool signal() noexcept override { return true; }
+  bool signal() noexcept override {
+    return true;
+  }
 };
-}
+} // namespace
 
 void SchedulerMock::allow_signal(std::string name) {
   signal_name_ = std::move(name);
@@ -21,13 +23,13 @@ std::shared_ptr<IEventSignal> SchedulerMock::get_signal(std::string_view name) {
   return name == signal_name_ ? test_signal_ : nullptr;
 }
 
-
 SchedulerResult SchedulerMock::configure(const SchedulerConfig&) {
   calls_.push_back("configure");
   return SchedulerResult::SUCCESS;
 }
-SchedulerResult SchedulerMock::register_block(const std::string& name, IScheduledBlock& block,
-                                   const YAML::Node& config) {
+SchedulerResult SchedulerMock::register_block(const std::string& name,
+                                              IScheduledBlock& block,
+                                              const YAML::Node& config) {
   calls_.push_back("register:" + name);
   if (add_result_ == SchedulerResult::SUCCESS && config && !config.IsNull())
     entries_.push_back({name, &block, YAML::Clone(config)});
@@ -35,28 +37,42 @@ SchedulerResult SchedulerMock::register_block(const std::string& name, ISchedule
 }
 SchedulerResult SchedulerMock::remove(const std::string& name) {
   calls_.push_back("remove:" + name);
-  entries_.erase(std::remove_if(entries_.begin(), entries_.end(),
-                                [&](const Entry& e) { return e.name == name; }), entries_.end());
+  entries_.erase(std::remove_if(entries_.begin(),
+                                entries_.end(),
+                                [&](const Entry& e) { return e.name == name; }),
+                 entries_.end());
   return SchedulerResult::SUCCESS;
 }
 SchedulerResult SchedulerMock::start() {
-  calls_.push_back("start"); running_ = true; return SchedulerResult::SUCCESS;
+  calls_.push_back("start");
+  running_ = true;
+  return SchedulerResult::SUCCESS;
 }
-SchedulerResult SchedulerMock::start(std::chrono::nanoseconds) { return start(); }
+SchedulerResult SchedulerMock::start(std::chrono::nanoseconds) {
+  return start();
+}
 SchedulerResult SchedulerMock::stop() {
-  calls_.push_back("stop"); running_ = false; return SchedulerResult::SUCCESS;
+  calls_.push_back("stop");
+  running_ = false;
+  return SchedulerResult::SUCCESS;
 }
 SchedulerResult SchedulerMock::clear() {
   calls_.push_back("clear");
-  if (clear_result_ == SchedulerResult::SUCCESS) entries_.clear();
+  if (clear_result_ == SchedulerResult::SUCCESS)
+    entries_.clear();
   return clear_result_;
 }
 void SchedulerMock::reset() {
-  entries_.clear(); calls_.clear(); add_result_ = SchedulerResult::SUCCESS;
-  clear_result_ = SchedulerResult::SUCCESS; running_ = false;
+  entries_.clear();
+  calls_.clear();
+  add_result_ = SchedulerResult::SUCCESS;
+  clear_result_ = SchedulerResult::SUCCESS;
+  running_ = false;
 }
 ExecutionResult SchedulerMock::execute(const std::string& name) {
-  for (const auto& e : entries_) if (e.name == name) return e.block->execute();
+  for (const auto& e : entries_)
+    if (e.name == name)
+      return e.block->execute();
   return ExecutionResult::FAILURE;
 }
 

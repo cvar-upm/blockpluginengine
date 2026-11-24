@@ -30,10 +30,8 @@ void fill(Sample& sample, std::uint64_t sequence) {
 }
 
 bool consistent(const Sample& sample) {
-  return sample.values.size() == 3 &&
-         sample.values[0] == sample.sequence &&
-         sample.values[1] == sample.sequence * 2 &&
-         sample.values[2] == sample.sequence * 3;
+  return sample.values.size() == 3 && sample.values[0] == sample.sequence &&
+         sample.values[1] == sample.sequence * 2 && sample.values[2] == sample.sequence * 3;
 }
 
 // Each endpoint belongs to one thread. A producer grant remains alive while
@@ -117,8 +115,9 @@ TEST(BlackboardConcurrency, ReaderKeepsStableSnapshotWhileWriterKeepsPublishing)
     EXPECT_EQ(held.value().sequence, 1u);
     EXPECT_TRUE(consistent(held.value()));
     EXPECT_EQ(held.sequence(), 1u);
-  }  // Release the held reader even on an unsuccessful progress check.
-  if (writer.joinable()) writer.join();
+  } // Release the held reader even on an unsuccessful progress check.
+  if (writer.joinable())
+    writer.join();
   ASSERT_TRUE(progressed) << "writer could not finish with a reader grant held";
 
   auto latest = latest_consumer.read_access();

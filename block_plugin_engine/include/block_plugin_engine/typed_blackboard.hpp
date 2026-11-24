@@ -47,22 +47,20 @@ void deserialize_native(const rclcpp::SerializedMessage* serialized, void* nativ
   serialization.deserialize_message(serialized, native);
 }
 
-template <typename T>
-const RosTypeInfo& register_data_type(const std::string& label) {
+template <typename T> const RosTypeInfo& register_data_type(const std::string& label) {
   if constexpr (rosidl_generator_traits::is_message<T>::value) {
     return the_ros_type_registry().register_typed(
-        label, rosidl_generator_traits::name<T>(),
-        &serialize_native<T>, &deserialize_native<T>);
+        label, rosidl_generator_traits::name<T>(), &serialize_native<T>, &deserialize_native<T>);
   } else {
     // Plain C++ objects do not require ROS serialization/type support.
     return the_ros_type_registry().register_native(label, typeid(T).name());
   }
 }
 
-using ProducerFactory = decltype(
-    std::declval<BpeBlackboard&>().register_producer(std::declval<const std::string&>()));
-using ConsumerFactory = decltype(
-    std::declval<BpeBlackboard&>().register_consumer(std::declval<const std::string&>()));
+using ProducerFactory =
+    decltype(std::declval<BpeBlackboard&>().register_producer(std::declval<const std::string&>()));
+using ConsumerFactory =
+    decltype(std::declval<BpeBlackboard&>().register_consumer(std::declval<const std::string&>()));
 using ProducerGrant = decltype(std::declval<ProducerFactory&>().write_access());
 using ConsumerGrant = decltype(std::declval<ConsumerFactory&>().read_access());
 
@@ -87,7 +85,8 @@ public:
     if (type_info_->requires_serialization()) {
       try {
         auto& serialized = grant_.data().serialized;
-        if (!serialized) serialized.emplace();
+        if (!serialized)
+          serialized.emplace();
         type_info_->serialize(grant_.data().native.get(), *serialized);
       } catch (...) {
         grant_.cancel();
@@ -192,9 +191,8 @@ private:
   struct Binding {
     explicit Binding(const std::string& label)
       : type_info(&detail::register_data_type<T>(label)),
-        factory(the_blackboard().register_producer(
-          label,
-          detail::RosProtectedDataInitializer<T>{})) {}
+        factory(
+            the_blackboard().register_producer(label, detail::RosProtectedDataInitializer<T>{})) {}
 
     const RosTypeInfo* type_info;
     detail::ProducerFactory factory;
@@ -236,9 +234,8 @@ private:
   struct Binding {
     explicit Binding(const std::string& label)
       : type_info(&detail::register_data_type<T>(label)),
-        factory(the_blackboard().register_consumer(
-          label,
-          detail::RosProtectedDataInitializer<T>{})) {}
+        factory(
+            the_blackboard().register_consumer(label, detail::RosProtectedDataInitializer<T>{})) {}
 
     const RosTypeInfo* type_info;
     detail::ConsumerFactory factory;
@@ -250,41 +247,34 @@ private:
   template <typename... Us> friend class MultiConsumer;
 };
 
-
 // Each element constructs its non-movable adapter directly as a base subobject.
 namespace detail {
 
-template <std::size_t I, typename T>
-class ConsumerAccessElement : public TypedConsumerAdapter<T> {
+template <std::size_t I, typename T> class ConsumerAccessElement : public TypedConsumerAdapter<T> {
 public:
-  explicit ConsumerAccessElement(ConsumerFactory& factory)
-      : TypedConsumerAdapter<T>(factory) {}
+  explicit ConsumerAccessElement(ConsumerFactory& factory) : TypedConsumerAdapter<T>(factory) {}
 };
 
-template <std::size_t I, typename T>
-class ProducerAccessElement : public TypedProducerAdapter<T> {
+template <std::size_t I, typename T> class ProducerAccessElement : public TypedProducerAdapter<T> {
 public:
   ProducerAccessElement(ProducerFactory& factory, const RosTypeInfo& info)
-      : TypedProducerAdapter<T>(factory, info) {}
+    : TypedProducerAdapter<T>(factory, info) {}
 };
 
 template <typename Indices, typename... Ts> class ConsumerAccessStorage;
 template <std::size_t... Is, typename... Ts>
 class ConsumerAccessStorage<std::index_sequence<Is...>, Ts...>
-    : private ConsumerAccessElement<Is, Ts>... {
+  : private ConsumerAccessElement<Is, Ts>... {
 public:
   explicit ConsumerAccessStorage(TypedConsumer<Ts>&... consumers)
-      : ConsumerAccessElement<Is, Ts>(consumers.binding_->factory)... {}
+    : ConsumerAccessElement<Is, Ts>(consumers.binding_->factory)... {}
 
-  template <std::size_t I>
-  decltype(auto) get() noexcept {
+  template <std::size_t I> decltype(auto) get() noexcept {
     using T = std::tuple_element_t<I, std::tuple<Ts...>>;
-    return static_cast<TypedConsumerAdapter<T>&>(
-        static_cast<ConsumerAccessElement<I, T>&>(*this));
+    return static_cast<TypedConsumerAdapter<T>&>(static_cast<ConsumerAccessElement<I, T>&>(*this));
   }
 
-  template <std::size_t I>
-  decltype(auto) get() const noexcept {
+  template <std::size_t I> decltype(auto) get() const noexcept {
     using T = std::tuple_element_t<I, std::tuple<Ts...>>;
     return static_cast<const TypedConsumerAdapter<T>&>(
         static_cast<const ConsumerAccessElement<I, T>&>(*this));
@@ -294,17 +284,15 @@ public:
 template <typename Indices, typename... Ts> class ProducerAccessStorage;
 template <std::size_t... Is, typename... Ts>
 class ProducerAccessStorage<std::index_sequence<Is...>, Ts...>
-    : private ProducerAccessElement<Is, Ts>... {
+  : private ProducerAccessElement<Is, Ts>... {
 public:
   explicit ProducerAccessStorage(TypedProducer<Ts>&... producers)
-      : ProducerAccessElement<Is, Ts>(producers.binding_->factory,
-                                       *producers.binding_->type_info)... {}
+    : ProducerAccessElement<Is, Ts>(producers.binding_->factory,
+                                    *producers.binding_->type_info)... {}
 
-  template <std::size_t I>
-  decltype(auto) get() noexcept {
+  template <std::size_t I> decltype(auto) get() noexcept {
     using T = std::tuple_element_t<I, std::tuple<Ts...>>;
-    return static_cast<TypedProducerAdapter<T>&>(
-        static_cast<ProducerAccessElement<I, T>&>(*this));
+    return static_cast<TypedProducerAdapter<T>&>(static_cast<ProducerAccessElement<I, T>&>(*this));
   }
 };
 
@@ -312,8 +300,9 @@ public:
 
 template <typename... Ts>
 class MultiConsumerAccess
-    : public detail::ConsumerAccessStorage<std::index_sequence_for<Ts...>, Ts...> {
+  : public detail::ConsumerAccessStorage<std::index_sequence_for<Ts...>, Ts...> {
   using Base = detail::ConsumerAccessStorage<std::index_sequence_for<Ts...>, Ts...>;
+
 public:
   explicit MultiConsumerAccess(TypedConsumer<Ts>&... consumers) : Base(consumers...) {}
   using Base::get;
@@ -325,8 +314,9 @@ public:
 
 template <typename... Ts>
 class MultiProducerAccess
-    : public detail::ProducerAccessStorage<std::index_sequence_for<Ts...>, Ts...> {
+  : public detail::ProducerAccessStorage<std::index_sequence_for<Ts...>, Ts...> {
   using Base = detail::ProducerAccessStorage<std::index_sequence_for<Ts...>, Ts...>;
+
 public:
   explicit MultiProducerAccess(TypedProducer<Ts>&... producers) : Base(producers...) {}
   using Base::get;
@@ -338,20 +328,20 @@ public:
 
 template <typename... Ts> class MultiConsumer {
 public:
-  template <typename... Labels>
-  void bind(const Labels&... labels) {
+  template <typename... Labels> void bind(const Labels&... labels) {
     static_assert(sizeof...(Labels) == sizeof...(Ts), "One label per consumer required");
     bind_impl(std::index_sequence_for<Ts...>{}, labels...);
   }
 
   MultiConsumerAccess<Ts...> read_access() {
-    std::apply([](auto&... consumers) {
-      if (!(... && consumers.binding_.has_value()))
-        throw std::logic_error("MultiConsumer contains an unbound consumer");
-    }, consumers_);
-    return std::apply([](auto&... consumers) {
-      return MultiConsumerAccess<Ts...>(consumers...);
-    }, consumers_);
+    std::apply(
+        [](auto&... consumers) {
+          if (!(... && consumers.binding_.has_value()))
+            throw std::logic_error("MultiConsumer contains an unbound consumer");
+        },
+        consumers_);
+    return std::apply([](auto&... consumers) { return MultiConsumerAccess<Ts...>(consumers...); },
+                      consumers_);
   }
 
 private:
@@ -364,20 +354,20 @@ private:
 
 template <typename... Ts> class MultiProducer {
 public:
-  template <typename... Labels>
-  void bind(const Labels&... labels) {
+  template <typename... Labels> void bind(const Labels&... labels) {
     static_assert(sizeof...(Labels) == sizeof...(Ts), "One label per producer required");
     bind_impl(std::index_sequence_for<Ts...>{}, labels...);
   }
 
   MultiProducerAccess<Ts...> write_access() {
-    std::apply([](auto&... producers) {
-      if (!(... && producers.binding_.has_value()))
-        throw std::logic_error("MultiProducer contains an unbound producer");
-    }, producers_);
-    return std::apply([](auto&... producers) {
-      return MultiProducerAccess<Ts...>(producers...);
-    }, producers_);
+    std::apply(
+        [](auto&... producers) {
+          if (!(... && producers.binding_.has_value()))
+            throw std::logic_error("MultiProducer contains an unbound producer");
+        },
+        producers_);
+    return std::apply([](auto&... producers) { return MultiProducerAccess<Ts...>(producers...); },
+                      producers_);
   }
 
 private:
@@ -389,31 +379,20 @@ private:
 };
 
 } // namespace bpe
- 
+
 // For structured bindings
-namespace std
-{
-  template <typename... Ts>
-  struct tuple_size<bpe::MultiConsumerAccess<Ts...>>
-      : integral_constant<size_t, sizeof...(Ts)>
-  {
-  };
+namespace std {
+template <typename... Ts>
+struct tuple_size<bpe::MultiConsumerAccess<Ts...>> : integral_constant<size_t, sizeof...(Ts)> {};
 
-  template <size_t I, typename... Ts>
-  struct tuple_element<I, bpe::MultiConsumerAccess<Ts...>>
-  {
-    using type = bpe::TypedConsumerAdapter<tuple_element_t<I, tuple<Ts...>>>;
-  };
+template <size_t I, typename... Ts> struct tuple_element<I, bpe::MultiConsumerAccess<Ts...>> {
+  using type = bpe::TypedConsumerAdapter<tuple_element_t<I, tuple<Ts...>>>;
+};
 
-  template <typename... Ts>
-  struct tuple_size<bpe::MultiProducerAccess<Ts...>>
-      : integral_constant<size_t, sizeof...(Ts)>
-  {
-  };
+template <typename... Ts>
+struct tuple_size<bpe::MultiProducerAccess<Ts...>> : integral_constant<size_t, sizeof...(Ts)> {};
 
-  template <size_t I, typename... Ts>
-  struct tuple_element<I, bpe::MultiProducerAccess<Ts...>>
-  {
-    using type = bpe::TypedProducerAdapter<tuple_element_t<I, tuple<Ts...>>>;
-  };
+template <size_t I, typename... Ts> struct tuple_element<I, bpe::MultiProducerAccess<Ts...>> {
+  using type = bpe::TypedProducerAdapter<tuple_element_t<I, tuple<Ts...>>>;
+};
 } // namespace std

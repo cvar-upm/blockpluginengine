@@ -255,7 +255,8 @@ TEST(ConcurrentRingTests, WriterSkipsSlotsHeldByReaders) {
   first->release_reader();
 }
 
-TEST(ConcurrentRingTests, RegisteredConsumerCapacityLeavesWritableSlotWhenReadersHoldDistinctSamples) {
+TEST(ConcurrentRingTests,
+     RegisteredConsumerCapacityLeavesWritableSlotWhenReadersHoldDistinctSamples) {
   TestRing ring;
   ring.register_consumer();
   ring.register_consumer();

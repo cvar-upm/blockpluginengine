@@ -41,8 +41,8 @@ static_assert(!std::is_copy_assignable_v<TestConsumerFactory>);
 static_assert(!std::is_move_constructible_v<TestConsumerFactory>);
 static_assert(!std::is_move_assignable_v<TestConsumerFactory>);
 
-static_assert(std::is_same_v<decltype(std::declval<TestProducerGrant&>().data()),
-                             TestProtectedData&>);
+static_assert(
+    std::is_same_v<decltype(std::declval<TestProducerGrant&>().data()), TestProtectedData&>);
 static_assert(std::is_same_v<decltype(std::declval<const TestConsumerGrant&>().data()),
                              const TestProtectedData&>);
 

@@ -43,19 +43,23 @@ TEST(SimulatedFairSchedulerTest, RejectsInvalidConfigurationAndSchedule) {
   EXPECT_EQ(scheduler.configure(YAML::Load("timing: {spin_before_deadline: nonsense}")),
             SchedulerResult::INVALID_CONFIG);
   ASSERT_EQ(scheduler.configure(no_rt()), SchedulerResult::SUCCESS);
-  EXPECT_EQ(scheduler.register_block("invalid", block,
-      YAML::Load("{policy: nonsense, period: 10ms}")), SchedulerResult::INVALID_CONFIG);
+  EXPECT_EQ(
+      scheduler.register_block("invalid", block, YAML::Load("{policy: nonsense, period: 10ms}")),
+      SchedulerResult::INVALID_CONFIG);
   EXPECT_EQ(scheduler.register_block("not_a_map", block, YAML::Load("raw")),
             SchedulerResult::INVALID_CONFIG);
-  EXPECT_EQ(scheduler.register_block("missing", block, YAML::Node{}),
-            SchedulerResult::SUCCESS);
-  EXPECT_EQ(scheduler.register_block("zero", block, periodic(0ns)), SchedulerResult::INVALID_CONFIG);
-  EXPECT_EQ(scheduler.register_block("negative", block, periodic(10ms, -1ms)), SchedulerResult::INVALID_CONFIG);
+  EXPECT_EQ(scheduler.register_block("missing", block, YAML::Node{}), SchedulerResult::SUCCESS);
+  EXPECT_EQ(scheduler.register_block("zero", block, periodic(0ns)),
+            SchedulerResult::INVALID_CONFIG);
+  EXPECT_EQ(scheduler.register_block("negative", block, periodic(10ms, -1ms)),
+            SchedulerResult::INVALID_CONFIG);
   auto wrong_thread = periodic(10ms);
   wrong_thread["thread"] = 1;
-  EXPECT_EQ(scheduler.register_block("thread", block, wrong_thread), SchedulerResult::INVALID_CONFIG);
+  EXPECT_EQ(scheduler.register_block("thread", block, wrong_thread),
+            SchedulerResult::INVALID_CONFIG);
   ASSERT_EQ(scheduler.register_block("first", block, periodic(10ms)), SchedulerResult::SUCCESS);
-  EXPECT_EQ(scheduler.register_block("first", block, periodic(10ms)), SchedulerResult::INVALID_CONFIG);
+  EXPECT_EQ(scheduler.register_block("first", block, periodic(10ms)),
+            SchedulerResult::INVALID_CONFIG);
   EXPECT_EQ(scheduler.remove("missing"), SchedulerResult::NOT_FOUND);
   EXPECT_EQ(scheduler.remove("first"), SchedulerResult::SUCCESS);
   EXPECT_EQ(scheduler.clear(), SchedulerResult::SUCCESS);
@@ -149,7 +153,8 @@ TEST(SimulatedFairSchedulerTest, ExecutionAdvancesSimulatedClockAndCausesOverrun
   TimerMockBlock block;
   std::atomic<int> executions{0};
   block.set_on_execute([&] {
-    if (executions.fetch_add(1) == 0) clock->advance(25ms);
+    if (executions.fetch_add(1) == 0)
+      clock->advance(25ms);
   });
   ASSERT_EQ(scheduler.configure(no_rt()), SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.register_block("overrun", block, periodic(10ms)), SchedulerResult::SUCCESS);
@@ -200,8 +205,14 @@ TEST(SimulatedFairSchedulerTest, OverdueBlocksAreServicedFairly) {
   TimerMockBlock first, second;
   std::mutex mutex;
   std::vector<int> order;
-  first.set_on_execute([&] { std::lock_guard<std::mutex> lock(mutex); order.push_back(1); });
-  second.set_on_execute([&] { std::lock_guard<std::mutex> lock(mutex); order.push_back(2); });
+  first.set_on_execute([&] {
+    std::lock_guard<std::mutex> lock(mutex);
+    order.push_back(1);
+  });
+  second.set_on_execute([&] {
+    std::lock_guard<std::mutex> lock(mutex);
+    order.push_back(2);
+  });
   ASSERT_EQ(scheduler.configure(no_rt()), SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.register_block("first", first, periodic(10ms)), SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.register_block("second", second, periodic(10ms)), SchedulerResult::SUCCESS);
@@ -254,14 +265,15 @@ TEST(SimulatedFairSchedulerTest, RequestsRealtimePriorityAndHandlesFailure) {
     state->success = false;
     BaseFairScheduler<SchedulerClockMock, RecordingRealtimePolicy> scheduler(
         clock, RecordingRealtimePolicy{state});
-    ASSERT_EQ(scheduler.configure(YAML::Load(
-        std::string("realtime: {enabled: true, required: ") +
-        (required ? "true" : "false") + ", priority: 42}\n"
-        "timing: {spin_before_deadline: 0ns}")), SchedulerResult::SUCCESS);
+    ASSERT_EQ(scheduler.configure(YAML::Load(std::string("realtime: {enabled: true, required: ") +
+                                             (required ? "true" : "false") +
+                                             ", priority: 42}\n"
+                                             "timing: {spin_before_deadline: 0ns}")),
+              SchedulerResult::SUCCESS);
     TimerMockBlock block;
     ASSERT_EQ(scheduler.register_block("block", block, periodic(10ms)), SchedulerResult::SUCCESS);
-    EXPECT_EQ(scheduler.start(0ns), required ? SchedulerResult::SYSTEM_ERROR
-                                               : SchedulerResult::SUCCESS);
+    EXPECT_EQ(scheduler.start(0ns),
+              required ? SchedulerResult::SYSTEM_ERROR : SchedulerResult::SUCCESS);
     EXPECT_EQ(state->calls.load(), 1);
     EXPECT_EQ(state->priority.load(), 42);
     EXPECT_EQ(scheduler.stop(), SchedulerResult::SUCCESS);
@@ -315,9 +327,10 @@ TEST(ProductionFairSchedulerTest, RealtimePriorityRequiresExplicitRtEnvironment)
       observed_priority.store(param.sched_priority);
     }
   });
-  ASSERT_EQ(scheduler.configure(YAML::Load(
-      "realtime: {enabled: true, required: true, priority: 42}\n"
-      "timing: {spin_before_deadline: 0ns}")), SchedulerResult::SUCCESS);
+  ASSERT_EQ(
+      scheduler.configure(YAML::Load("realtime: {enabled: true, required: true, priority: 42}\n"
+                                     "timing: {spin_before_deadline: 0ns}")),
+      SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.register_block("rt", block, periodic(2ms)), SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.start(), SchedulerResult::SUCCESS);
   const bool reached = block.wait_for_count(1);

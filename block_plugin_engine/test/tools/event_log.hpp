@@ -16,7 +16,8 @@ std::vector<std::string> events();
 
 // Wait until a specific record is present (other lifecycle records may interleave).
 bool wait_for_event(const std::string& name, std::chrono::milliseconds timeout);
-bool wait_for_event_count(const std::string& name, std::size_t count,
+bool wait_for_event_count(const std::string& name,
+                          std::size_t count,
                           std::chrono::milliseconds timeout);
 
 // Wait until at least count events have been recorded.

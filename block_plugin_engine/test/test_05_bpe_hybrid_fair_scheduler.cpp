@@ -40,11 +40,14 @@ pipelines:
 
 TEST(HybridFairScheduler, RejectsMalformedPipelines) {
   BPE_HybridFairScheduler scheduler;
-  EXPECT_EQ(scheduler.configure(YAML::Load(R"(pipelines: [{name: p, policy: event, period: 10ms, blocks: [a]}])")),
+  EXPECT_EQ(scheduler.configure(
+                YAML::Load(R"(pipelines: [{name: p, policy: event, period: 10ms, blocks: [a]}])")),
             SchedulerResult::INVALID_CONFIG);
-  EXPECT_EQ(scheduler.configure(YAML::Load(R"(pipelines: [{name: p, policy: timer, period: 0ms, blocks: [a]}])")),
+  EXPECT_EQ(scheduler.configure(
+                YAML::Load(R"(pipelines: [{name: p, policy: timer, period: 0ms, blocks: [a]}])")),
             SchedulerResult::INVALID_CONFIG);
-  EXPECT_EQ(scheduler.configure(YAML::Load(R"(pipelines: [{name: p, policy: timer, period: 10ms, blocks: []}])")),
+  EXPECT_EQ(scheduler.configure(
+                YAML::Load(R"(pipelines: [{name: p, policy: timer, period: 10ms, blocks: []}])")),
             SchedulerResult::INVALID_CONFIG);
 }
 
@@ -73,8 +76,10 @@ TEST(HybridFairScheduler, TimerPipelineExecutesItsBlocksInOrder) {
 realtime: {enabled: false}
 pipelines:
   - {name: periodic, policy: timer, period: 30ms, blocks: [a, b]}
-)")), SchedulerResult::SUCCESS);
-  ASSERT_EQ(scheduler.register_block("a", a, YAML::Load("{policy: wrong, period: bogus}")), SchedulerResult::SUCCESS);
+)")),
+            SchedulerResult::SUCCESS);
+  ASSERT_EQ(scheduler.register_block("a", a, YAML::Load("{policy: wrong, period: bogus}")),
+            SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.register_block("b", b, YAML::Node{}), SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.start(), SchedulerResult::SUCCESS);
   ASSERT_TRUE(wait_for_events(4, 2s));
@@ -95,7 +100,8 @@ TEST(HybridFairScheduler, EventPipelineCoalescesMultipleProducers) {
 realtime: {enabled: false}
 pipelines:
   - {name: on_data, policy: event, period: 150ms, signal: data_ready, blocks: [a, b]}
-)")), SchedulerResult::SUCCESS);
+)")),
+            SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.register_block("a", a, YAML::Node{}), SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.register_block("b", b, YAML::Node{}), SchedulerResult::SUCCESS);
   auto first_producer = scheduler.get_signal("data_ready");
@@ -123,12 +129,14 @@ TEST(HybridFairScheduler, EventSignalsDoNotProduceCatchUpExecutions) {
 realtime: {enabled: false}
 pipelines:
   - {name: on_data, policy: event, period: 100ms, signal: ready, blocks: [a]}
-)")), SchedulerResult::SUCCESS);
+)")),
+            SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.register_block("a", a, YAML::Node{}), SchedulerResult::SUCCESS);
   auto signal = scheduler.get_signal("ready");
   ASSERT_TRUE(signal);
   ASSERT_EQ(scheduler.start(), SchedulerResult::SUCCESS);
-  for (int i = 0; i < 20; ++i) ASSERT_TRUE(signal->signal());
+  for (int i = 0; i < 20; ++i)
+    ASSERT_TRUE(signal->signal());
   ASSERT_TRUE(wait_for_events(1, 2s));
   // No buffered sequence of 20 executions should be replayed.
   ASSERT_EQ(scheduler.stop(), SchedulerResult::SUCCESS);
@@ -155,7 +163,8 @@ realtime: {enabled: false}
 pipelines:
   - {name: fast, policy: timer, period: 10ms, blocks: [a]}
   - {name: slow, policy: timer, period: 20ms, blocks: [b]}
-)")), SchedulerResult::SUCCESS);
+)")),
+            SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.register_block("a", a, YAML::Node{}), SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.register_block("b", b, YAML::Node{}), SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.start(0ns), SchedulerResult::SUCCESS);
@@ -178,7 +187,8 @@ realtime: {enabled: false}
 pipelines:
   - {name: fast, policy: event, period: 20ms, signal: ready_a, blocks: [a]}
   - {name: slow, policy: event, period: 40ms, signal: ready_b, blocks: [b]}
-)")), SchedulerResult::SUCCESS);
+)")),
+            SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.register_block("a", a, YAML::Node{}), SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.register_block("b", b, YAML::Node{}), SchedulerResult::SUCCESS);
   auto a_signal = scheduler.get_signal("ready_a");
@@ -188,8 +198,10 @@ pipelines:
   ASSERT_EQ(scheduler.start(0ns), SchedulerResult::SUCCESS);
   ASSERT_TRUE(clock->wait_until_frozen(2s));
   clock->advance_to(40ms);
-  for (int i = 0; i < 5; ++i) ASSERT_TRUE(a_signal->signal());
-  for (int i = 0; i < 3; ++i) ASSERT_TRUE(b_signal->signal());
+  for (int i = 0; i < 5; ++i)
+    ASSERT_TRUE(a_signal->signal());
+  for (int i = 0; i < 3; ++i)
+    ASSERT_TRUE(b_signal->signal());
   clock->release();
   ASSERT_TRUE(wait_for_events(2, 2s));
   ASSERT_EQ(scheduler.stop(), SchedulerResult::SUCCESS);
@@ -209,7 +221,8 @@ pipelines:
   - {name: timer_b, policy: timer, period: 20ms, blocks: [b]}
   - {name: event_c, policy: event, period: 20ms, signal: c_ready, blocks: [c]}
   - {name: event_d, policy: event, period: 40ms, signal: d_ready, blocks: [d]}
-)")), SchedulerResult::SUCCESS);
+)")),
+            SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.register_block("a", a, YAML::Node{}), SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.register_block("b", b, YAML::Node{}), SchedulerResult::SUCCESS);
   ASSERT_EQ(scheduler.register_block("c", c, YAML::Node{}), SchedulerResult::SUCCESS);
@@ -226,7 +239,6 @@ pipelines:
   clock->release();
   ASSERT_TRUE(wait_for_events(8, 2s));
   ASSERT_EQ(scheduler.stop(), SchedulerResult::SUCCESS);
-  EXPECT_EQ(events(), (std::vector<std::string>{
-      "A", "A", "B", "C", "A", "A", "B", "D"}));
+  EXPECT_EQ(events(), (std::vector<std::string>{"A", "A", "B", "C", "A", "A", "B", "D"}));
 }
 } // namespace

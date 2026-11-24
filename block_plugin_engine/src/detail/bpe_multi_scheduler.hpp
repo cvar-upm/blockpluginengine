@@ -22,7 +22,8 @@ public:
   ~BPE_MultiScheduler() override;
 
   SchedulerResult configure(const SchedulerConfig& config) override;
-  SchedulerResult register_block(const std::string& name, IScheduledBlock& block,
+  SchedulerResult register_block(const std::string& name,
+                                 IScheduledBlock& block,
                                  const YAML::Node& execution) override;
   std::shared_ptr<IEventSignal> get_signal(std::string_view name) override;
   SchedulerResult remove(const std::string& name) override;

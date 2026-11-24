@@ -17,10 +17,10 @@
 
 namespace bpe_ros_boundary_plugins::detail {
 
-using ProducerFactory = decltype(
-    std::declval<bpe::BpeBlackboard&>().register_producer(std::declval<const std::string&>()));
-using ConsumerFactory = decltype(
-    std::declval<bpe::BpeBlackboard&>().register_consumer(std::declval<const std::string&>()));
+using ProducerFactory = decltype(std::declval<bpe::BpeBlackboard&>().register_producer(
+    std::declval<const std::string&>()));
+using ConsumerFactory = decltype(std::declval<bpe::BpeBlackboard&>().register_consumer(
+    std::declval<const std::string&>()));
 using ProducerGrant = decltype(std::declval<ProducerFactory&>().write_access());
 using ConsumerGrant = decltype(std::declval<ConsumerFactory&>().read_access());
 
@@ -43,7 +43,8 @@ public:
 
   rclcpp::SerializedMessage& serialized() {
     auto& data = grant_.data().serialized;
-    if (!data) data.emplace();
+    if (!data)
+      data.emplace();
     return *data;
   }
 
