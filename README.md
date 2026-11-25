@@ -12,6 +12,7 @@
 
 [![License](https://img.shields.io/badge/license-BSD--3--Clause-blue)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/cvar-upm/blockpluginengine)](https://github.com/cvar-upm/blockpluginengine/releases)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24528432.svg)](https://doi.org/10.5281/zenodo.24528432)
 
 CI validates AMD64 and ARM64 on ROS 2 Jazzy and Lyrical. The coverage workflow reports production-code coverage (excluding examples and test fixtures) in the job summary and publishes a downloadable HTML report. Clang-tidy and Cppcheck run on Jazzy AMD64 and publish diagnostic reports; warnings are initially advisory. Hosted-runner tests do not certify real-time performance.
 
@@ -358,7 +359,14 @@ executable and YAML-defined runtime configurations. See the
 
 BPE is developed at UPM / CVAR-UPM, led and maintained by Santiago Tapia-Fernández ([ORCID](https://orcid.org/0000-0002-1418-9276)). It is distributed under BSD-3-Clause. See [AUTHORS.md](AUTHORS.md), [LICENSE](LICENSE) and [AI_USAGE.md](AI_USAGE.md) for attribution, licensing and a description of the human-led engineering process with AI assistance.
 
-For citation metadata, see [CITATION.cff](CITATION.cff).
+## Citation and archival
+
+BPE is permanently archived in Zenodo. Use the concept DOI to refer to the software in general, or the version-specific DOI for reproducibility.
+
+- All versions (concept DOI): [10.5281/zenodo.24528432](https://doi.org/10.5281/zenodo.24528432).
+- Version 1.0.2: [10.5281/zenodo.24528433](https://doi.org/10.5281/zenodo.24528433).
+
+For citation metadata, see [CITATION.cff](CITATION.cff). For a specific release, use the citation provided by its Zenodo record.
 
 ## Funding and acknowledgements
 
