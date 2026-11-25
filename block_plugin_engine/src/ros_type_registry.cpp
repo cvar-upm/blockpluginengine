@@ -102,11 +102,8 @@ RosTypeInfo& RosTypeRegistry::get_or_create(const std::string& label, const std:
   auto it = entries_.find(label);
   if (it == entries_.end()) {
     std::unique_ptr<RosTypeInfo> info(new RosTypeInfo(ros_type));
-    RosTypeInfo* raw = info.get();
-    entries_.emplace(label, std::move(info));
-    return *raw;
+    return *entries_.emplace(label, std::move(info)).first->second;
   }
-
   if (it->second->ros_type() != ros_type) {
     throw std::runtime_error("ROS type mismatch for blackboard label '" + label + "': '" +
                              it->second->ros_type() + "' != '" + ros_type + "'");
