@@ -8,6 +8,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -28,7 +32,7 @@ jobs:
           AFTER_SCRIPT: >-
             status=0;
             python3 "$BASEDIR/target_ws/src/blockpluginengine/ci/static_analysis.py"
-            clang-tidy "$BASEDIR/target_ws/build" "$BASEDIR/report" || status=$?;
+            clang-tidy "$BASEDIR/target_ws/build" "$BASEDIR/report" --jobs 4 || status=$?;
             chmod -R a+rX "$BASEDIR/report";
             exit "$status"
       - name: Publish analysis summary

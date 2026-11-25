@@ -3,6 +3,7 @@
 """Run static analysis against colcon compilation databases."""
 import argparse
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 import json
 import logging
 from pathlib import Path
@@ -27,12 +28,21 @@ def run_analyzer(command, **kwargs):
     return result
 
 
+def positive_int(value):
+    number = int(value)
+    if number < 1:
+        raise argparse.ArgumentTypeError("jobs must be positive")
+    return number
+
+
 def main():
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("tool", choices=("clang-tidy", "cppcheck"))
     parser.add_argument("build", type=Path)
     parser.add_argument("report", type=Path)
+    parser.add_argument("--jobs", type=positive_int, default=1,
+                        help="maximum concurrent clang-tidy processes (default: 1)")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     args.report.mkdir(parents=True, exist_ok=True)
@@ -40,6 +50,8 @@ def main():
     executable = "clang-tidy-18" if args.tool == "clang-tidy" else "cppcheck"
     LOG.info("Build directory: %s", args.build.resolve())
     LOG.info("Report directory: %s", report)
+    if args.tool == "clang-tidy":
+        LOG.info("Parallel clang-tidy jobs: %d", args.jobs)
     try:
         version = run_analyzer([executable, "--version"], stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT, text=True)
@@ -65,17 +77,21 @@ def main():
                 raise ValueError("No project translation units")
             if args.tool == "clang-tidy":
                 files = sorted({str((Path(e["directory"]) / e["file"]).resolve()) for e in entries})
+                def analyze(file):
+                    return run_analyzer(["clang-tidy-18", "-p", str(db.parent),
+                                         f"--config-file={root / '.clang-tidy'}", file],
+                                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+
                 with (report / f"{package}.txt").open("w") as out:
-                    for file in files:
-                        result = run_analyzer(["clang-tidy-18", "-p", str(db.parent),
-                                                 f"--config-file={root / '.clang-tidy'}", file],
-                                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-                        out.write(f"\n=== {file} ===\n{result.stdout}")
-                        for match in re.finditer(r"^.*?:\d+:\d+: (warning|error|fatal error|note):", result.stdout, re.M):
-                            counts[match.group(1)] += 1
-                        if result.returncode != 0:
-                            LOG.error("clang-tidy failed for %s:\n%s", file, result.stdout)
-                        bad |= result.returncode != 0
+                    with ThreadPoolExecutor(max_workers=args.jobs) as pool:
+                        # map preserves file order; only the main thread writes reports.
+                        for file, result in zip(files, pool.map(analyze, files)):
+                            out.write(f"\n=== {file} ===\n{result.stdout}")
+                            for match in re.finditer(r"^.*?:\d+:\d+: (warning|error|fatal error|note):", result.stdout, re.M):
+                                counts[match.group(1)] += 1
+                            if result.returncode != 0:
+                                LOG.error("clang-tidy failed for %s:\n%s", file, result.stdout)
+                            bad |= result.returncode != 0
                 bad |= bool(counts["error"] or counts["fatal error"])
             else:
                 filtered = report / f"{package}.compile_commands.json"
