@@ -5,7 +5,13 @@ name: clang-tidy
 
 on:
   push:
-    branches: [main]
+    branches: [stable]
+    paths-ignore:
+      - 'README.md'
+      - 'CITATION.cff'
+      - '.zenodo.json'
+      - 'AI_USAGE.md'
+      - 'docs/**'
   workflow_dispatch:
 
 concurrency:

@@ -5,7 +5,13 @@ name: ROS 2 Jazzy Build and Tests
 
 on:
   push:
-    branches: [main]
+    branches: [main, stable]
+    paths-ignore:
+      - 'README.md'
+      - 'CITATION.cff'
+      - '.zenodo.json'
+      - 'AI_USAGE.md'
+      - 'docs/**'
   workflow_dispatch:
 
 concurrency:
@@ -22,11 +28,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - arch: AMD64
-            runner: ubuntu-24.04
-          - arch: ARM64
-            runner: ubuntu-24.04-arm
+        # Pushes to main use AMD64 only; stable and manual runs use both.
+        include: ${{ fromJSON(github.ref == 'refs/heads/main' && github.event_name == 'push' && '[{"arch":"AMD64","runner":"ubuntu-24.04"}]' || '[{"arch":"AMD64","runner":"ubuntu-24.04"},{"arch":"ARM64","runner":"ubuntu-24.04-arm"}]') }}
     steps:
       - uses: actions/checkout@v7
         with:
