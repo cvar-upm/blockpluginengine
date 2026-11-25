@@ -6,12 +6,36 @@ name: Code Coverage
 on:
   push:
     branches: [stable]
-    paths-ignore:
-      - 'README.md'
-      - 'CITATION.cff'
-      - '.zenodo.json'
-      - 'AI_USAGE.md'
-      - 'docs/**'
+    paths:
+      - 'block_plugin_engine/CMakeLists.txt'
+      - 'block_plugin_engine/package.xml'
+      - 'block_plugin_engine/*.xml'
+      - 'block_plugin_engine/include/**'
+      - 'block_plugin_engine/src/**'
+      - 'block_plugin_engine/test/**'
+      - 'bpe_blackboard/CMakeLists.txt'
+      - 'bpe_blackboard/package.xml'
+      - 'bpe_blackboard/*.xml'
+      - 'bpe_blackboard/include/**'
+      - 'bpe_blackboard/test/**'
+      - 'bpe_examples/CMakeLists.txt'
+      - 'bpe_examples/package.xml'
+      - 'bpe_examples/*.xml'
+      - 'bpe_examples/src/**'
+      - 'bpe_examples/config/**'
+      - 'bpe_examples/launch/**'
+      - 'bpe_ros_boundary_plugins/CMakeLists.txt'
+      - 'bpe_ros_boundary_plugins/package.xml'
+      - 'bpe_ros_boundary_plugins/*.xml'
+      - 'bpe_ros_boundary_plugins/src/**'
+      - 'bpe_ros_boundary_plugins/test/**'
+      - 'bpe_test/CMakeLists.txt'
+      - 'bpe_test/package.xml'
+      - 'bpe_test/*.xml'
+      - 'bpe_test/include/**'
+      - 'bpe_test/src/**'
+      - 'bpe_test/test/**'
+      - 'bpe_test/config/**'
   workflow_dispatch:
 
 concurrency:
