@@ -8,3 +8,8 @@ install/
 
 
 compile_commands.json
+
+# Pixi local environments and package output
+.pixi/
+/pixi-output/
+conda-channel/

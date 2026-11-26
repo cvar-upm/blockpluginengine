@@ -1,0 +1,13 @@
+# SPDX-FileCopyrightText: 2026 Universidad Politécnica de Madrid (UPM) - CVAR-UPM
+# SPDX-License-Identifier: BSD-3-Clause
+
+[package]
+publish = true
+
+[package.build.backend]
+name = "pixi-build-ros"
+version = "*"
+channels = ["https://prefix.dev/conda-forge"]
+
+[package.build.config]
+extra-input-globs = ["**/*.xml", "**/*.cmake", "**/*.in"]
