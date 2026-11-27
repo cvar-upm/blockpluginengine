@@ -193,7 +193,6 @@ def pages():
         restore(tag, name, development)
     for channel in (official, development):
         index(channel)
-    Path('site/index.html').write_text('''<!doctype html><html lang="en"><meta charset="utf-8"><title>BPE Conda channels</title><h1>BPE — ROS 2 Jazzy</h1><p><a href="conda/jazzy/releases/">Official releases</a></p><p><a href="conda/jazzy/latest/">Latest development build</a></p></html>''')
 
 
 if __name__ == '__main__':
