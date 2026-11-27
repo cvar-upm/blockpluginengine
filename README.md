@@ -350,6 +350,8 @@ executable and YAML-defined runtime configurations. See the
 
 ## Further documentation
 
+Prebuilt Conda packages for ROS 2 Jazzy (AMD64 and ARM64): see [Installing BPE with Pixi](docs/installation_pixi.md) and the [BPE website](https://cvar-upm.github.io/blockpluginengine/).
+
 - [`docs/architecture.md`](docs/architecture.md) — architecture, guarantees, concurrency model, lifecycle, ownership, and design contracts.
 - [`docs/configuration.md`](docs/configuration.md) — YAML configuration format and plugin configuration.
 - [`docs/hybrid_scheduler.md`](docs/hybrid_scheduler.md) — event signals and scheduler-owned pipelines.
