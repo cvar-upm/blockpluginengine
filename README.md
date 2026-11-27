@@ -10,11 +10,15 @@
 [![clang-tidy](https://github.com/cvar-upm/blockpluginengine/actions/workflows/clang-tidy.yml/badge.svg?branch=stable)](https://github.com/cvar-upm/blockpluginengine/actions/workflows/clang-tidy.yml?query=branch%3Astable)
 [![cppcheck](https://github.com/cvar-upm/blockpluginengine/actions/workflows/cppcheck.yml/badge.svg?branch=stable)](https://github.com/cvar-upm/blockpluginengine/actions/workflows/cppcheck.yml?query=branch%3Astable)
 
+[![Conda Release](https://github.com/cvar-upm/blockpluginengine/actions/workflows/conda-release.yml/badge.svg?branch=main)](https://github.com/cvar-upm/blockpluginengine/actions/workflows/conda-release.yml?query=branch%3Amain)
+[![Conda Latest](https://github.com/cvar-upm/blockpluginengine/actions/workflows/conda-latest.yml/badge.svg?branch=main)](https://github.com/cvar-upm/blockpluginengine/actions/workflows/conda-latest.yml?query=branch%3Amain)
+[![Conda packages](https://img.shields.io/badge/Conda-Jazzy_AMD64_%7C_ARM64-blue?logo=anaconda)](https://cvar-upm.github.io/blockpluginengine/)
+
 [![License](https://img.shields.io/badge/license-BSD--3--Clause-blue)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/cvar-upm/blockpluginengine)](https://github.com/cvar-upm/blockpluginengine/releases)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24528432.svg)](https://doi.org/10.5281/zenodo.24528432)
 
-The badges show CI results for `stable`. Automatic CI on `main` runs ROS 2 Jazzy AMD64 build and tests, formatting and REUSE checks. On `stable`, CI validates AMD64 and ARM64 on ROS 2 Jazzy and Lyrical and runs the full analysis suite. Documentation-only pushes skip build and analysis workflows; all workflows can also be run manually. Release tags are created only after validating the exact commit on `stable`. The coverage workflow reports production-code coverage (excluding examples and test fixtures) in the job summary and publishes a downloadable HTML report. Clang-tidy and Cppcheck run on Jazzy AMD64 and publish diagnostic reports; warnings are initially advisory. Hosted-runner tests do not certify real-time performance.
+The build and code quality badges show CI results for `stable`. Conda packaging badges report the status of manually triggered workflows on `main`. Automatic CI on `main` runs ROS 2 Jazzy AMD64 build and tests, formatting and REUSE checks. On `stable`, CI validates AMD64 and ARM64 on ROS 2 Jazzy and Lyrical and runs the full analysis suite. Documentation-only pushes skip build and analysis workflows; all workflows can also be run manually. Release tags are created only after validating the exact commit on `stable`. The coverage workflow reports production-code coverage (excluding examples and test fixtures) in the job summary and publishes a downloadable HTML report. Clang-tidy and Cppcheck run on Jazzy AMD64 and publish diagnostic reports; warnings are initially advisory. Hosted-runner tests do not certify real-time performance.
 
 Block Plugin Engine (BPE) is a ROS 2 execution framework for dynamically loaded processing blocks.
 
