@@ -18,4 +18,9 @@ for arg in "$@"; do
     esac
 done
 
-exec pixi publish --target-channel "$PWD/conda-channel" "$@"
+extra=()
+if [[ -n ${BPE_CONDA_BUILD_PREFIX:-} ]]; then
+    [[ $BPE_CONDA_BUILD_PREFIX =~ ^dev_[0-9]+_[0-9]+_$ ]] || exit 2
+    extra+=(--build-string-prefix "$BPE_CONDA_BUILD_PREFIX")
+fi
+exec pixi publish --target-channel "$PWD/conda-channel" "${extra[@]}" "$@"

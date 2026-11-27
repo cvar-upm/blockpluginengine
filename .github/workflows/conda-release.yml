@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: 2026 Universidad Politécnica de Madrid (UPM) - CVAR-UPM
+# SPDX-License-Identifier: BSD-3-Clause
+
+name: Conda - release
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing official release tag (e.g. v1.0.2)
+        required: true
+        type: string
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: bpe-conda-distribution
+  cancel-in-progress: false
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/conda-build.yml
+    with:
+      mode: release
+      tag: ${{ inputs.tag }}

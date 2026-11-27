@@ -1,0 +1,20 @@
+# SPDX-FileCopyrightText: 2026 Universidad Politécnica de Madrid (UPM) - CVAR-UPM
+# SPDX-License-Identifier: BSD-3-Clause
+
+name: Conda - latest
+on:
+  workflow_dispatch:
+    {}
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: bpe-conda-distribution
+  cancel-in-progress: false
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/conda-build.yml
+    with:
+      mode: latest
+      tag: ''

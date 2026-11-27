@@ -1,0 +1,113 @@
+# SPDX-FileCopyrightText: 2026 Universidad Politécnica de Madrid (UPM) - CVAR-UPM
+# SPDX-License-Identifier: BSD-3-Clause
+
+name: Conda - shared build
+on:
+  workflow_call:
+    inputs:
+      mode:
+        required: true
+        type: string
+      tag:
+        required: true
+        type: string
+permissions:
+  contents: write
+jobs:
+  prepare:
+    permissions:
+      contents: read
+    runs-on: ubuntu-24.04
+    outputs:
+      sha: ${{ steps.prepare.outputs.sha }}
+      version: ${{ steps.prepare.outputs.version }}
+      tag: ${{ steps.prepare.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: prepare
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MODE: ${{ inputs.mode }}
+          TAG: ${{ inputs.tag }}
+        run: python3 ci/conda-distribution.py prepare
+  build:
+    permissions:
+      contents: read
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux-64
+          - runner: ubuntu-24.04-arm
+            platform: linux-aarch64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: tooling
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          path: source
+          persist-credentials: false
+      - uses: prefix-dev/setup-pixi@v0.11.3
+        with:
+          pixi-version: v0.85.0
+          run-install: false
+          cache: false
+          manifest-path: tooling/pixi.toml
+      - name: Build and validate native packages
+        env:
+          MODE: ${{ inputs.mode }}
+          PLATFORM: ${{ matrix.platform }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: bash tooling/ci/build-conda-consumer.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: conda-${{ matrix.platform }}
+          path: source/conda-channel/${{ matrix.platform }}/*.conda
+          if-no-files-found: error
+  store:
+    needs: [prepare, build]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: conda-linux-*
+          path: packages
+      - uses: prefix-dev/setup-pixi@v0.11.3
+        with:
+          pixi-version: v0.85.0
+          run-install: false
+          cache: false
+      - name: Assemble and index
+        env:
+          SHA: ${{ needs.prepare.outputs.sha }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          MODE: ${{ inputs.mode }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: python3 ci/conda-distribution.py assemble
+      - uses: actions/upload-artifact@v4
+        with:
+          name: conda-channel
+          path: output/*.zip
+          if-no-files-found: error
+      - name: Store on existing release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MODE: ${{ inputs.mode }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+          SHA: ${{ needs.prepare.outputs.sha }}
+        run: python3 ci/conda-distribution.py store
